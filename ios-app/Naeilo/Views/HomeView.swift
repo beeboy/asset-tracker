@@ -522,15 +522,14 @@ struct SceneBox: View {
     var body: some View {
         VStack(spacing: 0) {
             scene
-            // 욕조: 수익률·계획 줄은 장면 아래 따로 (박스 끝에 붙지 않게)
-            if look == .tub { subLine(13).padding(.top, 2).padding(.bottom, 12) }
         }
-        // 욕조: 아래 수익률 줄까지 타일 벽이 이어지게 (장면 타일과 같은 칸 크기)
-        .background { if look == .tub { GeometryReader { g in TileWall(cell: 22 * g.size.width / 300) } } }
         .boxScheme()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(s.label) \(amountText), \(s.target)까지 \(AppModel.pct(s.f)), \(s.status)")
     }
+
+    /// 판 위쪽 30을 잘라 박스 높이를 진행 막대 정도로 (2026-10-27). 글 아래 그림은 장면마다 내리거나 줄였다
+    private let cut: CGFloat = 30
 
     private var scene: some View {
         GeometryReader { g in
@@ -548,11 +547,13 @@ struct SceneBox: View {
                 }
                 .frame(width: 300, height: 170)
                 .scaleEffect(k, anchor: .topLeading)
+                .offset(y: -cut * k)
                 .allowsHitTesting(false)
                 if look == .tub {
-                    // 욕조: 금액은 욕조 앞면 (바닥 테두리 위)
+                    // 욕조: 금액은 욕조 앞면 (바닥 테두리 위), 수익률·계획 줄은 욕조 아래 타일 벽
                     amountView(20 * k, color: Color(hex: 0x16203A))
-                        .frame(width: 200 * k).position(x: 150 * k, y: 130 * k)
+                        .frame(width: 200 * k).position(x: 150 * k, y: (122 - cut) * k)
+                    subLine(13).position(x: 150 * k, y: (155 - cut) * k)
                     head.padding(.horizontal, 18).padding(.top, 12)
                 } else {
                     VStack(alignment: .leading, spacing: 2) {
@@ -564,7 +565,8 @@ struct SceneBox: View {
                 }
             }
         }
-        .aspectRatio(300 / 170, contentMode: .fit)
+        .aspectRatio(300 / (170 - cut), contentMode: .fit)
+        .clipped()
     }
 
     private var head: some View {
@@ -693,14 +695,14 @@ private struct HorizonScene: View {
 // MARK: 시안 3 욕조와 오리: 남색 타일 벽 앞 흰 욕조. 욕조 안쪽 맨 위 눈금이 목표, 그 위로 넘칠 여유. 노란 오리가 나, 금색 줄이 계획
 private struct TubScene: View {
     let s: BoxScene
-    /// 물높이: 바닥 150, 목표 70 (넘치면 54까지)
-    static func level(_ f: Double) -> CGFloat { 150 - 80 * CGFloat(min(1.2, max(0, f))) }
+    /// 물높이: 바닥 140, 목표 76 (넘치면 63까지). 판 위쪽 30을 잘라 내므로 욕조를 내리고 줄였다 (2026-10-27)
+    static func level(_ f: Double) -> CGFloat { 140 - 64 * CGFloat(min(1.2, max(0, f))) }
     static let tub: Path = {
         var p = Path()
-        p.move(to: CGPoint(x: 40, y: 52)); p.addLine(to: CGPoint(x: 260, y: 52)); p.addLine(to: CGPoint(x: 260, y: 120))
-        p.addQuadCurve(to: CGPoint(x: 230, y: 150), control: CGPoint(x: 260, y: 150))
-        p.addLine(to: CGPoint(x: 70, y: 150))
-        p.addQuadCurve(to: CGPoint(x: 40, y: 120), control: CGPoint(x: 40, y: 150))
+        p.move(to: CGPoint(x: 40, y: 62)); p.addLine(to: CGPoint(x: 260, y: 62)); p.addLine(to: CGPoint(x: 260, y: 110))
+        p.addQuadCurve(to: CGPoint(x: 230, y: 140), control: CGPoint(x: 260, y: 140))
+        p.addLine(to: CGPoint(x: 70, y: 140))
+        p.addQuadCurve(to: CGPoint(x: 40, y: 110), control: CGPoint(x: 40, y: 140))
         p.closeSubpath()
         return p
     }()
@@ -734,15 +736,15 @@ private struct TubScene: View {
                 var inner = ctx
                 inner.clip(to: Self.tub)
                 let mark = { (y: CGFloat, dry: Color) in y > w ? Color.white.opacity(0.9) : dry }
-                inner.stroke(Sk.line(CGPoint(x: 240, y: 70), CGPoint(x: 254, y: 70)), with: .color(mark(70, Color(hex: dk ? 0x7D889E : 0x6B7690))), lineWidth: 1.6)
-                Sk.text(inner, s.target, 237, 70, mark(70, Color(hex: dk ? 0x7D889E : 0x5A6580)), size: 8.5, bold: true, anchor: .trailing)
+                inner.stroke(Sk.line(CGPoint(x: 240, y: 76), CGPoint(x: 254, y: 76)), with: .color(mark(76, Color(hex: dk ? 0x7D889E : 0x6B7690))), lineWidth: 1.6)
+                Sk.text(inner, s.target, 237, 76, mark(76, Color(hex: dk ? 0x7D889E : 0x5A6580)), size: 8.5, bold: true, anchor: .trailing)
                 for (t, f) in Sk.pctTicks {
                     let y = Self.level(f)
                     inner.stroke(Sk.line(CGPoint(x: 246, y: y), CGPoint(x: 254, y: y)), with: .color(mark(y, Color(hex: 0x9AA6BD))), lineWidth: 1.2)
                     Sk.text(inner, t, 243, y, mark(y, Color(hex: dk ? 0x9AA6BD : 0x7D889E)), size: 8, anchor: .trailing)
                 }
                 ctx.stroke(Self.tub, with: .color(dk ? .white : Color(hex: 0xB7CAE3)), lineWidth: 3)
-                let rim = Path(roundedRect: CGRect(x: 32, y: 46, width: 236, height: 8), cornerRadius: 4)
+                let rim = Path(roundedRect: CGRect(x: 32, y: 56, width: 236, height: 8), cornerRadius: 4)
                 ctx.fill(rim, with: .color(.white))
                 if !dk { ctx.stroke(rim, with: .color(Color(hex: 0xB7CAE3)), lineWidth: 1) }
             }

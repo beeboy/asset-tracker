@@ -449,17 +449,23 @@ struct DoryScene: View {
                 }
                 Sk.text(ctx, String(localized: "출발"), 62, 165.5, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 8, bold: !dk, anchor: .center)
                 Sk.text(ctx, s.target, 268, 165.5, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 8.5, bold: true, anchor: .center)
-                // 수족관
-                let tank = Path(roundedRect: CGRect(x: 6, y: 90, width: 44, height: 66), cornerRadius: 3)
-                ctx.fill(tank, with: dk ? hex(0x9FD6EE, 0.18) : hex(0xFFFFFF, 0.28)); ctx.stroke(tank, with: hex(dk, 0xFFFFFF, 0xCFEFFF), lineWidth: 1.5)
-                ctx.fill(Path(CGRect(x: 6, y: 90, width: 44, height: 6)), with: dk ? hex(0xCFEFFF, 0.35) : hex(0xFFFFFF, 0.5))
-                for (x, y, r) in [(14, 153, 2.5), (20, 154, 2), (40, 153, 3)] as [(CGFloat, CGFloat, CGFloat)] { ctx.fill(circle(x, y, r), with: hex(dk, 0x8A94A8, 0x7F8AA3)) }
-                var pl = Path(); pl.move(to: pt(44, 153)); pl.addQuadCurve(to: pt(46, 129), control: pt(42, 139)); pl.addQuadCurve(to: pt(44, 153), control: pt(48, 139)); pl.closeSubpath()
-                ctx.fill(pl, with: hex(dk, 0x3A9A6A, 0x3FAE7A))
             }
-            Octopus(down: down).position(x: 25, y: 132)
+            // 수족관: 판 위쪽 30을 잘라 내므로 0.7배로 줄여 글 아래로 내린다 (바닥 왼쪽 모서리 기준, 2026-10-27)
+            ZStack(alignment: .topLeading) {
+                Canvas { ctx, _ in
+                    let tank = Path(roundedRect: CGRect(x: 6, y: 90, width: 44, height: 66), cornerRadius: 3)
+                    ctx.fill(tank, with: dk ? hex(0x9FD6EE, 0.18) : hex(0xFFFFFF, 0.28)); ctx.stroke(tank, with: hex(dk, 0xFFFFFF, 0xCFEFFF), lineWidth: 1.5)
+                    ctx.fill(Path(CGRect(x: 6, y: 90, width: 44, height: 6)), with: dk ? hex(0xCFEFFF, 0.35) : hex(0xFFFFFF, 0.5))
+                    for (x, y, r) in [(14, 153, 2.5), (20, 154, 2), (40, 153, 3)] as [(CGFloat, CGFloat, CGFloat)] { ctx.fill(circle(x, y, r), with: hex(dk, 0x8A94A8, 0x7F8AA3)) }
+                    var pl = Path(); pl.move(to: pt(44, 153)); pl.addQuadCurve(to: pt(46, 129), control: pt(42, 139)); pl.addQuadCurve(to: pt(44, 153), control: pt(48, 139)); pl.closeSubpath()
+                    ctx.fill(pl, with: hex(dk, 0x3A9A6A, 0x3FAE7A))
+                }
+                Octopus(down: down).position(x: 25, y: 132)
+            }
+            .frame(width: 300, height: 170, alignment: .topLeading)
+            .scaleEffect(0.7, anchor: UnitPoint(x: 6.0 / 300, y: 156.0 / 170))
             DoryFish(down: down)
-                .position(x: dx, y: 124)
+                .position(x: dx, y: 130)
                 .animation(.easeInOut(duration: 1.2), value: dx)
         }
     }
@@ -585,7 +591,9 @@ struct PinoScene: View {
                 ctx.stroke(Sk.line(pt(290, 146), pt(290, 158)), with: hex(mark), lineWidth: 1.5)
                 Sk.text(ctx, s.target, 290, 164, label, size: 8.5, bold: true, anchor: .trailing)
             }
-            PinoRig(up: up, tip: tip)
+            // 판 위쪽 30을 잘라 내므로 몸·코·새를 발끝 기준 0.64배로 (코끝은 눈금 자리에 맞춰 늘린다, 2026-10-27)
+            PinoRig(up: up, tip: 42 + (tip - 42) / 0.64)
+                .scaleEffect(0.64, anchor: UnitPoint(x: 42.0 / 300, y: 152.0 / 170))
         }
     }
 }
