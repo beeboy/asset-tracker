@@ -1032,7 +1032,7 @@ struct ThemeTrack: View {
 
 // MARK: 홈 장면 3 구면 뒤집기 (2026-10-27, 철수와 영희 자리): 10권 P6. 큰 구 하나가 진행률만큼 안과 밖이 바뀐다
 // 바깥 면 = 청록, 안쪽 면 = 호박색. 단계(E4): ① 굽이 ② 두 면이 서로를 통과 ③ 반환점(안도 밖도 아닌 네 잎) ④ 비틀리며 돌아 나옴 ⑤ 같은 구, 다른 면
-// 0~5% 는 매끈한 구, 그 뒤 구간은 임시값 (나머지의 20 · 45 · 55 · 100%). 단계 안에서도 진행률 따라 조금씩 바뀐다. 움직임: 몇 초에 한 번 짧게, 뒤집기가 조금 더 나아갔다 돌아온다 (회전 없음)
+// 0~5% 는 매끈한 구, 그 뒤 구간은 임시값 (나머지의 20 · 45 · 55 · 100%). 단계 안에서도 진행률 따라 조금씩 바뀐다. 움직임: 몇 초에 한 번 천천히, 지금 단계 안에서 뒤집기가 살짝 나아갔다 돌아온다 (회전 없음)
 struct SphereScene: View {
     let s: BoxScene
     @State private var start: Date?
@@ -1042,7 +1042,7 @@ struct SphereScene: View {
 
     var body: some View {
         let dk = cs == .dark, down = ThemeMood(s.today) == .down
-        let dur = down ? 4.0 : 3.0
+        let dur = down ? 6.0 : 4.5
         TimelineView(.animation(minimumInterval: 1.0 / 30, paused: start == nil)) { tl in
             let p = start.map { min(1, max(0, tl.date.timeIntervalSince($0) / dur)) } ?? 0
             Canvas { ctx, _ in draw(ctx, dk: dk, down: down, p: p) }
@@ -1090,9 +1090,10 @@ struct SphereScene: View {
         }
 
         // 0~5% 는 매끈한 구. 그 뒤로는 진행률(g)에 따라 조금씩 이어서 바뀐다 (단계 사이 끊김 없음)
-        // 움직일 때는 지금 자리에서 뒤집기가 조금 더 나아갔다가 돌아온다 (0~5% 매끈한 구는 그대로)
+        // 움직일 때는 지금 단계 안에서만 뒤집기가 살짝 나아갔다가 돌아온다 (단계 폭의 15%, 다음 단계로 넘어가지 않음. 0~5% 매끈한 구는 그대로)
         let g0 = max(0, (f - 0.05) / 0.95)
-        let g = g0 > 0 ? min(0.999, g0 + 0.06 * sin(Double.pi * e)) : 0
+        let hi = [0.2, 0.45, 0.55, 1].first { g0 < $0 } ?? 1, lo = [0, 0.2, 0.45, 0.55].last { g0 >= $0 } ?? 0
+        let g = g0 > 0 ? min(hi - 0.001, g0 + 0.15 * (hi - lo) * sin(Double.pi * e)) : 0
         func sm(_ x: Double) -> Double { let c = min(1, max(0, x)); return c * c * (3 - 2 * c) }
         func mix(_ a: Double, _ b: Double, _ m: Double) -> Double { a + (b - a) * m }
         func wavy(_ t: Double, _ amp: Double, _ off: Double) -> Double { 1 + amp * k * sin(6 * t + phi + off) }
