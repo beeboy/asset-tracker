@@ -1032,17 +1032,17 @@ struct ThemeTrack: View {
 
 // MARK: 홈 장면 3 구면 뒤집기 (2026-10-27, 철수와 영희 자리): 10권 P6. 큰 구 하나가 진행률만큼 안과 밖이 바뀐다
 // 바깥 면 = 청록, 안쪽 면 = 호박색. 단계(E4): ① 굽이 ② 두 면이 서로를 통과 ③ 반환점(안도 밖도 아닌 네 잎) ④ 비틀리며 돌아 나옴 ⑤ 같은 구, 다른 면
-// 0~5% 는 매끈한 구, 그 뒤 구간은 임시값 (나머지의 20 · 45 · 55 · 100%). 단계 안에서도 진행률 따라 조금씩 바뀐다. 움직임: 몇 초에 한 번 짧게, 굽이가 한 바퀴 돌고 처음 모양으로 돌아온다 (돌고 나면 같은 모양이라 끊김 없음)
+// 0~5% 는 매끈한 구, 그 뒤 구간은 임시값 (나머지의 20 · 45 · 55 · 100%). 단계 안에서도 진행률 따라 조금씩 바뀐다. 움직임: 몇 초에 한 번 짧게, 뒤집기가 조금 더 나아갔다 돌아온다 (회전 없음)
 struct SphereScene: View {
     let s: BoxScene
     @State private var start: Date?
     @Environment(\.accessibilityReduceMotion) private var still
     @Environment(\.colorScheme) private var cs
-    private static let cx: CGFloat = 225, cy: CGFloat = 96, R: CGFloat = 50
+    private static let cx: CGFloat = 225, cy: CGFloat = 86, R: CGFloat = 40
 
     var body: some View {
         let dk = cs == .dark, down = ThemeMood(s.today) == .down
-        let dur = down ? 3.2 : 2.4
+        let dur = down ? 4.0 : 3.0
         TimelineView(.animation(minimumInterval: 1.0 / 30, paused: start == nil)) { tl in
             let p = start.map { min(1, max(0, tl.date.timeIntervalSince($0) / dur)) } ?? 0
             Canvas { ctx, _ in draw(ctx, dk: dk, down: down, p: p) }
@@ -1051,7 +1051,7 @@ struct SphereScene: View {
             start = nil
             guard !still else { return }
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(down ? 6 : 4.5))
+                try? await Task.sleep(for: .seconds(down ? 5 : 3.5))
                 if Task.isCancelled { break }
                 start = .now
                 try? await Task.sleep(for: .seconds(dur))
@@ -1065,7 +1065,7 @@ struct SphereScene: View {
         let cx = Self.cx, cy = Self.cy, R = Self.R
         let f = min(1, max(0, s.f))
         let e = p * p * (3 - 2 * p)                 // 부드럽게 출발·정지
-        let phi = 2 * Double.pi * e                 // 굽이가 한 바퀴 (6갈래라 끝나면 같은 모양)
+        let phi = 0.0                               // 돌리지 않는다. 움직임은 뒤집기 자체 (아래 g)
         let k: Double = down ? 0.85 : 1             // 떨어진 날은 덜 출렁인다
         let outC = Color(hex: dk ? 0x4FB3A5 : 0x3E9C8F), inC = Color(hex: dk ? 0xE9C46A : 0xE2B44A)
         let bg0 = Color(hex: dk ? 0x0F1A24 : 0xEAF3F4), bg1 = Color(hex: dk ? 0x172634 : 0xF7F3E8)
@@ -1090,12 +1090,14 @@ struct SphereScene: View {
         }
 
         // 0~5% 는 매끈한 구. 그 뒤로는 진행률(g)에 따라 조금씩 이어서 바뀐다 (단계 사이 끊김 없음)
-        let g = max(0, (f - 0.05) / 0.95)
+        // 움직일 때는 지금 자리에서 뒤집기가 조금 더 나아갔다가 돌아온다 (0~5% 매끈한 구는 그대로)
+        let g0 = max(0, (f - 0.05) / 0.95)
+        let g = g0 > 0 ? min(0.999, g0 + 0.06 * sin(Double.pi * e)) : 0
         func sm(_ x: Double) -> Double { let c = min(1, max(0, x)); return c * c * (3 - 2 * c) }
         func mix(_ a: Double, _ b: Double, _ m: Double) -> Double { a + (b - a) * m }
         func wavy(_ t: Double, _ amp: Double, _ off: Double) -> Double { 1 + amp * k * sin(6 * t + phi + off) }
         func core(_ t: Double, _ base: Double, _ amp: Double, _ off: Double) -> Double { base + amp * k * sin(6 * t + Double.pi + off - phi) }
-        func lobe(_ t: Double, _ sg: Double) -> Double { 0.4 + 0.6 * k * max(0, sg * cos(2 * (t - Double.pi * e))) }
+        func lobe(_ t: Double, _ sg: Double) -> Double { 0.4 + 0.6 * k * max(0, sg * cos(2 * t)) }
 
         if f >= 1 {
             // ⑤ 같은 구: 모양은 처음과 같고 향하는 면만 다르다
@@ -1138,8 +1140,8 @@ struct SphereScene: View {
 
         // 진행률만: 숫자 + 가는 막대 (반환점을 지나면 안쪽 색)
         let barC = f < 0.5 ? outC : inC, x0: CGFloat = 186, w: CGFloat = 78
-        ctx.fill(Path(roundedRect: CGRect(x: x0, y: 157, width: w, height: 3), cornerRadius: 1.5), with: hex(dk, 0xC9D9D6, 0x2A3C48))
-        ctx.fill(Path(roundedRect: CGRect(x: x0, y: 157, width: w * CGFloat(f), height: 3), cornerRadius: 1.5), with: .color(barC))
-        Sk.text(ctx, AppModel.pct(f), x0 - 6, 158.5, Color(hex: dk ? 0xFFD98A : 0x2F5F59), size: 9, bold: true, anchor: .trailing)
+        ctx.fill(Path(roundedRect: CGRect(x: x0, y: 148, width: w, height: 3), cornerRadius: 1.5), with: hex(dk, 0xC9D9D6, 0x2A3C48))
+        ctx.fill(Path(roundedRect: CGRect(x: x0, y: 148, width: w * CGFloat(f), height: 3), cornerRadius: 1.5), with: .color(barC))
+        Sk.text(ctx, AppModel.pct(f), x0 - 6, 149.5, Color(hex: dk ? 0xFFD98A : 0x2F5F59), size: 9, bold: true, anchor: .trailing)
     }
 }
