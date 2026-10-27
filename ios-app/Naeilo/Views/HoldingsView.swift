@@ -728,7 +728,7 @@ struct HoldingDetailView: View {
         let pts = (day.map { [Market.shared.quote(sym).prevClose] + $0.closes } ?? m.prices.series(sym, period: period)).map { $0 * k }
         let big = { (v: Double) in du ? "$" + abs(v).usdText() : Int(abs(v).rounded()).formatted() + String(localized: "원") }
         let S = pts.first ?? 0, E = pts.last ?? 0, up = E >= S
-        let p = pair(sym.last), a = pair(h.avg)
+        let p = pair(sym.last), a = pair(h.avg), v = pair(sym.last * h.qty)
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Card {
@@ -768,6 +768,8 @@ struct HoldingDetailView: View {
                             kv(String(localized: "평균 단가"), Text(a.0) + Text(a.1.map { " (\($0))" } ?? "").font(.system(size: 12)).foregroundColor(Theme.sub))
                             Divider().overlay(Theme.line)
                             kv(String(localized: "보유 수량"), Text(h.qty.formatted() + String(localized: "주")))
+                            Divider().overlay(Theme.line)
+                            kv(String(localized: "평가금"), Text(v.0) + Text(v.1.map { " (\($0))" } ?? "").font(.system(size: 12)).foregroundColor(Theme.sub))   // 축이 한 주 가격이라 내 평가금은 여기 (2026-10-27)
                         }
                     }
                     AvgCalc(sym: sym, qty: h.qty, avg: h.avg, du: du)
