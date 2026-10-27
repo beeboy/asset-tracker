@@ -590,7 +590,8 @@ struct PinoScene: View {
                 ctx.stroke(Sk.line(pt(290, 146), pt(290, 158)), with: hex(mark), lineWidth: 1.5)
                 Sk.text(ctx, s.target, 290, 164, label, size: 8.5, bold: true, anchor: .trailing)
             }
-            PinoRig(up: up, tip: tip)
+            // 바닥 띠를 뺀 만큼 내려 발끝을 판 아래 끝에 둔다 (2026-10-27)
+            PinoRig(up: up, tip: tip).offset(y: 16)
         }
     }
 }
