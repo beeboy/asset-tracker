@@ -449,7 +449,7 @@ internal fun DoryScene(s: BoxScene) {
     // ios: Views/ThemeScenes.swift:415
     Plate {
         val all = Size(300f, 170f)
-        drawRect(Brush.verticalGradient(listOf(c(dk, 0xDCEEFB, 0x0F1A35), c(dk, 0xF4F9FE, 0x26406F)), 0f, 170f), Offset.Zero, all)
+        drawRect(Brush.verticalGradient(listOf(c(dk, 0xB3D9F4, 0x0F1A35), c(dk, 0xF4F9FE, 0x26406F)), 0f, 170f), Offset.Zero, all)
         if (dk) for ((x, y, r) in listOf(Triple(190f, 20f, 0.8f), Triple(230f, 44f, 0.6f), Triple(160f, 36f, 0.5f))) drawPath(oval(x, y, r), c(0xC9D3EA))
         else { drawOval(Color.White, Offset(182f, 25f), Size(36f, 10f)); drawOval(Color.White, Offset(201f, 21f), Size(18f, 10f)) }
         translate(246f, 60f) { with(ThemeArt) { opera(dk) } }
@@ -522,7 +522,7 @@ internal fun PinoScene(s: BoxScene) {
     val tm = rememberTextMeasurer()
     val tip by animateFloatAsState(64 + 226 * min(1.0, max(0.0, s.f)).toFloat(), tween(900, easing = EaseOut), label = "tip")
     Plate {
-        drawRect(Brush.verticalGradient(listOf(c(dk, 0xFBF2E3, 0x22170E), c(dk, 0xEBD6B4, 0x4A331D)), 0f, 170f), Offset.Zero, Size(300f, 170f))
+        drawRect(Brush.verticalGradient(listOf(c(dk, 0xEBD6B4, 0x22170E), c(dk, 0xFBF2E3, 0x4A331D)), 0f, 170f), Offset.Zero, Size(300f, 170f))
         for (x in listOf(70f, 140f, 210f, 280f)) drawPath(Sk.line(Offset(x, 0f), Offset(x, 152f)), if (dk) c(0x3A2816, 0.8f) else c(0xD7BC94), style = Stroke(1f))
         // 벽에 걸린 연장 그림자
         val tool = c(if (dk) 0x1A110A else 0xC9A877, 0.55f)
@@ -769,11 +769,11 @@ fun TrackBuddy(look: BoxLook, goal: Boolean = false) {
 internal fun DrawScope.themeBackdrop(look: BoxLook, dk: Boolean) {
     when (look) {
         BoxLook.dory -> {
-            drawRect(Brush.verticalGradient(0f to c(dk, 0xE6F3FC, 0x0F1A35), 0.6f to c(dk, 0xC4E3F6, 0x1B3866), 1f to c(dk, 0x93CBEC, 0x1F6AA3)))
+            drawRect(Brush.verticalGradient(0f to c(dk, 0x93CBEC, 0x0F1A35), 0.6f to c(dk, 0xC4E3F6, 0x1B3866), 1f to c(dk, 0xE6F3FC, 0x1F6AA3)))
             drawRect(Brush.radialGradient(listOf(if (dk) c(0xBFE9FF, 0.22f) else c(0xFFFFFF, 0.55f), Color.Transparent), Offset(size.width * 0.7f, size.height * 1.2f), 200.dp.toPx()))
         }
         BoxLook.pino -> {
-            drawRect(Brush.verticalGradient(listOf(c(dk, 0xFBF2E3, 0x22170E), c(dk, 0xEFDDC0, 0x4A331D))))
+            drawRect(Brush.verticalGradient(listOf(c(dk, 0xEFDDC0, 0x22170E), c(dk, 0xFBF2E3, 0x4A331D))))
             var x = 69.dp.toPx()
             while (x < size.width) { drawRect(if (dk) c(0x3A2816, 0.8f) else c(0xB9915F, 0.4f), Offset(x, 0f), Size(1.dp.toPx(), size.height)); x += 70.dp.toPx() }
             drawRect(Brush.radialGradient(listOf(if (dk) c(0xFFD58A, 0.28f) else c(0xFFCE78, 0.4f), Color.Transparent), Offset(size.width * 0.1f, size.height * 0.8f), 200.dp.toPx()))

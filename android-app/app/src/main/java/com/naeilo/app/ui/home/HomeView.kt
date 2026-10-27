@@ -955,12 +955,12 @@ private fun HorizonScene(s: BoxScene) {
         // ios: Views/HomeView.swift:700,701,702,703,704,705,706,707,708
         if (dk) {
             drawRect(Brush.linearGradient(listOf(hex(0x0C111D), hex(0x1C2747)), start = Offset.Zero, end = Offset(0f, 170f)), all.topLeft, all.size)   // ios: Views/HomeView.swift:735
-            drawRect(Brush.radialGradient(0f to hex(0xFFD98A).copy(alpha = 0.4f), 1f to hex(0xFFD98A).copy(alpha = 0f), center = Offset(300f, 136f), radius = 190f), all.topLeft, all.size)   // ios: Views/HomeView.swift:736
+            drawRect(Brush.radialGradient(0f to hex(0xFFD98A).copy(alpha = 0.45f), 1f to hex(0xFFD98A).copy(alpha = 0f), center = Offset(x1 - 8f, 140f), radius = 64f), all.topLeft, all.size)   // ios: Views/HomeView.swift:736
             Sk.stars(this)   // ios: Views/HomeView.swift:737
         } else {
             // 라이트: 새벽 대신 맑은 아침빛
-            drawRect(Brush.linearGradient(listOf(hex(0xEAF0F9), hex(0xF8F0E5)), start = Offset.Zero, end = Offset(0f, 170f)), all.topLeft, all.size)
-            drawRect(Brush.radialGradient(0f to hex(0xFFBA68).copy(alpha = 0.55f), 1f to hex(0xFFBA68).copy(alpha = 0f), center = Offset(300f, 136f), radius = 190f), all.topLeft, all.size)
+            drawRect(Brush.linearGradient(listOf(hex(0xC9DAF0), hex(0xF8F0E5)), start = Offset.Zero, end = Offset(0f, 170f)), all.topLeft, all.size)
+            drawRect(Brush.radialGradient(0f to hex(0xFFBA68).copy(alpha = 0.6f), 1f to hex(0xFFBA68).copy(alpha = 0f), center = Offset(x1 - 8f, 140f), radius = 64f), all.topLeft, all.size)
         }
         val line = hex(if (dk) 0x4A5672 else 0xB4BDCC); val road = hex(if (dk) 0xF2C14E else 0xE0A21E); val lab = hex(if (dk) 0x8A93A6 else 0x5F6670)   // ios: Views/HomeView.swift:709
         drawPath(Sk.line(Offset(x0, y), Offset(x1, y)), line, style = Stroke(1.5f))   // ios: Views/HomeView.swift:738
@@ -1150,7 +1150,7 @@ private fun JumpScene(s: BoxScene) {
         // ios: Views/HomeView.swift:894
         Plate {
             // 라이트: 하늘만 밝히고 도로는 어둡게 (차선 불빛이 묻히지 않게)
-            drawRect(Brush.linearGradient(listOf(hex(if (dk) 0x0B1022 else 0xE4EAF7), hex(if (dk) 0x232A52 else 0xBAC7E8)), start = Offset.Zero, end = Offset(0f, 170f)), Offset(0f, 0f), Size(300f, 170f))   // ios: Views/HomeView.swift:895
+            drawRect(Brush.linearGradient(listOf(hex(if (dk) 0x0B1022 else 0xBAC7E8), hex(if (dk) 0x232A52 else 0xE4EAF7)), start = Offset.Zero, end = Offset(0f, 170f)), Offset(0f, 0f), Size(300f, 170f))   // ios: Views/HomeView.swift:895
             if (dk) for ((x, y, r) in listOf(Triple(200f, 18f, 0.9f), Triple(240f, 44f, 0.6f), Triple(170f, 40f, 0.5f))) drawPath(Sk.dot(x, y, r), hex(0xC9D3EA))   // ios: Views/HomeView.swift:896
             drawRect(hex(if (dk) 0x151925 else 0x2F3650), Offset(0f, 128f), Size(300f, 42f))   // ios: Views/HomeView.swift:897
             drawPath(Sk.line(Offset(0f, 160f), Offset(300f, 160f)), hex(if (dk) 0x3A4155 else 0x5A6585), style = Stroke(1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f))))   // ios: Views/HomeView.swift:898

@@ -75,6 +75,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -789,14 +790,14 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.backdrop(look: BoxL
     when (look) {
         // ios: Views/HoldingsView.swift:525,526,527
         BoxLook.jump -> {
-            drawRect(Brush.verticalGradient(listOf(bx(dk, 0xE4EAF7, 0x0B1022), bx(dk, 0xBAC7E8, 0x232A52))))
+            drawRect(Brush.verticalGradient(listOf(bx(dk, 0xBAC7E8, 0x0B1022), bx(dk, 0xE4EAF7, 0x232A52))))
             if (dk) stars(listOf(Triple(0.67f, 0.11f, 0.9f), Triple(0.8f, 0.26f, 0.6f), Triple(0.57f, 0.24f, 0.5f)))
         }
         // ios: Views/HoldingsView.swift:528,529,530,531
         BoxLook.horizon -> {
-            drawRect(Brush.verticalGradient(listOf(bx(dk, 0xEAF0F9, 0x0C111D), bx(dk, 0xF8F0E5, 0x1C2747))))
+            drawRect(Brush.verticalGradient(listOf(bx(dk, 0xC9DAF0, 0x0C111D), bx(dk, 0xF8F0E5, 0x1C2747))))
             val sun = if (dk) hex(0xFFD98A) else hex(0xFFBA68)
-            drawRect(Brush.radialGradient(0f to sun.copy(alpha = if (dk) 0.4f else 0.55f), 1f to sun.copy(alpha = 0f), center = Offset(size.width * 1, size.height * 0.8f), radius = 190.dp.toPx()))
+            drawRect(Brush.radialGradient(0f to sun.copy(alpha = if (dk) 0.4f else 0.55f), 1f to sun.copy(alpha = 0f), center = Offset(size.width * 0.97f, size.height * 0.8f), radius = 70.dp.toPx()))
             if (dk) stars(listOf(Triple(0.2f, 0.12f, 0.8f), Triple(0.5f, 0.07f, 0.6f), Triple(0.77f, 0.18f, 0.9f), Triple(0.9f, 0.08f, 0.5f)))
         }
         BoxLook.tub -> tileWall(22.dp.toPx(), dk)   // ios: Views/HoldingsView.swift:532,533
@@ -836,7 +837,7 @@ fun TagChart(
     // ios: Views/HoldingsView.swift:529,556,557
     Row(Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = tags.joinToString(", ") { it.text } }, horizontalArrangement = Arrangement.spacedBy(0.dp), verticalAlignment = Alignment.Top) {
         // ios: Views/HoldingsView.swift:530
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.zIndex(1f).weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {   // 끝 박동 점이 축선 위에
             // ios: Views/HoldingsView.swift:531,538
             Box(Modifier.fillMaxWidth().height(height).padding(start = 4.dp)) {
                 Sparkline(points = points, modifier = Modifier.fillMaxSize(), avg = points.firstOrNull(), lineWidth = 2.2.dp, showEndDot = true, scrub = scrub)   // ios: Views/HoldingsView.swift:532
