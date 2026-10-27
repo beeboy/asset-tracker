@@ -643,7 +643,7 @@ struct TagChart: View {
 
 // MARK: 종목 세부 (시안 v38)
 
-/// 요약 박스(이름+티커, 현재가 큰 값·괄호 다른 통화, $/원) → 내 평가금 그래프(축 꼬리표 총 금액·달라진 금액·시작 금액) → 평균 단가·보유 수량 → 평단 계산기
+/// 요약 박스(이름+티커, 현재가 큰 값·괄호 다른 통화, $/원) → 한 주 가격 그래프(축 꼬리표 지금 가격·달라진 금액·시작 가격) → 평균 단가·보유 수량 → 평단 계산기
 /// 종목 상세 팝업: 제목(종목 이름) 왼쪽·X 오른쪽 머리 + 상세. 고치기 화면으로 넘어가려고 안에 NavigationStack
 struct HoldingDetailSheet: View {
     let sym: Symbol
@@ -722,12 +722,11 @@ struct HoldingDetailView: View {
 
     var body: some View {
         let h = m.holdings.first { $0.symbol == sym.id } ?? Holding(symbol: sym.id, qty: 0, avg: sym.close)
-        let q = h.qty > 0 ? h.qty : 1
-        // 그래프는 내 평가금 (고른 통화). $ 보기면 달러 정수, 원 보기면 만원
+        // 그래프는 한 주 가격 (고른 통화). $ 보기면 소수 둘째 자리, 원 보기면 원 단위 (2026-10-27)
         let k = isUsd && !du ? Market.shared.valFx : 1
         let day = period == .d1 ? mins : nil
-        let pts = (day.map { [Market.shared.quote(sym).prevClose] + $0.closes } ?? m.prices.series(sym, period: period)).map { $0 * q * k }
-        let big = { (v: Double) in du ? "$" + Int(abs(v).rounded()).formatted() : HoldFmt.won(abs(v)) }
+        let pts = (day.map { [Market.shared.quote(sym).prevClose] + $0.closes } ?? m.prices.series(sym, period: period)).map { $0 * k }
+        let big = { (v: Double) in du ? "$" + abs(v).usdText() : Int(abs(v).rounded()).formatted() + String(localized: "원") }
         let S = pts.first ?? 0, E = pts.last ?? 0, up = E >= S
         let p = pair(sym.last), a = pair(h.avg)
         ScrollView {
