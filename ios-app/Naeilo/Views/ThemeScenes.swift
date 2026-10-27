@@ -423,7 +423,6 @@ struct DoryScene: View {
                     ctx.fill(Path(ellipseIn: CGRect(x: 201, y: 21, width: 18, height: 10)), with: hex(0xFFFFFF))
                 }
                 var op = ctx; op.translateBy(x: 246, y: 60); ThemeArt.opera(op, dk: dk)
-                Sk.text(ctx, s.target, 270, 50.5, Color(hex: dk ? 0xFFD98A : 0x9A6A00), size: 9.5, bold: true, anchor: .center)
                 // 바다
                 let sea = Path(CGRect(x: 0, y: 82, width: 300, height: 88))
                 ctx.fill(sea, with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x1F78B4 : 0x6FC0EA), Color(hex: dk ? 0x0A3560 : 0x2F7FBF)]), startPoint: pt(0, 82), endPoint: pt(0, 170)))
@@ -448,6 +447,8 @@ struct DoryScene: View {
                     ctx.stroke(Sk.line(pt(x, 150), pt(x, 160)), with: hex(dk, 0x8A5A00, 0xFFD98A), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
                     Sk.text(ctx, t, x, 165.5, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 8, bold: !dk, anchor: .center)
                 }
+                Sk.text(ctx, String(localized: "출발"), 62, 165.5, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 8, bold: !dk, anchor: .center)
+                Sk.text(ctx, s.target, 268, 165.5, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 8.5, bold: true, anchor: .center)
                 // 수족관
                 let tank = Path(roundedRect: CGRect(x: 6, y: 90, width: 44, height: 66), cornerRadius: 3)
                 ctx.fill(tank, with: dk ? hex(0x9FD6EE, 0.18) : hex(0xFFFFFF, 0.28)); ctx.stroke(tank, with: hex(dk, 0xFFFFFF, 0xCFEFFF), lineWidth: 1.5)
@@ -580,6 +581,7 @@ struct PinoScene: View {
                     ctx.stroke(Sk.line(pt(x, 146), pt(x, 158)), with: hex(mark), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
                     Sk.text(ctx, t, x, 164.5, label, size: 8, bold: !dk, anchor: .center)
                 }
+                Sk.text(ctx, String(localized: "출발"), 64, 164.5, label, size: 8, bold: !dk, anchor: .center)
                 ctx.stroke(Sk.line(pt(290, 146), pt(290, 158)), with: hex(mark), lineWidth: 1.5)
                 Sk.text(ctx, s.target, 290, 164, label, size: 8.5, bold: true, anchor: .trailing)
             }
@@ -707,6 +709,8 @@ struct MugScene: View {
                     ctx.stroke(Sk.line(pt(x, 140), pt(x, 152)), with: hex(dk, 0x7A4A10, 0xFFD98A), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
                     Sk.text(ctx, t, x, 159.5, Color(hex: dk ? 0xFFD98A : 0x7A4A10), size: 8, bold: !dk, anchor: .center)
                 }
+                Sk.text(ctx, String(localized: "출발"), 68, 159.5, Color(hex: dk ? 0xFFD98A : 0x7A4A10), size: 8, bold: !dk, anchor: .center)
+                Sk.text(ctx, s.target, 280, 159.5, Color(hex: dk ? 0xFFD98A : 0x7A4A10), size: 8.5, bold: true, anchor: .center)
                 // 영희 앞 분필 선 (사선)
                 ctx.stroke(Sk.line(pt(64, 137.5), pt(50, 170)), with: dk ? hex(0xFBF6EA, 0.9) : hex(0xFFFFFF), style: StrokeStyle(lineWidth: 2.6, lineCap: .square))
                 // 왼쪽 끝 나무
@@ -729,8 +733,6 @@ struct MugScene: View {
                 Sk.text(ctx, "EXIT", 282, 88.5, Color(hex: 0x7DFFAE), size: 7, bold: true, anchor: .center)
             }
             .colorMultiply(dim)
-            Canvas { ctx, _ in Sk.text(ctx, s.target, 282, 75, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 9.5, bold: true, anchor: .center) }
-                .colorMultiply(dim)
             Dot(img: MugArt.younghi(eyes), w: 45, h: 52.5).colorMultiply(dim).position(x: 30.5, y: 122.25)
             if eyes == .closed && !still {
                 // 눈 감은 동안 노래한다 (무궁화 꽃이 피었습니다)
