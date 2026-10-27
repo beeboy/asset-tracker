@@ -277,13 +277,11 @@ private fun sceneOf(m: AppModel): BoxScene {
     // ios: Views/HomeView.swift:75
     if (m.isGoal) {
         val value = m.isGoal && !m.bare   // ios: Views/HomeView.swift:76
-        val years = kotlin.math.ceil(p.end).toInt()   // ios: Views/HomeView.swift:77
-        val ticks: List<Pair<String, Double>> = if (years > 1) (1 until years).map { y -> Pair("${y}년", p.need(y.toDouble()) / K) } else emptyList()   // ios: Views/HomeView.swift:78
         // ios: Views/HomeView.swift:79
         return BoxScene(label = if (value) "평가액" else "모은 돈",
             amount = if (m.bare) m.goalSaved * 1e4 else m.total,   // ios: Views/HomeView.swift:80
-            f = me / K, plan = if (n > 0) n / K else null, ticks = ticks,   // ios: Views/HomeView.swift:81
-            target = AppModel.wonK(m.gK), half = AppModel.wonK(m.gK / 2),   // ios: Views/HomeView.swift:82
+            f = me / K, plan = if (n > 0) n / K else null,   // ios: Views/HomeView.swift:81
+            target = AppModel.wonK(m.gK),   // ios: Views/HomeView.swift:82
             today = if (value && m.route == Route.plus && m.total > 0) m.todayMove else null,   // ios: Views/HomeView.swift:83
             ret = if (value && m.cost > 0) m.ret else null,   // ios: Views/HomeView.swift:84
             status = if (m.goalReached) "목표 도달!" else if (onPlan) "계획대로" else "조금 늦어요")   // ios: Views/HomeView.swift:85
@@ -291,7 +289,7 @@ private fun sceneOf(m: AppModel): BoxScene {
     val need = m.cost / max(1.0, m.total) - 1   // ios: Views/HomeView.swift:87
     // ios: Views/HomeView.swift:88
     return BoxScene(label = "평가액", amount = m.total, f = me / K, plan = if (n > 0) n / K else null,
-        target = "본전", half = "절반",   // ios: Views/HomeView.swift:89
+        target = "본전",   // ios: Views/HomeView.swift:89
         today = if (m.total > 0) m.todayMove else null, ret = m.ret,   // ios: Views/HomeView.swift:90
         status = if (need > 0) "본전까지 +${cformat("%.1f", need * 100)}%" else "본전 도달")   // Views/HomeView.swift:92 (검사 예외: 옮김)
 }
@@ -765,9 +763,7 @@ data class BoxScene(
     val amount: Double,         // 크게 쓰는 금액 (원)   // ios: Views/HomeView.swift:582
     val f: Double,              // 지금 자리 (0 = 출발, 1 = 목표)   // ios: Views/HomeView.swift:583
     val plan: Double?,          // 계획 자리   // ios: Views/HomeView.swift:584
-    val ticks: List<Pair<String, Double>> = listOf(),   // 1년·2년 눈금 자리 (계획선 위)   // ios: Views/HomeView.swift:585
     val target: String,         // 10억 · 본전   // ios: Views/HomeView.swift:586
-    val half: String,           // 가운데 눈금 글 (5억)   // ios: Views/HomeView.swift:587
     val today: Double?,         // 오늘 등락   // ios: Views/HomeView.swift:588
     val ret: Double?,           // 넣은 돈 대비   // ios: Views/HomeView.swift:589
     val status: String,         // 계획대로 · 본전까지 +3.1%   // ios: Views/HomeView.swift:590
@@ -890,6 +886,8 @@ internal enum class Anchor { leading, center, trailing }
 /** 장면 그림 도구: 300×170 판 좌표 */
 // ios: Views/HomeView.swift:687
 internal object Sk {
+    /** 평가액 박스 가로 눈금: 모든 모양이 같은 % (욕조는 세로로 따로 그린다) */
+    val pctTicks: List<Pair<String, Double>> = listOf(Pair("25%", 0.25), Pair("50%", 0.5), Pair("75%", 0.75))   // ios: Views/HomeView.swift:614
     // ios: Views/HomeView.swift:688,689,690,691,692
     fun p(pts: List<Pair<Float, Float>>): Path {
         val path = Path()
@@ -971,7 +969,7 @@ private fun HorizonScene(s: BoxScene) {
                 Brush.linearGradient(listOf(road.copy(alpha = if (dk) 0.15f else 0.2f), road.copy(alpha = if (dk) 0.9f else 1f)), start = Offset(x0, y), end = Offset(me, y)), style = Stroke(2.5f))
         }
         // ios: Views/HomeView.swift:743
-        for ((t, f) in s.ticks) if (f > 0 && f < 1) {
+        for ((t, f) in Sk.pctTicks) {
             drawPath(Sk.line(Offset(X(f), y - 4), Offset(X(f), y + 4)), line, style = Stroke(1f))   // ios: Views/HomeView.swift:744
             Sk.text(this, tm, t, X(f), 150f, lab, anchor = Anchor.center)   // ios: Views/HomeView.swift:745
         }
@@ -1072,23 +1070,19 @@ listOf(hex(if (dk) 0x7CC8F0 else 0x8CCFF2).copy(alpha = if (dk) 0.85f else 0.9f)
     }
     // ios: Views/HomeView.swift:827
     Plate {
-        // 눈금·계획 줄: 물 위에. 물에 잠긴 눈금은 흰색으로
+        // 눈금: 물 위에. 물에 잠긴 눈금은 흰색으로. 계획 줄은 뺀다 (2026-10-27)
         // ios: Views/HomeView.swift:829,830
         clipPath(tub) {
             val mark = { y: Float, dry: Color -> if (y > w) Color.White.copy(alpha = 0.9f) else dry }   // ios: Views/HomeView.swift:831
             drawPath(Sk.line(Offset(240f, 70f), Offset(254f, 70f)), mark(70f, hex(if (dk) 0x7D889E else 0x6B7690)), style = Stroke(1.6f))   // ios: Views/HomeView.swift:832
             Sk.text(this, tm, s.target, 237f, 70f, mark(70f, hex(if (dk) 0x7D889E else 0x5A6580)), size = 8.5f, bold = true, anchor = Anchor.trailing)   // ios: Views/HomeView.swift:833
             // ios: Views/HomeView.swift:834
-            for ((t, y) in listOf(Pair("75%", 90.0f), Pair("25%", 130.0f))) {
+            for ((t, f) in Sk.pctTicks) {
+                val y = TubScene.level(f)   // ios: Views/HomeView.swift:776
                 drawPath(Sk.line(Offset(246f, y), Offset(254f, y)), mark(y, hex(0x9AA6BD)), style = Stroke(1.2f))   // ios: Views/HomeView.swift:835
                 Sk.text(this, tm, t, 243f, y, mark(y, hex(if (dk) 0x9AA6BD else 0x7D889E)), size = 8f, anchor = Anchor.trailing)   // ios: Views/HomeView.swift:836
             }
             // ios: Views/HomeView.swift:838
-            s.plan?.let { p ->
-                val y = TubScene.level(p)   // ios: Views/HomeView.swift:839
-                drawPath(Sk.line(Offset(236f, y), Offset(254f, y)), hex(if (dk) 0xC98A00 else 0xB07A00), style = Stroke(2.2f))   // ios: Views/HomeView.swift:840
-                Sk.text(this, tm, "계획", 233f, y - 4, if (y - 4 > w) hex(0xFFE08A) else hex(if (dk) 0xC98A00 else 0x9A6A00), size = 8.5f, bold = true, anchor = Anchor.trailing)   // ios: Views/HomeView.swift:841
-            }
         }
         drawPath(tub, if (dk) Color.White else hex(0xB7CAE3), style = Stroke(3f))   // ios: Views/HomeView.swift:843
         drawRoundRect(Color.White, Offset(32f, 46f), Size(236f, 8f), CornerRadius(4f, 4f))   // ios: Views/HomeView.swift:844
@@ -1154,23 +1148,17 @@ private fun JumpScene(s: BoxScene) {
             if (dk) for ((x, y, r) in listOf(Triple(200f, 18f, 0.9f), Triple(240f, 44f, 0.6f), Triple(170f, 40f, 0.5f))) drawPath(Sk.dot(x, y, r), hex(0xC9D3EA))   // ios: Views/HomeView.swift:896
             drawRect(hex(if (dk) 0x151925 else 0x2F3650), Offset(0f, 128f), Size(300f, 42f))   // ios: Views/HomeView.swift:897
             drawPath(Sk.line(Offset(0f, 160f), Offset(300f, 160f)), hex(if (dk) 0x3A4155 else 0x5A6585), style = Stroke(1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f))))   // ios: Views/HomeView.swift:898
-            Sk.text(this, tm, s.target, x1, 62f, hex(if (dk) 0x9FDCFF else 0x1E5FA8), size = 10f, bold = true, anchor = Anchor.center)   // ios: Views/HomeView.swift:899
             // ios: Views/HomeView.swift:900
             for ((i, f) in listOf(0.0, 0.25, 0.5, 0.75).withIndex()) {
                 val x = X(f); val long = i % 2 == 0   // ios: Views/HomeView.swift:901
                 drawPath(Sk.line(Offset(x, 128f), Offset(x, if (long) 134f else 131f)), hex(if (dk) 0x6B7489 else 0xAEB6C6), style = Stroke(1f))   // ios: Views/HomeView.swift:902
             }
             Sk.text(this, tm, "출발", x0, 166f, hex(if (dk) 0x6B7489 else 0xAEB6C6), size = 8f, anchor = Anchor.center)   // ios: Views/HomeView.swift:904
-            Sk.text(this, tm, s.half, X(0.5), 166f, hex(if (dk) 0x6B7489 else 0xAEB6C6), size = 8f, anchor = Anchor.center)   // ios: Views/HomeView.swift:905
+            // 계획 표지판은 뺀다 (2026-10-27). 눈금 글은 %만
+            for ((t, f) in Sk.pctTicks) Sk.text(this, tm, t, X(f), 166f, hex(if (dk) 0x6B7489 else 0xAEB6C6), size = 8f, anchor = Anchor.center)   // ios: Views/HomeView.swift:851
+            drawPath(Sk.line(Offset(x1, 128f), Offset(x1, 134f)), hex(if (dk) 0x6B7489 else 0xAEB6C6), style = Stroke(1f))   // ios: Views/HomeView.swift:852
+            Sk.text(this, tm, s.target, x1, 166f, hex(if (dk) 0x9FDCFF else 0x1E5FA8), size = 8.5f, bold = true, anchor = Anchor.center)   // ios: Views/HomeView.swift:853
             // ios: Views/HomeView.swift:906
-            s.plan?.let { p ->
-                val x = X(p)   // ios: Views/HomeView.swift:907
-                val pole = hex(if (dk) 0x9AA2B2 else 0x6B7489)
-                drawPath(Sk.line(Offset(x, 96f), Offset(x, 131f)), pole, style = Stroke(2f))   // ios: Views/HomeView.swift:908
-                val sign = Path().apply { addRoundRect(RoundRect(x - 12, 86f, x - 12 + 24, 86f + 13, CornerRadius(2f, 2f))) }   // ios: Views/HomeView.swift:909 (width: 24, height: 13)
-                drawPath(sign, hex(if (dk) 0x2B3350 else 0xFFFFFF)); drawPath(sign, pole, style = Stroke(1f))   // ios: Views/HomeView.swift:910
-                Sk.text(this, tm, "계획", x, 92.5f, hex(if (dk) 0xFFD98A else 0x9A6A00), size = 8f, bold = !dk, anchor = Anchor.center)   // ios: Views/HomeView.swift:911
-            }
             s.today?.let { v -> Sk.text(this, tm, Sk.today(v), 6f, 120f, Sk.todayColor(v, dk)) }   // ios: Views/HomeView.swift:913
         }
         // 목표: 파란 일렁임

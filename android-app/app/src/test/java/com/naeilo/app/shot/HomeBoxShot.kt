@@ -37,8 +37,8 @@ import org.robolectric.annotation.GraphicsMode
 class HomeBoxShot {
     @get:Rule val rule = createComposeRule()
 
-    private val goal = BoxScene(label = "평가액", amount = 5.16e8, f = 0.516, plan = 0.55, ticks = listOf("1년" to 0.62, "2년" to 0.8),
-        target = "10억", half = "5억", today = -0.043, ret = 0.12, status = "조금 늦어요")
+    private val goal = BoxScene(label = "평가액", amount = 5.16e8, f = 0.516, plan = 0.55,
+        target = "10억", today = -0.043, ret = 0.12, status = "조금 늦어요")
 
     @Test fun looks() {
         ApplicationProvider.getApplicationContext<android.content.Context>().let { Store.init(it); Defaults.init(it) }

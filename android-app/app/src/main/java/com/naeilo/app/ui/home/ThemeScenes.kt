@@ -453,7 +453,6 @@ internal fun DoryScene(s: BoxScene) {
         if (dk) for ((x, y, r) in listOf(Triple(190f, 20f, 0.8f), Triple(230f, 44f, 0.6f), Triple(160f, 36f, 0.5f))) drawPath(oval(x, y, r), c(0xC9D3EA))
         else { drawOval(Color.White, Offset(182f, 25f), Size(36f, 10f)); drawOval(Color.White, Offset(201f, 21f), Size(18f, 10f)) }
         translate(246f, 60f) { with(ThemeArt) { opera(dk) } }
-        Sk.text(this, tm, s.target, 270f, 50.5f, c(dk, 0x9A6A00, 0xFFD98A), size = 9.5f, bold = true, anchor = Anchor.center)
         // 바다
         drawRect(Brush.verticalGradient(listOf(c(dk, 0x6FC0EA, 0x1F78B4), c(dk, 0x2F7FBF, 0x0A3560)), 82f, 170f), Offset(0f, 82f), Size(300f, 88f))
         val ray = if (dk) c(0xBFE9FF) else Color.White
@@ -464,9 +463,14 @@ internal fun DoryScene(s: BoxScene) {
         for (p in listOf(Path().apply { moveTo(210f, 160f); q(207f, 148f, 211f, 140f); q(214f, 148f, 212f, 160f); close() },
                          Path().apply { moveTo(216f, 160f); q(219f, 150f, 215f, 144f); q(213f, 152f, 216f, 160f); close() },
                          Path().apply { moveTo(120f, 160f); q(118f, 151f, 122f, 146f); q(123f, 153f, 120f, 160f); close() })) drawPath(p, c(dk, 0x3A9A6A, 0x3FAE7A))
-        // 계획 눈금 (50%)
-        drawPath(Sk.line(Offset(165f, 150f), Offset(165f, 160f)), c(dk, 0x8A5A00, 0xFFD98A), style = Stroke(1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(2f, 2f))))
-        Sk.text(this, tm, "계획", 165f, 165.5f, c(dk, 0x8A5A00, 0xFFD98A), size = 8f, bold = !dk, anchor = Anchor.center)
+        // 25·50·75% 눈금 (도리 자리와 같은 축)
+        for ((t, f) in Sk.pctTicks) {
+            val x = 62f + 206f * f.toFloat()
+            drawPath(Sk.line(Offset(x, 150f), Offset(x, 160f)), c(dk, 0x8A5A00, 0xFFD98A), style = Stroke(1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(2f, 2f))))
+            Sk.text(this, tm, t, x, 165.5f, c(dk, 0x8A5A00, 0xFFD98A), size = 8f, bold = !dk, anchor = Anchor.center)
+        }
+        Sk.text(this, tm, "출발", 62f, 165.5f, c(dk, 0x8A5A00, 0xFFD98A), size = 8f, bold = !dk, anchor = Anchor.center)
+        Sk.text(this, tm, s.target, 268f, 165.5f, c(dk, 0x8A5A00, 0xFFD98A), size = 8.5f, bold = true, anchor = Anchor.center)
         // 수족관
         drawRoundRect(if (dk) c(0x9FD6EE, 0.18f) else c(0xFFFFFF, 0.28f), Offset(6f, 90f), Size(44f, 66f), CornerRadius(3f))
         drawRoundRect(c(dk, 0xFFFFFF, 0xCFEFFF), Offset(6f, 90f), Size(44f, 66f), CornerRadius(3f), style = Stroke(1.5f))
@@ -533,10 +537,14 @@ internal fun PinoScene(s: BoxScene) {
         drawRect(Brush.radialGradient(listOf(lamp.copy(alpha = if (dk) 0.34f else 0.45f), lamp.copy(alpha = 0f)), Offset(42f, 119f), 150f), Offset.Zero, Size(300f, 170f))
         drawRect(c(dk, 0xD2AE7E, 0x2C1D10), Offset(0f, 152f), Size(300f, 18f))
         drawRect(c(dk, 0xB58D5C, 0x5A3E22), Offset(0f, 152f), Size(300f, 1.5f))
-        // 계획 눈금 (50%) · 끝 = 목표
+        // 25·50·75% 눈금 (코끝 자리와 같은 축) · 끝 = 목표
         val mark = c(dk, 0x8A5A00, 0xFFD98A); val label = c(dk, 0x6E4600, 0xFFD98A)
-        drawPath(Sk.line(Offset(177f, 146f), Offset(177f, 158f)), mark, style = Stroke(1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(2f, 2f))))
-        Sk.text(this, tm, "계획", 177f, 164.5f, label, size = 8f, bold = !dk, anchor = Anchor.center)
+        for ((t, f) in Sk.pctTicks) {
+            val x = 64f + 226f * f.toFloat()
+            drawPath(Sk.line(Offset(x, 146f), Offset(x, 158f)), mark, style = Stroke(1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(2f, 2f))))
+            Sk.text(this, tm, t, x, 164.5f, label, size = 8f, bold = !dk, anchor = Anchor.center)
+        }
+        Sk.text(this, tm, "출발", 64f, 164.5f, label, size = 8f, bold = !dk, anchor = Anchor.center)
         drawPath(Sk.line(Offset(290f, 146f), Offset(290f, 158f)), mark, style = Stroke(1.5f))
         Sk.text(this, tm, s.target, 290f, 164f, label, size = 8.5f, bold = true, anchor = Anchor.trailing)
     }
@@ -609,9 +617,14 @@ internal fun MugScene(s: BoxScene) {
         for ((x, y, rx, ry) in listOf(listOf(210f, 30f, 22f, 7f), listOf(224f, 25f, 12f, 7f), listOf(168f, 62f, 18f, 5f), listOf(178f, 58f, 9f, 5f)))
             drawOval(m(if (dk) c(0xE9F3FB, 0.6f) else Color.White), Offset(x - rx, y - ry), Size(rx * 2, ry * 2))
         for (r in listOf(Rect(96f, 150f, 99f, 151.5f), Rect(180f, 158f, 184f, 159.5f), Rect(236f, 147f, 238f, 148.5f))) drawRect(m(c(dk, 0xC9A673, 0x6E583A, if (dk) 0.8f else 0.6f)), r.topLeft, r.size)
-        // 계획 눈금 (50%). 다크 흙 위에선 금색
-        drawPath(Sk.line(Offset(174f, 140f), Offset(174f, 152f)), m(c(dk, 0x7A4A10, 0xFFD98A)), style = Stroke(1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(2f, 2f))))
-        Sk.text(this, tm, "계획", 174f, 159.5f, m(c(dk, 0x7A4A10, 0xFFD98A)), size = 8f, bold = !dk, anchor = Anchor.center)
+        // 25·50·75% 눈금 (기훈 자리와 같은 축). 다크 흙 위에선 금색
+        for ((t, f) in Sk.pctTicks) {
+            val x = 68f + 212f * f.toFloat()
+            drawPath(Sk.line(Offset(x, 140f), Offset(x, 152f)), m(c(dk, 0x7A4A10, 0xFFD98A)), style = Stroke(1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(2f, 2f))))
+            Sk.text(this, tm, t, x, 159.5f, m(c(dk, 0x7A4A10, 0xFFD98A)), size = 8f, bold = !dk, anchor = Anchor.center)
+        }
+        Sk.text(this, tm, "출발", 68f, 159.5f, m(c(dk, 0x7A4A10, 0xFFD98A)), size = 8f, bold = !dk, anchor = Anchor.center)
+        Sk.text(this, tm, s.target, 280f, 159.5f, m(c(dk, 0x7A4A10, 0xFFD98A)), size = 8.5f, bold = true, anchor = Anchor.center)
         // 영희 앞 분필 선 (사선)
         drawPath(Sk.line(Offset(64f, 137.5f), Offset(50f, 170f)), m(if (dk) c(0xFBF6EA, 0.9f) else Color.White), style = Stroke(2.6f, cap = StrokeCap.Square))
         // 왼쪽 끝 나무
@@ -623,7 +636,6 @@ internal fun MugScene(s: BoxScene) {
         drawRect(m(c(0xC8FFD9)), Offset(271f, 99f), Size(22f, 39f))
         drawRoundRect(m(c(0x0F3D27)), Offset(267f, 84f), Size(30f, 9f), CornerRadius(2f))
         Sk.text(this, tm, "EXIT", 282f, 88.5f, m(c(0x7DFFAE)), size = 7f, bold = true, anchor = Anchor.center)
-        Sk.text(this, tm, s.target, 282f, 75f, m(c(dk, 0x8A5A00, 0xFFD98A)), size = 9.5f, bold = true, anchor = Anchor.center)
     }
     // 출구 빛 (오른 날엔 조금 빨리)
     val glow = Loop(if (down) 1.2 else 0.7)   // ios: Views/ThemeScenes.swift:714
