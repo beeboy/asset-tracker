@@ -84,7 +84,11 @@ import kotlinx.coroutines.delay
 import java.time.DayOfWeek
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import com.naeilo.app.AppModel
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.max
 import kotlin.math.min
 
@@ -742,6 +746,22 @@ private fun Mini(w: Float, h: Float, draw: DrawScope.(TextMeasurer) -> Unit) {
     if (dk) drawPath(oval(11f, 7f, 5f), c(0xCFE0F5), style = Stroke(0.8f))
 }
 
+/** 구면 뒤집기: 작은 구. ripple = 떨어진 날 테두리 물결, inside = 안쪽 면 색(목표 자리) */
+// ios: Views/ThemeScenes.swift:901
+@Composable private fun MiniSphere(dk: Boolean, ripple: Boolean = false, inside: Boolean = false) = Mini(18f, 18f) {
+    val col = if (inside) c(dk, 0xE2B44A, 0xE9C46A) else c(dk, 0x3E9C8F, 0x4FB3A5)
+    val p = Path().apply {
+        for (i in 0 until 48) {
+            val t = 2 * PI * i / 48; val r = 8 * (1 + (if (ripple) 0.1 * sin(6 * t) else 0.0))
+            val x = 9f + (r * cos(t)).toFloat(); val y = 9f + (r * sin(t)).toFloat()
+            if (i == 0) moveTo(x, y) else lineTo(x, y)
+        }
+        close()
+    }
+    drawPath(p, col)
+    drawPath(oval(6.5f, 6f, 2.2f), Color.White.copy(alpha = 0.25f))
+}
+
 /** 몫 띠 위 오른쪽 끝에 서는 인물 */
 // ios: Views/ThemeScenes.swift:807,808,809,810,811,812,813,814,815,816,817,818,819,820,821,822,823,824,825,826
 @Composable
@@ -751,7 +771,7 @@ fun BandBuddy(look: BoxLook, up: Boolean, modifier: Modifier = Modifier) {
         when (look) {
             BoxLook.dory -> if (up) MiniDory(dk) else MiniOcto(dk)
             BoxLook.pino -> if (up) { MiniLeaf(dk); MiniBird(false) } else { MiniNote(dk); MiniBird(true) }
-            BoxLook.mug -> if (up) { MiniGihun(); MiniExit() } else { val img = MugArt.younghi(MugArt.Eyes.open); Mini(21f, 24.5f) { dot(img, 10.5f, 24.5f, 21f, 24.5f) } }
+            BoxLook.mug -> MiniSphere(dk, ripple = !up)   // ios: Views/ThemeScenes.swift:828
             BoxLook.jump -> if (up) { MiniFire(dk); MiniCar(dk) } else MiniCar(dk)
             BoxLook.horizon -> if (up) MiniGlow(dk) else { MiniWave(dk); MiniGlow(dk) }
             BoxLook.tub -> if (up) MiniDuck() else { MiniSplash(dk); MiniDuck() }
@@ -766,10 +786,10 @@ fun BandBuddy(look: BoxLook, up: Boolean, modifier: Modifier = Modifier) {
 fun TrackBuddy(look: BoxLook, goal: Boolean = false) {
     val dk = boxDark()
     if (goal) when (look) {
-        BoxLook.dory -> MiniOpera(dk); BoxLook.mug -> MiniExit(); BoxLook.jump -> MiniPortal(dk)
+        BoxLook.dory -> MiniOpera(dk); BoxLook.mug -> MiniSphere(dk, inside = true); BoxLook.jump -> MiniPortal(dk)   // ios: Views/ThemeScenes.swift:850
         BoxLook.horizon -> MiniSun(dk); BoxLook.tub -> MiniFoam(dk); else -> {}
     } else when (look) {
-        BoxLook.dory -> MiniDory(dk); BoxLook.pino -> MiniBird(false); BoxLook.mug -> MiniGihun()
+        BoxLook.dory -> MiniDory(dk); BoxLook.pino -> MiniBird(false); BoxLook.mug -> MiniSphere(dk)   // ios: Views/ThemeScenes.swift:860
         BoxLook.jump -> MiniCar(dk); BoxLook.horizon -> MiniGlow(dk); BoxLook.tub -> MiniDuck(); BoxLook.bar -> {}
     }
 }
@@ -790,6 +810,8 @@ internal fun DrawScope.themeBackdrop(look: BoxLook, dk: Boolean) {
             while (x < size.width) { drawRect(if (dk) c(0x3A2816, 0.8f) else c(0xB9915F, 0.4f), Offset(x, 0f), Size(1.dp.toPx(), size.height)); x += 70.dp.toPx() }
             drawRect(Brush.radialGradient(listOf(if (dk) c(0xFFD58A, 0.28f) else c(0xFFCE78, 0.4f), Color.Transparent), Offset(size.width * 0.1f, size.height * 0.8f), 200.dp.toPx()))
         }
+        // 구면 뒤집기: 홈 박스와 같은 바탕 (소품 없이 고요하게)
+        BoxLook.mug -> drawRect(Brush.verticalGradient(listOf(c(dk, 0xC9E3DF, 0x123A44), c(dk, 0xF1E7CC, 0x4A3F24))))   // ios: Views/ThemeScenes.swift:997,999
         else -> {
             drawRect(Brush.verticalGradient(listOf(c(dk, 0xBCE0F8, 0x14304F), c(dk, 0xE8F5FD, 0x2C5F8F))))
             drawRect(c(dk, 0xE2C595, 0x8F7550), Offset(0f, size.height - 12.dp.toPx()), Size(size.width, 12.dp.toPx()))
@@ -807,6 +829,7 @@ internal object ThemeBand {
     fun chalk(dk: Boolean) = bx(dk, 0xFFFFFF, 0xFBF6EA); fun dirt(dk: Boolean) = bx(dk, 0xD9BB8C, 0x8F7550)
     fun dirtRim(dk: Boolean) = bx(dk, 0xC4A374, 0xC4A374, 1f, 0f)
     fun noseDash(dk: Boolean) = bx(dk, 0xB47B44, 0xECBC82, 0.6f, 0.45f)
+    fun sphereTrack(dk: Boolean) = bx(dk, 0xFFFFFF, 0xFFFFFF, 0.7f, 0.16f)   // ios: Views/ThemeScenes.swift:1016
 }
 
 /** 새 테마 몫 띠: 바깥 틀 (안쪽 띠는 band 가 그린다) */
@@ -817,6 +840,7 @@ internal fun ThemeBandFrame(look: BoxLook, band: @Composable (height: Dp, radius
     when (look) {
         BoxLook.dory -> Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(ThemeBand.glass(dk)).border(1.5.dp, ThemeBand.glassRim(dk), RoundedCornerShape(50)).padding(2.dp)) { band(8.dp, 4.dp) }
         BoxLook.pino -> Box(Modifier.fillMaxWidth().background(ThemeBand.wood, ThemeBand.pinoShape).padding(2.dp)) { band(7.dp, 3.dp) }
+        BoxLook.mug -> Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(ThemeBand.sphereTrack(dk)).padding(2.dp)) { band(6.dp, 3.dp) }   // ios: Views/HoldingsView.swift:464
         else -> Column(Modifier.fillMaxWidth().border(1.dp, ThemeBand.dirtRim(dk))) {
             Box(Modifier.fillMaxWidth().height(2.dp).background(ThemeBand.chalk(dk)))
             Box(Modifier.fillMaxWidth().background(ThemeBand.dirt(dk)).padding(vertical = 3.dp)) { band(4.dp, 0.dp) }
@@ -843,6 +867,10 @@ internal fun ThemeTrack(look: BoxLook, f: Float, on: Color, modifier: Modifier =
                 drawPath(nose(w), ThemeBand.noseDash(dk), style = Stroke(1.5f * px, pathEffect = PathEffect.dashPathEffect(floatArrayOf(4 * px, 3 * px))))
                 if (f > 0) drawPath(nose(max(0f, w * f)), ThemeBand.wood)
             }
+            BoxLook.mug -> {   // ios: Views/ThemeScenes.swift:1040
+                drawRoundRect(ThemeBand.sphereTrack(dk), Offset(0f, 3 * px), Size(w, 8 * px), CornerRadius(4 * px))
+                drawRoundRect(on, Offset(0f, 3 * px), Size(max(0f, w * f), 8 * px), CornerRadius(4 * px))
+            }
             else -> {
                 drawRect(ThemeBand.chalk(dk), Offset.Zero, Size(w, 2 * px))
                 drawRect(ThemeBand.dirt(dk), Offset(0f, 2 * px), Size(w, 10 * px))
@@ -852,4 +880,109 @@ internal fun ThemeTrack(look: BoxLook, f: Float, on: Color, modifier: Modifier =
             }
         }
     })
+}
+
+// 홈 장면 3 구면 뒤집기 (2026-10-27, 철수와 영희 자리): 10권 P6. 큰 구 하나가 진행률만큼 안과 밖이 바뀐다
+// 바깥 면 = 청록, 안쪽 면 = 호박색. 0~5% 는 매끈한 구, 그 뒤 구간은 임시값 (나머지의 20 · 45 · 55 · 100%). 단계 안에서도 진행률 따라 조금씩 바뀐다.
+// 움직임: 몇 초에 한 번 천천히, 지금 단계 안에서 뒤집기가 살짝 나아갔다 돌아온다 (회전 없음)
+// ios: Views/ThemeScenes.swift:1062
+@Composable
+internal fun SphereScene(s: BoxScene) {
+    val down = moodDown(s.today); val dk = boxDark(); val still = stillNow()
+    val dur = if (down) 6.0 else 4.5   // ios: Views/ThemeScenes.swift:1071
+    val p = remember { Animatable(0f) }
+    LaunchedEffect(still, down) {
+        p.snapTo(0f)
+        if (still) return@LaunchedEffect
+        while (true) {
+            delay(if (down) 5000 else 3500)
+            p.snapTo(0f); p.animateTo(1f, tween((dur * 1000).toInt(), easing = LinearEasing)); p.snapTo(0f)
+        }
+    }
+    val tm = rememberTextMeasurer()
+    Plate { sphereDraw(s, dk, down, p.value.toDouble(), tm) }
+}
+
+/** p: 이번 움직임의 0~1 (쉬는 동안 0) */
+// ios: Views/ThemeScenes.swift:1093
+private fun DrawScope.sphereDraw(s: BoxScene, dk: Boolean, down: Boolean, p: Double, tm: TextMeasurer) {
+    val cx = 225f; val cy = 86f; val R = 40f
+    val f = min(1.0, max(0.0, s.f))
+    val e = p * p * (3 - 2 * p)                 // 부드럽게 출발·정지
+    val k = if (down) 0.85 else 1.0             // 떨어진 날은 덜 출렁인다
+    val outC = c(dk, 0x3E9C8F, 0x4FB3A5); val inC = c(dk, 0xE2B44A, 0xE9C46A)
+    val bg0 = c(dk, 0xC9E3DF, 0x123A44); val bg1 = c(dk, 0xF1E7CC, 0x4A3F24)
+    drawRect(Brush.verticalGradient(listOf(bg0, bg1), 0f, 170f), Offset.Zero, Size(300f, 170f))
+
+    fun blob(r: (Double) -> Double) = Path().apply {
+        for (i in 0 until 96) {
+            val t = 2 * PI * i / 96; val rr = R * r(t).toFloat()
+            val x = cx + rr * cos(t).toFloat(); val y = cy + rr * sin(t).toFloat()
+            if (i == 0) moveTo(x, y) else lineTo(x, y)
+        }
+        close()
+    }
+    fun shine(o: Double = 0.22) = drawPath(oval(cx - 0.3f * R, cy - 0.34f * R, 0.24f * R), Color.White.copy(alpha = o.toFloat()))
+    // 처음 무늬 'ㄴ'. 다 뒤집히면 거울로 보인다 (바깥에서 뒷면을 보는 셈)
+    fun mark(mirror: Boolean, o: Double = 1.0) {
+        val sx = if (mirror) -1f else 1f; val x0 = cx + sx * 0.14f * R; val y0 = cy - 0.32f * R
+        val m = Path().apply { moveTo(x0, y0); lineTo(x0, y0 + 0.24f * R); lineTo(x0 + sx * 0.2f * R, y0 + 0.24f * R) }
+        drawPath(m, c(0x14303A, o.toFloat()), style = Stroke(3.2f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    }
+
+    // 움직일 때는 지금 단계 안에서만 뒤집기가 살짝 나아갔다가 돌아온다 (단계 폭의 15%, 다음 단계로 넘어가지 않음. 0~5% 매끈한 구는 그대로)
+    val g0 = max(0.0, (f - 0.05) / 0.95)
+    val hi = listOf(0.2, 0.45, 0.55, 1.0).firstOrNull { g0 < it } ?: 1.0
+    val lo = listOf(0.0, 0.2, 0.45, 0.55).lastOrNull { g0 >= it } ?: 0.0
+    val g = if (g0 > 0) min(hi - 0.001, g0 + 0.15 * (hi - lo) * sin(PI * e)) else 0.0
+    fun sm(x: Double): Double { val q = min(1.0, max(0.0, x)); return q * q * (3 - 2 * q) }
+    fun mix(a: Double, b: Double, m: Double) = a + (b - a) * m
+    fun wavy(t: Double, amp: Double, off: Double) = 1 + amp * k * sin(6 * t + off)
+    fun core(t: Double, base: Double, amp: Double, off: Double) = base + amp * k * sin(6 * t + PI + off)
+    fun lobe(t: Double, sg: Double) = 0.4 + 0.6 * k * max(0.0, sg * cos(2 * t))
+
+    if (f >= 1) {
+        // ⑤ 같은 구: 모양은 처음과 같고 향하는 면만 다르다
+        drawPath(oval(cx, cy, R), inC)
+        shine(0.22 + 0.12 * sin(PI * p)); mark(true)
+    } else if (g < 0.2) {
+        // ① 굽이: 물결이 0에서 점점 커지고 조금씩 비틀린다. 안쪽 색이 스쳤다가 겹치기 직전 사라진다 (E5)
+        val u = g / 0.2; val off = u * PI / 3
+        drawPath(blob { wavy(it, 0.12 * u, off) }, outC)
+        if (p > 0 && g > 0) {
+            val gh = Path().apply { moveTo(cx - 0.4f * R, cy - 0.56f * R); quadraticTo(cx + 0.16f * R, cy - 0.2f * R, cx - 0.12f * R, cy + 0.64f * R) }
+            drawPath(gh, inC.copy(alpha = ((0.15 + 0.3 * u) * sin(PI * p)).toFloat()), style = Stroke(0.2f * R, cap = StrokeCap.Round))
+        }
+        shine(0.22 * (1 - u)); mark(false, 1 - u)
+    } else if (g < 0.45) {
+        // ② 통과: 안쪽 면이 가운데서 자라며 바깥 면과 반대로 돌아 지나간다
+        val u = (g - 0.2) / 0.25; val off = PI / 3 + u * PI / 6
+        drawPath(blob { wavy(it, 0.12, off) }, outC)
+        drawPath(blob { core(it, 0.72 * u, 0.18 * u, off) }, inC.copy(alpha = (0.8 * u).toFloat()))
+    } else if (g < 0.55) {
+        // ③ 반환점: ②의 끝 → 안도 밖도 아닌 네 잎 → ④의 시작(색만 바뀐 같은 꼴)
+        val u = (g - 0.45) / 0.1; val off = PI / 2
+        if (u < 0.5) {
+            val m = sm(u * 2)
+            drawPath(blob { mix(wavy(it, 0.12, off), lobe(it, 1.0), m) }, outC)
+            drawPath(blob { mix(core(it, 0.72, 0.18, off), lobe(it, -1.0), m) }, inC.copy(alpha = mix(0.8, 1.0, m).toFloat()))
+        } else {
+            val m = sm((u - 0.5) * 2)
+            drawPath(blob { mix(lobe(it, -1.0), wavy(it, 0.12, off), m) }, inC)
+            drawPath(blob { mix(lobe(it, 1.0), core(it, 0.72, 0.18, off), m) }, outC.copy(alpha = mix(1.0, 0.8, m).toFloat()))
+        }
+        val hole = 0.25f * R * sin(PI * u).toFloat()
+        if (hole > 0) drawPath(oval(cx, cy, hole), Brush.verticalGradient(listOf(bg0, bg1), cy - hole, cy + hole))
+    } else {
+        // ④ 돌아 나옴: 겉은 안쪽 색. 바깥 색 굽이가 비틀리며 줄어 100%에서 사라진다
+        val u = (g - 0.55) / 0.45; val off = PI / 2 + u * PI / 3
+        drawPath(blob { wavy(it, 0.12 * (1 - u), off) }, inC)
+        drawPath(blob { core(it, 0.72 * (1 - u), 0.18 * (1 - u), off) }, outC.copy(alpha = (0.8 * (1 - u)).toFloat()))
+    }
+
+    // 진행률: 구 아래 짧은 막대 + 오른쪽 숫자 (둘을 묶어 구 가운데에 맞춤, 반환점을 지나면 안쪽 색)
+    val barC = if (f < 0.5) outC else inC; val x0 = 182f; val w = 56f
+    drawRoundRect(Color.White.copy(alpha = if (dk) 0.16f else 0.7f), Offset(x0, 147f), Size(w, 5f), CornerRadius(2.5f))
+    drawRoundRect(barC, Offset(x0, 147f), Size(w * f.toFloat(), 5f), CornerRadius(2.5f))
+    Sk.text(this, tm, AppModel.pct(f), x0 + w + 6, 149.5f, c(dk, 0x2F5F59, 0xFFD98A), size = 12f, bold = true)
 }

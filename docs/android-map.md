@@ -53,7 +53,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Views/ForecastParts.swift` | `com/naeilo/app/ui/analysis/ForecastParts.kt` (72) |
 | `Views/GoalViews.swift` | `com/naeilo/app/ui/goal/GoalViews.kt` (513), `com/naeilo/app/ui/Controls.kt` (1) |
 | `Views/Guide.swift` | `com/naeilo/app/ui/Guide.kt` (78) |
-| `Views/HoldingsView.swift` | `com/naeilo/app/ui/town/TownViews.kt` (871), `com/naeilo/app/ui/hold/HoldingsView.kt` (354), `com/naeilo/app/ui/hold/HoldingDetail.kt` (267), `com/naeilo/app/ui/home/ThemeScenes.kt` (1) |
+| `Views/HoldingsView.swift` | `com/naeilo/app/ui/town/TownViews.kt` (871), `com/naeilo/app/ui/hold/HoldingsView.kt` (354), `com/naeilo/app/ui/hold/HoldingDetail.kt` (267), `com/naeilo/app/ui/home/ThemeScenes.kt` (2) |
 | `Views/HomeView.swift` | `com/naeilo/app/ui/home/HomeView.kt` (432), `com/naeilo/app/App.kt` (1) |
 | `Views/InvestViews.swift` | `com/naeilo/app/ui/analysis/InvestViews.kt` (95) |
 | `Views/MeViews.swift` | `com/naeilo/app/ui/me/MeViews.kt` (480) |
@@ -67,7 +67,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Views/ShelterView.swift` | `com/naeilo/app/ui/shelter/ShelterView.kt` (464) |
 | `Views/StartView.swift` | `com/naeilo/app/ui/start/StartView.kt` (88) |
 | `Views/SupportView.swift` | `com/naeilo/app/ui/support/SupportView.kt` (60) |
-| `Views/ThemeScenes.swift` | `com/naeilo/app/ui/home/ThemeScenes.kt` (51) |
+| `Views/ThemeScenes.swift` | `com/naeilo/app/ui/home/ThemeScenes.kt` (61) |
 | `Views/TownPanel.swift` | `com/naeilo/app/ui/town/TownPanel.kt` (287) |
 | `Views/Wave/SurfCloset.swift` | `com/naeilo/app/ui/wave/SurfCloset.kt` (162) |
 | `Views/Wave/WaveFeedback.swift` | `com/naeilo/app/ui/wave/WaveFeedback.kt` (83), `com/naeilo/app/ui/WaveFeedbackToggles.kt` (9) |

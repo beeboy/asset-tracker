@@ -743,7 +743,7 @@ enum class BoxLook {
         tub -> "욕조와 오리"   // ios: Views/HomeView.swift:572
         dory -> "도리와 문어"   // ios: Views/HomeView.swift:534
         pino -> "피노키오와 새"   // ios: Views/HomeView.swift:535
-        mug -> "철수와 영희"   // ios: Views/HomeView.swift:536
+        mug -> "구면 뒤집기"   // ios: Views/HomeView.swift:493
         bar -> "진행 막대"   // ios: Views/HomeView.swift:573
     }
     companion object {
@@ -816,7 +816,7 @@ private fun Scene(look: BoxLook, s: BoxScene, amountText: String, toggleHide: ()
                 BoxLook.tub -> TubScene(s)   // ios: Views/HomeView.swift:631
                 BoxLook.dory -> DoryScene(s)   // ios: Views/HomeView.swift:593
                 BoxLook.pino -> PinoScene(s)   // ios: Views/HomeView.swift:594
-                BoxLook.mug -> MugScene(s)   // ios: Views/HomeView.swift:595
+                BoxLook.mug -> SphereScene(s)   // ios: Views/HomeView.swift:554
                 else -> HorizonScene(s)   // ios: Views/HomeView.swift:632
             }
         }
