@@ -1396,7 +1396,12 @@ struct HoldingsNews: View {
             if top.isEmpty { Text("종목을 넣으면 보여요").appFont(13).foregroundStyle(Theme.sub) }
             ForEach(Array(top), id: \.r.id) { x in
                 let d = x.d
-                line(x.r, Text(AppModel.sgn2(d) + " · " + AppModel.eokS(x.w)).foregroundColor(Theme.change(d)))
+                // 등락률·금액을 두 칸으로 오른쪽 줄맞춤. 부호는 앞 칸에 한 번만 (금액 부호가 다를 때만 금액에도)
+                let amt = (d >= 0) == (x.w >= 0) ? AppModel.eok(abs(x.w)) : AppModel.eokS(x.w)
+                line(x.r, HStack(spacing: 8) {
+                    Text(AppModel.sgn2(d)).frame(minWidth: 64, alignment: .trailing)
+                    Text(amt).frame(minWidth: 60, alignment: .trailing)
+                }.lineLimit(1).foregroundColor(Theme.change(d)))
             }
         }
         .card()
@@ -1419,7 +1424,7 @@ struct HoldingsNews: View {
         .card()
     }
 
-    @ViewBuilder private func line(_ r: AppModel.Row, _ right: Text) -> some View {
+    @ViewBuilder private func line(_ r: AppModel.Row, _ right: some View) -> some View {
         let row = HStack(spacing: 10) {
             if LogoTile.has(r.id) { LogoTile(symbol: r.id, size: 28) }
             Text(r.sym.name).appFont(14, .semibold).lineLimit(1)
