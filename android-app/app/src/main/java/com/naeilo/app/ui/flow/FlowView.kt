@@ -225,7 +225,7 @@ private fun FillLast(minTotal: Dp, minLast: Dp, gap: Dp, content: @Composable ()
     }
 }
 
-/** 큰 흐름 박스 값: 일봉이 있는 종목의 큰 흐름(22% 넘는 출렁임 띠) 마지막 방향을 평가액 몫으로 쌓는다 */
+/** 큰 흐름 박스 값: 일봉이 있는 종목의 작은 흐름(6% 넘는 출렁임 띠) 마지막 방향을 평가액 몫으로 쌓는다 */
 // ios: Views/FlowView.swift:39
 class Mood(val shares: List<Double> = listOf(0.0, 0.0, 0.0), val side: Int = 0, val strong: Boolean = false, val box: List<String> = emptyList())
 
@@ -233,7 +233,7 @@ class Mood(val shares: List<Double> = listOf(0.0, 0.0, 0.0), val side: Int = 0, 
 private fun flowMood(byWeight: List<String>, weight: (String) -> Double, series: (String) -> FlowSeries?): Mood {
     // ios: Views/FlowView.swift:41,42,43
     val items: List<Triple<String, Int, Double>> = byWeight.mapNotNull { id ->
-        series(id)?.trends?.getOrNull(2)?.lastOrNull()?.let { Triple(id, if (it.dir > 0) 1 else if (it.dir < 0) -1 else 0, weight(id)) }
+        series(id)?.trends?.getOrNull(0)?.lastOrNull()?.let { Triple(id, if (it.dir > 0) 1 else if (it.dir < 0) -1 else 0, weight(id)) }
     }
     if (items.isEmpty()) return Mood()   // ios: Views/FlowView.swift:44
     val total = items.sumOf { it.third }   // ios: Views/FlowView.swift:45
@@ -258,7 +258,7 @@ private fun MoodBox(md: Mood, look: BoxLook, cur: String?, name: (String) -> Str
     // ios: Views/FlowView.swift:110,123,124,125,126
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).moodBackdrop(look).padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 16.dp)) {
         // ios: Views/FlowView.swift:111
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("내 종목 · 큰 흐름", Modifier.weight(1f), style = appFont(13f), color = TodayBox.dim); FreshLabel() }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("내 종목 · 최근 흐름", Modifier.weight(1f), style = appFont(13f), color = TodayBox.dim); FreshLabel() }
         // ios: Views/FlowView.swift:112,113,114
         FitAnnotated(buildAnnotatedString {
             withStyle(SpanStyle(color = boxInk().ink)) { append("$head · ") }

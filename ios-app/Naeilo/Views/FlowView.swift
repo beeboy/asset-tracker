@@ -35,11 +35,11 @@ struct FlowView: View {
     /// 아래 칩 줄: 큰 흐름 박스에 없는 종목만 비중 순
     private var restIds: [String] { let b = Set(mood.box); return byWeight.filter { !b.contains($0) } }
 
-    /// 큰 흐름 박스 값: 일봉이 있는 종목의 큰 흐름(22% 넘는 출렁임 띠) 마지막 방향을 평가액 몫으로 쌓는다
+    /// 큰 흐름 박스 값: 일봉이 있는 종목의 작은 흐름(6% 넘는 출렁임 띠) 마지막 방향을 평가액 몫으로 쌓는다
     struct Mood { var shares: [Double] = [0, 0, 0]; var side = 0; var strong = false; var box: [String] = [] }
     private var mood: Mood {
         let items: [(String, Int, Double)] = byWeight.compactMap { id in
-            store.series(id)?.trends[2].last.map { (id, $0.dir > 0 ? 1 : $0.dir < 0 ? -1 : 0, weight(id)) }
+            store.series(id)?.trends[0].last.map { (id, $0.dir > 0 ? 1 : $0.dir < 0 ? -1 : 0, weight(id)) }
         }
         guard !items.isEmpty else { return Mood() }
         let total = items.reduce(0) { $0 + $1.2 }
@@ -108,7 +108,7 @@ struct FlowView: View {
             : (md.strong ? String(localized: "강한 하락") : String(localized: "약한 하락"))
         let share = md.side > 0 ? md.shares[0] : md.side < 0 ? md.shares[2] : md.shares[1]
         return VStack(alignment: .leading, spacing: 0) {
-            HStack { Text("내 종목 · 큰 흐름"); Spacer(); FreshLabel() }.appFont(13).foregroundStyle(TodayBox.dim)
+            HStack { Text("내 종목 · 최근 흐름"); Spacer(); FreshLabel() }.appFont(13).foregroundStyle(TodayBox.dim)
             (Text(head + " · ").foregroundColor(BoxInk.ink) + Text(AppModel.pct(share)).foregroundColor(c))
                 .font(.system(size: 30, weight: .heavy)).tracking(-0.5).lineLimit(1).minimumScaleFactor(0.6)
                 .padding(.top, 6)

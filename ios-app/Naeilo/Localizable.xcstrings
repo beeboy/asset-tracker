@@ -12176,12 +12176,12 @@
         }
       }
     },
-    "내 종목 · 큰 흐름" : {
+    "내 종목 · 최근 흐름" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "My holdings · Big trend"
+            "value" : "My holdings · Recent trend"
           }
         }
       }
