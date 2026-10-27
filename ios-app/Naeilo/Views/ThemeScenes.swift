@@ -996,7 +996,7 @@ struct ThemeBackdrop: View {
                 .overlay { RadialGradient(colors: [bx(0xFFCE78, 0.4, 0xFFD58A, 0.28), bx(0xFFCE78, 0, 0xFFD58A, 0)], center: UnitPoint(x: 0.1, y: 0.8), startRadius: 0, endRadius: 200) }
         case .mug:
             // 구면 뒤집기: 홈 박스와 같은 바탕 (소품 없이 고요하게)
-            LinearGradient(colors: [bx(0xC9E3DF, 0x0F1A24), bx(0xF1E7CC, 0x172634)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: [bx(0xC9E3DF, 0x123A44), bx(0xF1E7CC, 0x245760)], startPoint: .top, endPoint: .bottom)
         default:
             LinearGradient(colors: [bx(0xBCE0F8, 0x14304F), bx(0xE8F5FD, 0x2C5F8F)], startPoint: .top, endPoint: .bottom)
                 .overlay(alignment: .bottom) { bx(0xE2C595, 0x8F7550).frame(height: 12) }
@@ -1013,7 +1013,7 @@ enum ThemeBand {
     static let chalk = bx(0xFFFFFF, 0xFBF6EA), dirt = bx(0xD9BB8C, 0x8F7550)
     static let dirtRim = bx(0xC4A374, 1, 0xC4A374, 0)
     static let noseDash = bx(0xB47B44, 0.6, 0xECBC82, 0.45)
-    static let sphereTrack = bx(0xFFFFFF, 0.7, 0x23343C, 1)
+    static let sphereTrack = bx(0xFFFFFF, 0.7, 0xFFFFFF, 0.16)
 }
 
 /// 분석 막대 (새 테마). fill = 지금 자리 0~1, 채운 만큼 노랑 (피노키오는 나무 코)
@@ -1094,7 +1094,7 @@ struct SphereScene: View {
         let phi = 0.0                               // 돌리지 않는다. 움직임은 뒤집기 자체 (아래 g)
         let k: Double = down ? 0.85 : 1             // 떨어진 날은 덜 출렁인다
         let outC = Color(hex: dk ? 0x4FB3A5 : 0x3E9C8F), inC = Color(hex: dk ? 0xE9C46A : 0xE2B44A)
-        let bg0 = Color(hex: dk ? 0x0F1A24 : 0xC9E3DF), bg1 = Color(hex: dk ? 0x172634 : 0xF1E7CC)
+        let bg0 = Color(hex: dk ? 0x123A44 : 0xC9E3DF), bg1 = Color(hex: dk ? 0x245760 : 0xF1E7CC)
         ctx.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .linearGradient(Gradient(colors: [bg0, bg1]), startPoint: .zero, endPoint: pt(0, 170)))
 
         func blob(_ r: (Double) -> Double) -> Path {
@@ -1167,7 +1167,7 @@ struct SphereScene: View {
 
         // 진행률: 구 아래 짧은 막대 + 오른쪽 숫자 (둘을 묶어 구 가운데에 맞춤, 반환점을 지나면 안쪽 색)
         let barC = f < 0.5 ? outC : inC, x0: CGFloat = 182, w: CGFloat = 56
-        ctx.fill(Path(roundedRect: CGRect(x: x0, y: 147, width: w, height: 5), cornerRadius: 2.5), with: dk ? hex(0x2A3C48) : hex(0xFFFFFF, 0.7))
+        ctx.fill(Path(roundedRect: CGRect(x: x0, y: 147, width: w, height: 5), cornerRadius: 2.5), with: hex(0xFFFFFF, dk ? 0.16 : 0.7))
         ctx.fill(Path(roundedRect: CGRect(x: x0, y: 147, width: w * CGFloat(f), height: 5), cornerRadius: 2.5), with: .color(barC))
         Sk.text(ctx, AppModel.pct(f), x0 + w + 6, 149.5, Color(hex: dk ? 0xFFD98A : 0x2F5F59), size: 12, bold: true)
     }
