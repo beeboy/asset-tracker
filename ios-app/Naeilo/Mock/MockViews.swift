@@ -243,7 +243,7 @@ struct MockTabBox: View {
                        big: mt(d.shownEquity.map(MockFmt.man) ?? "계좌 못 읽음").foregroundColor(BoxInk.ink),
                        side: pl.map { ($0 < 0 ? "−" : $0 > 0 ? "+" : "") + Self.man(abs($0)) + (real ? " 비용 뒤" : " 오늘") } ?? "—", sideColor: c,
                        tailL: mt("주문가능 " + (d.shownCash.map(Self.man) ?? "—")).foregroundColor(BoxInk.sub),
-                       tailR: room > 0 ? "한도까지 " + Self.man(room) : "한도 넘음") {
+                       tailR: room > 0 ? "손실 한도까지 " + Self.man(room) : "손실 한도 넘음") {
             MockShareBar(value: cap > 0 ? 1 - room / cap : 0, color: room > 0 ? BoxInk.gold : BoxInk.up)
         }
     }
