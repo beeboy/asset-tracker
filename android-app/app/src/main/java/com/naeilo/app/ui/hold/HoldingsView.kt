@@ -201,7 +201,7 @@ fun HoldingsView(m: AppModel) {
                     }
                     val us = sorted.filter { it.sym.currency == Currency.usd }   // ios: Views/HoldingsView.swift:34
                     val kr = sorted.filter { it.sym.currency != Currency.usd }   // ios: Views/HoldingsView.swift:35
-                    val mx = rows.maxOfOrNull { abs(move(m, it)) } ?: 0.0   // ios: Views/HoldingsView.swift:36
+                    val mx = rows.maxOfOrNull { abs(dayPct(it)) } ?: 0.0   // ios: Views/HoldingsView.swift:36
                     val earn = rows.any { EarningsFeed.shared.summary(it.sym, it.h.qty) != null }   // ios: Views/HoldingsView.swift:37
                     // ios: Views/HoldingsView.swift:39
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -427,10 +427,13 @@ private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, mx: Double
     }
 }
 
-/** 줄 배경: 왼쪽부터 오늘 움직인 금액 몫만큼 옅게 (오른 산호 · 그대로 회색 · 내린 하늘). 상한은 카드 폭의 34% (보기를 바꿔도 같다) */
+/** 줄 막대가 재는 값: 오늘 등락률 (줄에 보이는 %와 같다). 국내 주식 합계는 뺀다 */
+private fun dayPct(r: AppModel.Row): Double = if (r.id == KoreaEstimate.sumId) 0.0 else r.sym.quote.change   // ios: Views/HoldingsView.swift:109
+
+/** 줄 배경: 왼쪽부터 오늘 등락률 크기만큼 옅게 (오른 산호 · 그대로 회색 · 내린 하늘). 상한은 카드 폭의 34% (보기를 바꿔도 같다) */
 // ios: Views/HoldingsView.swift:217
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.tint(m: AppModel, r: AppModel.Row, mx: Double, dark: Boolean) {
-    val v = move(m, r)   // ios: Views/HoldingsView.swift:218
+    val v = dayPct(r)   // ios: Views/HoldingsView.swift:218
     val f = if (v != 0.0 && mx > 0) max(0.12, abs(v) / mx) else 0.12   // ios: Views/HoldingsView.swift:219
     val c = if (v > 0) hex(0xFF8A80) else if (v < 0) hex(0x8CC4F2) else if (dark) hex(0x4A5672) else hex(0xAAB2BE)   // ios: Views/HoldingsView.swift:220
     // ios: Views/HoldingsView.swift:221,222,224 (읽어 주기는 그림이라 없다)

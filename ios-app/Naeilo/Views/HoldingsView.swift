@@ -32,7 +32,7 @@ struct HoldingsView: View {
         }
         let us = sorted.filter { $0.sym.currency == .usd }
         let kr = sorted.filter { $0.sym.currency != .usd }
-        let mx = rows.map { abs(move($0)) }.max() ?? 0
+        let mx = rows.map { abs(dayPct($0)) }.max() ?? 0
         let earn = rows.contains { EarningsFeed.shared.summary($0.sym, qty: $0.h.qty) != nil }
         ScrollViewReader { sv in
         ScrollView {
@@ -103,6 +103,11 @@ struct HoldingsView: View {
         let q = r.sym.quote
         guard r.id != KoreaEstimate.sumId, q.prevClose > 0 else { return 0 }
         return r.value - m.krw(r.sym, r.h.qty * q.prevClose)
+    }
+
+    /// 줄 막대가 재는 값: 오늘 등락률 (줄에 보이는 %와 같다). 국내 주식 합계는 뺀다
+    private func dayPct(_ r: AppModel.Row) -> Double {
+        r.id == KoreaEstimate.sumId ? 0 : r.sym.quote.change
     }
 
     private func todayBox(_ rows: [AppModel.Row]) -> some View {
@@ -219,9 +224,9 @@ struct HoldingsView: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
     }
 
-    /// 줄 배경: 왼쪽부터 오늘 움직인 금액 몫만큼 옅게 (오른 산호 · 그대로 회색 · 내린 하늘). 상한은 카드 폭의 34% (보기를 바꿔도 같다)
+    /// 줄 배경: 왼쪽부터 오늘 등락률 크기만큼 옅게 (오른 산호 · 그대로 회색 · 내린 하늘). 상한은 카드 폭의 34% (보기를 바꿔도 같다)
     private func tint(_ r: AppModel.Row, _ mx: Double) -> some View {
-        let v = move(r)
+        let v = dayPct(r)
         let f = v != 0 && mx > 0 ? max(0.12, abs(v) / mx) : 0.12
         let c = v > 0 ? Color(hex: 0xFF8A80) : v < 0 ? Color(hex: 0x8CC4F2) : Color(hex: 0xAAB2BE, dark: 0x4A5672)
         return GeometryReader { g in
