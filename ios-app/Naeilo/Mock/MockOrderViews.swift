@@ -610,11 +610,17 @@ struct MockAccountView: View {
 
     // MARK: 불빛 둘 — [실전] 실전 자동주문 · 모두 멈춤 / [모의] 돌리기 주문 · 돌리기 멈춤
 
+    /// 자동주문 불빛은 '고르고 주문' 구간 밖이면 정지로 보인다 (저장된 켬·끔은 그대로, 누르면 켬·끔이 바뀐다)
     private func lights(_ d: MockDesk) -> some View {
-        VStack(spacing: 8) {
+        TimelineView(.everyMinute) { ctx in lightsBody(d, seg: d.seg(ctx.date)) }
+    }
+
+    private func lightsBody(_ d: MockDesk, seg: MockDay.Seg) -> some View {
+        let stop = !seg.buys, stopText = "자동 정지 · " + seg.name
+        return VStack(spacing: 8) {
             HStack(spacing: 12) {
                 if d.shown == .real {
-                    light("실전 자동주문", d.live ? "켬" : "끔", icon: "power", on: d.live, color: Theme.orange) {
+                    light("실전 자동주문", d.live ? (stop ? stopText : "켬") : "끔", icon: "power", on: d.live && !stop, color: Theme.orange) {
                         if d.live { note = d.setLive(false) } else { await d.checkLive(); liveAsk = true }
                     }
                     light("모두 멈춤", d.halted ? "멈춤" : "도는 중", icon: "pause.fill", on: d.halted, color: Theme.up) {
@@ -622,7 +628,7 @@ struct MockAccountView: View {
                     }
                 } else {
                     // 모의: 돌리기(한 바퀴 자동)에 주문까지 · 돌리기 자체를 멈춤 (풀면 지난 간격으로)
-                    light("모의 자동주문", d.autoOrder ? "켬" : "끔", icon: "power", on: d.autoOrder, color: Theme.teal) {
+                    light("모의 자동주문", d.autoOrder ? (stop ? stopText : "켬") : "끔", icon: "power", on: d.autoOrder && !stop, color: Theme.teal) {
                         let v = !d.autoOrder
                         d.edit(v ? "돌리기 주문 켬" : "돌리기 주문 끔") { $0.autoOrder = v }
                     }

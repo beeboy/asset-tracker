@@ -4,6 +4,54 @@ import Foundation
 // 모의투자 판단·체결 계산. 화면·네트워크 없이 값만 다룬다 (판단 코드와 주문 코드를 나눈다).
 // 상태를 바꾸는 곳은 MockDesk 하나뿐이고, 여기 함수는 장부 사본을 받아 새 장부와 기록 줄을 돌려준다.
 
+/// 하루 구간·훑기 박자 상수 (한국 시각, 하루 분). 경계는 여기 한곳에서만 바꾼다
+enum MockDay {
+    static let watchFrom = 9 * 60            // 9:00 지켜보기 (훑기만, 고르지 않음)
+    static let pickFrom = 9 * 60 + 15        // 9:15 고르고 주문
+    static let tidyFrom = 15 * 60            // 15:00 정리 (새로 사지 않음, 팔기·손절은 계속)
+    static let closeAt = 15 * 60 + 30        // 15:30 마감
+    static let fullEvery: TimeInterval = 60 * 60   // 전체 훑기 간격 (그 사이엔 가까운 종목만)
+    static let nearMin = 0.5                 // 가까운 종목: 조건 문턱의 50% 이상
+    static let amountFloor = 10.0            // 거래대금 바닥 (억원). 미만이면 고르지 않음
+    static let recheck: TimeInterval = 15 * 60     // 처음 걸린 뒤 이만큼 지나 다시 걸려야 고름
+    static let curveUntil = 8 * 60 + 30      // 거래량 곡선은 이 전이나
+    static let curveFrom = 15 * 60 + 45      // 이 뒤에 받는다
+
+    enum Seg {
+        case pre, watch, pick, tidy, after, holiday
+        var name: String {
+            switch self {
+            case .pre: return "장 시작 전"
+            case .watch: return "지켜보기"
+            case .pick: return "고르고 주문"
+            case .tidy: return "정리"
+            case .after: return "마감 후"
+            case .holiday: return "휴장"
+            }
+        }
+        /// 자동 고르기·자동 매수가 도는 구간
+        var buys: Bool { self == .pick }
+    }
+
+    static func minute(_ at: Date) -> Int {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = MockFmt.kst
+        let c = cal.dateComponents([.hour, .minute], from: at)
+        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
+    }
+
+    /// 시각만으로 본 구간 (휴장은 MockDesk.seg 가 장 일정으로 덮는다)
+    static func seg(_ at: Date) -> Seg {
+        let m = minute(at)
+        if m < watchFrom { return .pre }
+        if m < pickFrom { return .watch }
+        if m < tidyFrom { return .pick }
+        if m < closeAt { return .tidy }
+        return .after
+    }
+
+    static func hm(_ m: Int) -> String { "\(m / 60):" + String(format: "%02d", m % 60) }
+}
+
 enum MockCalc {
 
     // MARK: 조건 조각 값
@@ -76,7 +124,8 @@ enum MockCalc {
             hits.append(MockHit(code: s.code, name: s.name, price: last.c, change: ch, score: score,
                                 why: why.isEmpty ? "조각 없음 · 전부" : MockFmt.uniq(why.joined(separator: " · ")),
                                 vol: value(MockPiece(kind: .volume, days: 20), bs), rise5: value(MockPiece(kind: .rise, days: 5), bs),
-                                volNew: f.flatMap { f in value(MockPiece(kind: .volume, days: 20), bs).map { $0 / f } }))
+                                volNew: f.flatMap { f in value(MockPiece(kind: .volume, days: 20), bs).map { $0 / f } },
+                                amount: value(MockPiece(kind: .amount), bs)))
         }
         hits.sort { $0.score != $1.score ? $0.score > $1.score : $0.code < $1.code }
         return MockScan(at: at, bundleId: b.id, bundleName: b.name, pieceTexts: b.pieces.map(\.text), barDay: barDay,
@@ -87,6 +136,32 @@ enum MockCalc {
     /// 새 배수: 거래량·거래대금은 아직 쌓이는 중이라 이 시각 누적 비율로 나눈다. 가격 조각은 그대로
     static func scaled(_ p: MockPiece, _ v: Double, _ f: Double) -> Double {
         p.kind == .volume || p.kind == .amount ? v / f : v
+    }
+
+    /// 조각 문턱까지 얼마나 왔나 (1 = 맞음, 0 = 멀다). lo·hi 가 양수면 비율, 아니면 차이로 잰다. 이동평균은 10% 떨어지면 0
+    static func close(_ p: MockPiece, _ v: Double) -> Double {
+        if pass(p, v) { return 1 }
+        if p.kind == .ma { return max(0, 1 - abs(v) / 0.10) }
+        if let lo = p.lo, v < lo { return lo > 0 && v >= 0 ? v / lo : max(0, 1 - (lo - v) / max(abs(lo), 1)) }
+        if let hi = p.hi, v > hi { return hi > 0 ? hi / v : max(0, 1 - (v - hi) / max(abs(hi), 1)) }
+        return 1
+    }
+
+    /// 가까운 종목: 모든 조각 중 가장 먼 조각의 거리가 nearMin 이상인 종목을 가까운 순으로 (걸린 종목 포함, 예외 뺌)
+    static func near(_ b: MockBundle, stocks: [MockStock], bars: [String: [MockBar]], excluded: Set<String>, min: Double = MockDay.nearMin) -> [String] {
+        let list = stocks.filter { b.scope == .all || (b.scope == .kospi) == $0.kospi }
+        var out: [(String, Double)] = []
+        for s in list where !excluded.contains(s.code) {
+            guard let bs = bars[s.code], bs.count >= b.need else { continue }
+            var c = 1.0
+            for p in b.pieces {
+                guard let v = value(p, bs) else { c = 0; break }
+                c = Swift.min(c, close(p, v))
+                if c < min { break }
+            }
+            if c >= min { out.append((s.code, c)) }
+        }
+        return out.sorted { $0.1 != $1.1 ? $0.1 > $1.1 : $0.0 < $1.0 }.map(\.0)
     }
 
     // MARK: 하루 거래량 곡선

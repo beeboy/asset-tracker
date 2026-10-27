@@ -150,6 +150,7 @@ struct MockHit: Codable, Equatable, Identifiable {
     var vol: Double? = nil       // 거래량 배수 (지난 20일 평균 대비)
     var rise5: Double? = nil     // 최근 5일 상승률 (%)
     var volNew: Double? = nil    // 시각 보정 거래량 배수 (이 시각까지 보통 쌓이는 양 대비). 장중 훑기만
+    var amount: Double? = nil    // 오늘 누적 거래대금 (억원)
 }
 
 /// 관찰에 한 번 걸린 기록 (종목별 관찰 기록)
@@ -183,6 +184,7 @@ struct MockScan: Codable, Equatable, Identifiable {
     var seconds: Double = 0
     var frac: Double? = nil      // 이 시각 하루 거래량 누적 비율 (곡선 기준). 있으면 새 배수도 쟀다
     var newHits: [String]? = nil // 새 배수로 걸린 종목 코드 (옛 결과와 나란히 견주기용, 고르기에는 안 쓴다)
+    var full: Bool? = nil        // 전체 훑기 (거짓 = 가까운 종목만)
 }
 
 /// 관찰 조건 하나 (알약). 켠 조건을 모두 맞는 종목이 걸린다
