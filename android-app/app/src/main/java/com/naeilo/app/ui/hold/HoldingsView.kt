@@ -1056,7 +1056,9 @@ private fun MoversCard(m: AppModel, rows: List<AppModel.Row>) {
         if (top.isEmpty()) T("종목을 넣으면 보여요", style = appFont(13f), color = Theme.sub)   // ios: Views/HoldingsView.swift:1254
         // ios: Views/HoldingsView.swift:1255
         top.forEach { (r, w, d) ->   // ios: Views/HoldingsView.swift:1379
-            Line(m, r, AppModel.sgn2(d) + " · " + AppModel.eokS(w), Theme.change(d))   // ios: Views/HoldingsView.swift:1257
+            // 등락률·금액을 두 칸으로 오른쪽 줄맞춤. 부호는 앞 칸에 한 번만 (금액 부호가 다를 때만 금액에도)
+            val amt = if ((d >= 0) == (w >= 0)) AppModel.eok(abs(w)) else AppModel.eokS(w)
+            Line(m, r, AppModel.sgn2(d), Theme.change(d), amt)   // ios: Views/HoldingsView.swift:1399
         }
     }
 }
@@ -1088,13 +1090,18 @@ private fun NearCard(m: AppModel, ks: List<Pair<AppModel.Row, AppModel.HoldMetri
 
 // ios: Views/HoldingsView.swift:1280
 @Composable
-private fun Line(m: AppModel, r: AppModel.Row, right: String, color: Color) {
+private fun Line(m: AppModel, r: AppModel.Row, right: String, color: Color, right2: String? = null) {
     // ios: Views/HoldingsView.swift:1281,1282,1288,1290
     val open = openDetail(m)   // ios: Views/HoldingsView.swift:1403 (DetailLink)
     Row(Modifier.fillMaxWidth().plainClickable { open(r.sym) }.defaultMinSize(minHeight = 44.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
         if (LogoTile.has(r.id)) LogoTile(symbol = r.id, size = 28.dp)   // ios: Views/HoldingsView.swift:1421
         T(r.sym.name, Modifier.weight(1f).padding(end = 4.dp), style = appFont(14f, FontWeight.SemiBold), maxLines = 1)   // ios: Views/HoldingsView.swift:1284,1285
-        T(right, style = appFont(14f, FontWeight.Bold).tnum(), color = color)   // ios: Views/HoldingsView.swift:1286
+        if (right2 == null) T(right, style = appFont(14f, FontWeight.Bold).tnum(), color = color)   // ios: Views/HoldingsView.swift:1286
+        else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {   // ios: Views/HoldingsView.swift:1402
+            val st = appFont(14f, FontWeight.Bold).tnum().copy(textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            T(right, Modifier.widthIn(min = 64.dp), style = st, color = color, maxLines = 1)
+            T(right2, Modifier.widthIn(min = 60.dp), style = st, color = color, maxLines = 1)
+        }
     }
 }
 
