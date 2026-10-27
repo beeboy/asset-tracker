@@ -220,8 +220,8 @@ struct MockTabBox: View {
 
     private func select(_ d: MockDesk) -> some View {
         let l = d.ledger(d.shown)
-        let waitBuys = Set(l.pending.filter { $0.side == .buy && l.positions[$0.code] == nil }.map(\.code))
-        let n = l.positions.count + waitBuys.count + d.picks.count
+        // 고른 종목 카드와 같은 셈: 대기 주문 + 고른 종목 (보유는 카드에 안 보이니 뺌)
+        let n = l.pending.count + d.picks.count
         let bought = l.positions.values.reduce(0) { $0 + $1.cost }
         let all = bought + l.cash + l.reserved + l.settling
         let r = all > 0 ? bought / all : 0
