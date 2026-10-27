@@ -1032,7 +1032,7 @@ struct ThemeTrack: View {
 
 // MARK: 홈 장면 3 구면 뒤집기 (2026-10-27, 철수와 영희 자리): 10권 P6. 큰 구 하나가 진행률만큼 안과 밖이 바뀐다
 // 바깥 면 = 청록, 안쪽 면 = 호박색. 단계(E4): ① 굽이 ② 두 면이 서로를 통과 ③ 반환점(안도 밖도 아닌 네 잎) ④ 비틀리며 돌아 나옴 ⑤ 같은 구, 다른 면
-// 단계 구간은 임시값 (0.2 · 0.45 · 0.55 · 1). 움직임: 몇 초에 한 번 짧게, 굽이가 한 바퀴 돌고 처음 모양으로 돌아온다 (돌고 나면 같은 모양이라 끊김 없음)
+// 0~5% 는 매끈한 구, 그 뒤 구간은 임시값 (나머지의 20 · 45 · 55 · 100%). 단계 안에서도 진행률 따라 조금씩 바뀐다. 움직임: 몇 초에 한 번 짧게, 굽이가 한 바퀴 돌고 처음 모양으로 돌아온다 (돌고 나면 같은 모양이라 끊김 없음)
 struct SphereScene: View {
     let s: BoxScene
     @State private var start: Date?
@@ -1083,41 +1083,57 @@ struct SphereScene: View {
         }
         func shine(_ o: Double = 0.22) { ctx.fill(circle(cx - 0.3 * R, cy - 0.34 * R, 0.24 * R), with: .color(.white.opacity(o))) }
         // 처음 무늬 'ㄴ'. 다 뒤집히면 거울로 보인다 (바깥에서 뒷면을 보는 셈)
-        func mark(_ mirror: Bool) {
+        func mark(_ mirror: Bool, _ o: Double = 1) {
             let sx: CGFloat = mirror ? -1 : 1, x0 = cx + sx * 0.14 * R, y0 = cy - 0.32 * R
             var m = Path(); m.move(to: pt(x0, y0)); m.addLine(to: pt(x0, y0 + 0.24 * R)); m.addLine(to: pt(x0 + sx * 0.2 * R, y0 + 0.24 * R))
-            ctx.stroke(m, with: hex(0x14303A), style: StrokeStyle(lineWidth: 3.2, lineCap: .round, lineJoin: .round))
+            ctx.stroke(m, with: hex(0x14303A, o), style: StrokeStyle(lineWidth: 3.2, lineCap: .round, lineJoin: .round))
         }
 
-        if f < 0.2 {
-            // ① 굽이: 테두리에 물결, 안쪽 색이 스쳤다가 겹치기 직전 사라진다 (E5)
-            let a = (0.03 + 0.05 * f / 0.2) * k
-            ctx.fill(blob { 1 + a * sin(6 * $0 + phi) }, with: .color(outC))
-            if p > 0 {
-                var g = Path(); g.move(to: pt(cx - 0.4 * R, cy - 0.56 * R)); g.addQuadCurve(to: pt(cx - 0.12 * R, cy + 0.64 * R), control: pt(cx + 0.16 * R, cy - 0.2 * R))
-                ctx.stroke(g, with: .color(inC.opacity(0.4 * sin(Double.pi * p))), style: StrokeStyle(lineWidth: 0.2 * R, lineCap: .round))
-            }
-            shine(); mark(false)
-        } else if f < 0.45 {
-            // ② 통과: 바깥 면과 안쪽 면이 서로 반대로 돌며 지나간다
-            let u = (f - 0.2) / 0.25
-            ctx.fill(blob { 1 + 0.12 * k * sin(6 * $0 + phi) }, with: .color(outC))
-            ctx.fill(blob { (0.55 + 0.17 * u) + 0.18 * k * sin(6 * $0 + Double.pi - phi) }, with: .color(inC.opacity(0.5 + 0.3 * u)))
-        } else if f < 0.55 {
-            // ③ 반환점: 안도 밖도 아닌 네 잎. 반 바퀴 돌면 같은 모양
-            let psi = Double.pi * e, a = 0.6 * k
-            ctx.fill(blob { 0.4 + a * max(0, cos(2 * ($0 - psi))) }, with: .color(outC))
-            ctx.fill(blob { 0.4 + a * max(0, -cos(2 * ($0 - psi))) }, with: .color(inC))
-            ctx.fill(circle(cx, cy, 0.25 * R), with: .linearGradient(Gradient(colors: [bg0, bg1]), startPoint: pt(0, cy - 0.25 * R), endPoint: pt(0, cy + 0.25 * R)))
-        } else if f < 1 {
-            // ④ 돌아 나옴: 겉은 안쪽 색, 바깥 색 굽이가 비틀리며 풀린다
-            let u = (f - 0.55) / 0.45
-            ctx.fill(blob { 1 + 0.12 * k * (1 - u) * sin(6 * $0 + phi + 0.5) }, with: .color(inC))
-            ctx.fill(blob { (0.72 - 0.5 * u) + 0.18 * k * (1 - u) * sin(6 * $0 + Double.pi + 0.5 - phi) }, with: .color(outC.opacity(0.1 + 0.5 * (1 - u))))
-        } else {
+        // 0~5% 는 매끈한 구. 그 뒤로는 진행률(g)에 따라 조금씩 이어서 바뀐다 (단계 사이 끊김 없음)
+        let g = max(0, (f - 0.05) / 0.95)
+        func sm(_ x: Double) -> Double { let c = min(1, max(0, x)); return c * c * (3 - 2 * c) }
+        func mix(_ a: Double, _ b: Double, _ m: Double) -> Double { a + (b - a) * m }
+        func wavy(_ t: Double, _ amp: Double, _ off: Double) -> Double { 1 + amp * k * sin(6 * t + phi + off) }
+        func core(_ t: Double, _ base: Double, _ amp: Double, _ off: Double) -> Double { base + amp * k * sin(6 * t + Double.pi + off - phi) }
+        func lobe(_ t: Double, _ sg: Double) -> Double { 0.4 + 0.6 * k * max(0, sg * cos(2 * (t - Double.pi * e))) }
+
+        if f >= 1 {
             // ⑤ 같은 구: 모양은 처음과 같고 향하는 면만 다르다
             ctx.fill(circle(cx, cy, R), with: .color(inC))
             shine(0.22 + 0.12 * sin(Double.pi * p)); mark(true)
+        } else if g < 0.2 {
+            // ① 굽이: 물결이 0에서 점점 커지고 조금씩 비틀린다. 안쪽 색이 스쳤다가 겹치기 직전 사라진다 (E5)
+            let u = g / 0.2, off = u * Double.pi / 3
+            ctx.fill(blob { wavy($0, 0.12 * u, off) }, with: .color(outC))
+            if p > 0 && g > 0 {
+                var gh = Path(); gh.move(to: pt(cx - 0.4 * R, cy - 0.56 * R)); gh.addQuadCurve(to: pt(cx - 0.12 * R, cy + 0.64 * R), control: pt(cx + 0.16 * R, cy - 0.2 * R))
+                ctx.stroke(gh, with: .color(inC.opacity((0.15 + 0.3 * u) * sin(Double.pi * p))), style: StrokeStyle(lineWidth: 0.2 * R, lineCap: .round))
+            }
+            shine(0.22 * (1 - u)); mark(false, 1 - u)
+        } else if g < 0.45 {
+            // ② 통과: 안쪽 면이 가운데서 자라며 바깥 면과 반대로 돌아 지나간다
+            let u = (g - 0.2) / 0.25, off = Double.pi / 3 + u * Double.pi / 6
+            ctx.fill(blob { wavy($0, 0.12, off) }, with: .color(outC))
+            ctx.fill(blob { core($0, 0.72 * u, 0.18 * u, off) }, with: .color(inC.opacity(0.8 * u)))
+        } else if g < 0.55 {
+            // ③ 반환점: ②의 끝 → 안도 밖도 아닌 네 잎 → ④의 시작(색만 바뀐 같은 꼴)
+            let u = (g - 0.45) / 0.1, off = Double.pi / 2
+            if u < 0.5 {
+                let m = sm(u * 2)
+                ctx.fill(blob { mix(wavy($0, 0.12, off), lobe($0, 1), m) }, with: .color(outC))
+                ctx.fill(blob { mix(core($0, 0.72, 0.18, off), lobe($0, -1), m) }, with: .color(inC.opacity(mix(0.8, 1, m))))
+            } else {
+                let m = sm((u - 0.5) * 2)
+                ctx.fill(blob { mix(lobe($0, -1), wavy($0, 0.12, off), m) }, with: .color(inC))
+                ctx.fill(blob { mix(lobe($0, 1), core($0, 0.72, 0.18, off), m) }, with: .color(outC.opacity(mix(1, 0.8, m))))
+            }
+            let hole = 0.25 * R * CGFloat(sin(Double.pi * u))
+            ctx.fill(circle(cx, cy, hole), with: .linearGradient(Gradient(colors: [bg0, bg1]), startPoint: pt(0, cy - hole), endPoint: pt(0, cy + hole)))
+        } else {
+            // ④ 돌아 나옴: 겉은 안쪽 색. 바깥 색 굽이가 비틀리며 줄어 100%에서 사라진다
+            let u = (g - 0.55) / 0.45, off = Double.pi / 2 + u * Double.pi / 3
+            ctx.fill(blob { wavy($0, 0.12 * (1 - u), off) }, with: .color(inC))
+            ctx.fill(blob { core($0, 0.72 * (1 - u), 0.18 * (1 - u), off) }, with: .color(outC.opacity(0.8 * (1 - u))))
         }
 
         // 진행률만: 숫자 + 가는 막대 (반환점을 지나면 안쪽 색)
