@@ -665,7 +665,7 @@ private struct HorizonScene: View {
                 let all = Path(CGRect(x: 0, y: 0, width: 300, height: 170))
                 if dk {
                     ctx.fill(all, with: .linearGradient(Gradient(colors: [Color(hex: 0x0C111D), Color(hex: 0x1C2747)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: 170)))
-                    ctx.fill(all, with: .radialGradient(Gradient(colors: [Color(hex: 0xFFD98A).opacity(0.4), Color(hex: 0xFFD98A).opacity(0)]), center: CGPoint(x: 300, y: 136), startRadius: 0, endRadius: 190))
+                    ctx.fill(all, with: .radialGradient(Gradient(colors: [Color(hex: 0xFFD98A).opacity(0.45), Color(hex: 0xFFD98A).opacity(0)]), center: CGPoint(x: x1 - 8, y: 140), startRadius: 0, endRadius: 64))
                     Sk.stars(ctx)
                 } else {
                     // 라이트: 새벽 대신 맑은 아침빛
