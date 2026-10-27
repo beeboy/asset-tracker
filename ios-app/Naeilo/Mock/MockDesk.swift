@@ -669,15 +669,15 @@ final class MockDesk {
         // 실전 장부는 토스 주문가능 현금도 넘지 않는다 (모르면 한 번 읽는다. 그래도 모르면 사지 않는다)
         if b == .real && account == nil { await refreshAccount() }
         let cash = b == .real ? min(l.cash, account?.cash ?? 0) : l.cash
-        // 규칙·AI 주문은 남길 현금(평가액 대비, 고르기 규칙)을 지킨다. 손 주문은 막지 않는다
-        let keep = who == .hand ? 0 : s.select.keepCash * equity(b)
+        // [모의] 장부는 모든 매수(규칙·AI·손)가 남길 현금(평가액 대비, 고르기 규칙)을 지킨다. [실전]은 그대로
+        let keep = b == .rule ? s.select.keepCash * equity(b) : 0
         let room = MockCalc.usable(cash: cash, keep: keep)
         let can = Int((room / unit).rounded(.down))
         if qty != nil && q > can {
             let need = Double(q) * unit
             let why = l.cash + l.settling >= need
                 ? "현금 부족 · 결제 대기 " + MockFmt.won(l.settling) + "은 이틀 안에 들어올 돈 · 미수 안 씀 · 거부"
-                : "현금 부족 · 필요 " + MockFmt.won(need) + " · 쓸 수 있는 돈 " + MockFmt.won(l.cash) + " · 거부"
+                : "현금 부족 · 필요 " + MockFmt.won(need) + (keep > 0 ? " · 남길 현금 " + MockFmt.won(keep) : "") + " · 쓸 수 있는 돈 " + MockFmt.won(room) + " · 거부"
             log(.reject, book: b, who: who, code: code, name: name, text: why, test: test, side: .buy, qty: q, ref: ref)
             notify("거부 · " + name, why)
             return false
