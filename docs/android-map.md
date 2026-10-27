@@ -6,7 +6,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | Swift | Kotlin (표시 수) |
 |---|---|
 | `App.swift` | `com/naeilo/app/App.kt` (72), `com/naeilo/app/MainActivity.kt` (7), `com/naeilo/app/AppModel.kt` (6), `com/naeilo/app/ui/AppHeader.kt` (6), `com/naeilo/app/ui/Controls.kt` (2), `com/naeilo/app/ui/Theme.kt` (1) |
-| `Data/AppModel.swift` | `com/naeilo/app/AppModel.kt` (569) |
+| `Data/AppModel.swift` | `com/naeilo/app/AppModel.kt` (567) |
 | `Data/Backup.swift` | `com/naeilo/app/net/Backup.kt` (39) |
 | `Data/BrickGame.swift` | `com/naeilo/app/core/game/BrickGame.kt` (682) |
 | `Data/Calm.swift` | `com/naeilo/app/core/calc/Calm.kt` (364) |
@@ -27,7 +27,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Data/Parallel.swift` | `com/naeilo/app/core/calc/Parallel.kt` (523) |
 | `Data/Progress.swift` | `com/naeilo/app/data/Progress.kt` (68) |
 | `Data/Recovery.swift` | `com/naeilo/app/core/calc/Recovery.kt` (248) |
-| `Data/Remind.swift` | `com/naeilo/app/data/Remind.kt` (378) |
+| `Data/Remind.swift` | `com/naeilo/app/data/Remind.kt` (380) |
 | `Data/SampleData.swift` | `com/naeilo/app/data/SampleData.kt` (181) |
 | `Data/Services.swift` | `com/naeilo/app/data/Services.kt` (51) |
 | `Data/SiteCalc.swift` | `com/naeilo/app/core/calc/SiteCalc.kt` (63) |
@@ -54,7 +54,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Views/GoalViews.swift` | `com/naeilo/app/ui/goal/GoalViews.kt` (513), `com/naeilo/app/ui/Controls.kt` (1) |
 | `Views/Guide.swift` | `com/naeilo/app/ui/Guide.kt` (78) |
 | `Views/HoldingsView.swift` | `com/naeilo/app/ui/town/TownViews.kt` (871), `com/naeilo/app/ui/hold/HoldingsView.kt` (353), `com/naeilo/app/ui/hold/HoldingDetail.kt` (267), `com/naeilo/app/ui/home/ThemeScenes.kt` (1) |
-| `Views/HomeView.swift` | `com/naeilo/app/ui/home/HomeView.kt` (457), `com/naeilo/app/App.kt` (1) |
+| `Views/HomeView.swift` | `com/naeilo/app/ui/home/HomeView.kt` (441), `com/naeilo/app/App.kt` (1) |
 | `Views/InvestViews.swift` | `com/naeilo/app/ui/analysis/InvestViews.kt` (95) |
 | `Views/MeViews.swift` | `com/naeilo/app/ui/me/MeViews.kt` (480) |
 | `Views/MissionViews.swift` | `com/naeilo/app/ui/board/MissionViews.kt` (477) |

@@ -102,6 +102,8 @@ data class RemindItem(
     data class Check(val text: String, val ok: Boolean)   // ios: Data/Remind.swift:49
     /** 소식함 '할 일': 행동 버튼이 있거나 조건이 풀릴 때까지 남는 진행 중 소식 */
     val isTodo: Boolean get() = cat != RemindCat.event && (action != null || !once)   // ios: Data/Remind.swift:51
+    /** 미션 탭 소식 (앱 시작 3단계·인터미션·1000칸·주간 예보·맞혀보기 배지) */
+    val mission: Boolean get() = id == "start" || listOf("inter.", "cells.", "wk.", "badge.", "do.inter", "do.week").any { id.startsWith(it) }   // ios: Data/Remind.swift:53
 }
 
 /** 기기에 남는 기록 (다른 기기와 맞추지 않는다) */
@@ -240,7 +242,10 @@ class Remind private constructor() {
 
     fun isOn(c: RemindCat): Boolean = !log.off.contains(c)   // ios: Data/Remind.swift:138
     fun setOn(c: RemindCat, on: Boolean) { setLog { it.copy(off = if (on) it.off - c else it.off + c) } }   // ios: Data/Remind.swift:139
-    private val shown: List<RemindItem> get() = items.filter { isOn(it.cat) }   // ios: Data/Remind.swift:140
+    // 미션 소식은 홈(말풍선·소식함·새 소식 수)에 두지 않는다. 미션에만 (2026-10-27)
+    private val shown: List<RemindItem> get() = items.filter { isOn(it.cat) && !it.mission }   // ios: Data/Remind.swift:143
+    /** 소식함에 보일 것이 있는지 */
+    val any: Boolean get() = shown.isNotEmpty()   // ios: Data/Remind.swift:145
     fun isSeen(i: RemindItem): Boolean = log.seen[i.id] != null   // ios: Data/Remind.swift:141
     /** 안 본 소식 (말풍선·‘새 소식 n’) */
     val fresh: List<RemindItem> get() = shown.filter { it.once && it.cat != RemindCat.event && !isSeen(it) }   // ios: Data/Remind.swift:143

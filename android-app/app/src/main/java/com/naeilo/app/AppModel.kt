@@ -638,9 +638,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
     }
     val homeSay: String get() {   // ios: Data/AppModel.swift:640
         val who = voice(homeFriendShown)   // ios: Data/AppModel.swift:641
-        if (!playUnlocked) {   // ios: Data/AppModel.swift:642
-            return Lines.pick("home.locked.$who") ?: ("앱 시작 3단계를 마치면 매일 오늘 숫자를 하나 가져올게요." + (if (who == "seri") " 거기까지만요." else ""))   // ios: Data/AppModel.swift:643
-        }
+        // 앱 시작 3단계 안내는 홈 말풍선에 두지 않는다. 미션에만 (2026-10-27)
         if (today.answer != null) {   // ios: Data/AppModel.swift:645
             val n = itemsOn   // ios: Data/AppModel.swift:646
             val info = if (n < 10) "내일 또 오면 쉼터에 물건(${Shelter.items[n].name})이 돌아와요." else ""   // ios: Data/AppModel.swift:647

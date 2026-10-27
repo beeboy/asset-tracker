@@ -65,7 +65,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.naeilo.app.AppModel
 import com.naeilo.app.R
-import com.naeilo.app.Tab
 import com.naeilo.app.core.Day
 import com.naeilo.app.core.calc.Route
 import com.naeilo.app.core.calc.goalPace
@@ -300,28 +299,11 @@ private fun sceneOf(m: AppModel): BoxScene {
 // ios: Views/HomeView.swift:94
 @Composable
 private fun SceneSummary(m: AppModel, look: BoxLook, hideAmt: Boolean, toggleHide: () -> Unit) {
-    val reached = if (m.isGoal) m.goalReached else m.cost <= m.total   // ios: Views/HomeView.swift:95
-    val setMonthly = m.isGoal && !m.goalReached && !m.bare && m.gM <= 0   // ios: Views/HomeView.swift:96
     val scene by remember(m) { derivedStateOf { sceneOf(m) } }   // ios: Views/HomeView.swift:72 (scene)
-    // ios: Views/HomeView.swift:97,113,114,115
+    // 적립 정하기·목표 루트로·다음 목표 정하기는 홈에 두지 않는다. 미션에만 (2026-10-27)
+    // ios: Views/HomeView.swift:97
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(boxInk().card), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        // ios: Views/HomeView.swift:98,99
-        Box {
-            SceneBox(look = look, s = scene, hide = hideAmt, toggleHide = toggleHide)
-            // ios: Views/HomeView.swift:100
-            if (setMonthly) {
-                // ios: Views/HomeView.swift:102
-                Box(Modifier.align(Alignment.BottomEnd).padding(end = 14.dp).defaultMinSize(minHeight = 32.dp).plainClickable { m.homePath = m.homePath + "goal" }
-                    .semantics { contentDescription = tr("다음달 적립 정하기") }, contentAlignment = Alignment.Center) {
-                    T("적립 정하기 ›", style = appFont(12f, FontWeight.Bold), color = Theme.yellow)
-                }
-            }
-        }
-        // ios: Views/HomeView.swift:105,106,110
-        if (reached && m.rows.isNotEmpty() || m.goalReached) Box(Modifier.padding(12.dp)) {
-            if (m.isGoal) DarkButton("다음 목표 정하기") { m.suggestNextGoal(); m.homePath = m.homePath + "goal" }   // ios: Views/HomeView.swift:107
-            else DarkButton("목표 루트로") { m.graduateToGoal(); m.tab = Tab.board }   // ios: Views/HomeView.swift:108
-        }
+        SceneBox(look = look, s = scene, hide = hideAmt, toggleHide = toggleHide)
     }
 }
 
@@ -371,16 +353,7 @@ private fun GoalSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
                   else if (m.bare) "매달 ${AppModel.wonK(m.gM)} 적립 · 다음 적립일 +${AppModel.wonK(m.gM)}"   // ios: Views/HomeView.swift:147
                   else AppModel.paceText(m.goalPace()) + (if (m.gM > 0) " · 다음달 ${AppModel.wonK(m.gM)} 적립" else " · 추가 적립 미정"),   // ios: Views/HomeView.swift:148
                   Modifier.weight(1f), style = appFont(13f), color = ink.sub)   // ios: Views/HomeView.swift:149
-                // ios: Views/HomeView.swift:150
-                if (!m.goalReached && !m.bare && m.gM <= 0) {
-                    Spacer(Modifier.width(8.dp))   // ios: Views/HomeView.swift:151
-                    // ios: Views/HomeView.swift:153
-                    Box(Modifier.defaultMinSize(minHeight = 32.dp).plainClickable { m.homePath = m.homePath + "goal" }.semantics { contentDescription = tr("다음달 적립 정하기") }, contentAlignment = Alignment.Center) {
-                        T("정하기 ›", style = appFont(13f, FontWeight.Bold), color = ink.gold)
-                    }
-                }
             }
-            if (m.goalReached) DarkButton("다음 목표 정하기") { m.suggestNextGoal(); m.homePath = m.homePath + "goal" }   // ios: Views/HomeView.swift:156
         }
     }
 }
@@ -420,7 +393,6 @@ private fun RecoverSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit
             // ios: Views/HomeView.swift:189,191,192 (118 은 검사 예외: 같은 줄에 옮김)
             T(if (need > 0) "어제 ${cformat("%.1f", needY * 100)}% → 오늘 ${cformat("%.1f", need * 100)}%"
               else "본전 넘음 · 종목·친구 그대로", style = appFont(13f), color = ink.sub)
-            if (need <= 0) DarkButton("목표 루트로") { m.graduateToGoal(); m.tab = Tab.board }   // ios: Views/HomeView.swift:193
         }
     }
 }
@@ -434,16 +406,6 @@ private fun TodayLine(m: AppModel) {
     // ios: Views/HomeView.swift:204,205
     T("오늘 " + (if (mv >= 0) "▲ " else "▼ ") + cformat("%.1f%%", abs(mv) * 100) + " · " + AppModel.won(abs(diff)),
       style = appFont(13f), color = if (mv >= 0) ink.up else ink.down)
-}
-
-// 어두운 요약 카드 안의 노란 버튼 (목표 루트로 · 다음 목표)
-// ios: Views/HomeView.swift:209,210,214
-@Composable
-private fun DarkButton(t: String, act: () -> Unit) {
-    // ios: Views/HomeView.swift:211,212,213
-    Box(Modifier.fillMaxWidth().plainClickable(onClick = act).defaultMinSize(minHeight = 44.dp).background(Theme.yellow, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-        T(t + " ›", style = appFont(15f, FontWeight.Bold), color = Theme.inkFixed)
-    }
 }
 
 // 쉼터 박스: 홈에 둔 친구 + 말풍선 (리마인드 소식이 있으면 그 소식) + 새 소식 + 다른 친구 칸
@@ -486,7 +448,7 @@ private fun ShelterBox(m: AppModel, openInbox: () -> Unit) {
               style = appFont(14f).ls(3f).copy(textAlign = TextAlign.Start))
         }
         // ios: Views/HomeView.swift:253
-        if (r.items.isNotEmpty()) {
+        if (r.any) {
             // ios: Views/HomeView.swift:254,255,266
             Row(Modifier.fillMaxWidth().offset(y = (-4).dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                 // ios: Views/HomeView.swift:256,257,258,259,260,261,263,264
@@ -586,8 +548,7 @@ private fun Reminder(openInbox: () -> Unit) {
     val e = r.strip
     // ios: Views/HomeView.swift:293 (212 는 검사 예외: 같은 줄에 옮김)
     if (e != null) StripRow(tag = "일정", text = "${MarketEvents.`when`(e.day ?: "")} ${e.text} · ${e.sub ?: ""}", openInbox)
-    // ios: Views/HomeView.swift:295,296
-    else if (r.isOn(RemindCat.doing)) r.doing.firstOrNull { it.id == "do.inter" }?.let { d -> StripRow(tag = "리마인드", text = d.text, openInbox) }
+    // 인터미션 할 일은 미션에만 (2026-10-27)
 }
 
 // ios: Views/HomeView.swift:299
