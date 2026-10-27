@@ -280,7 +280,7 @@ struct MockExceptions: Codable, Equatable {
 /// 선정 규칙: 관찰 결과에서 몇 개를, 무슨 순서로, 얼마씩
 struct MockSelectRule: Codable, Equatable {
     var name: String = "상위 5"
-    var count: Int = 5            // 장부에 둘 최대 종목 수
+    var count: Int = 5            // 한 번 고를 때 새로 고를 종목 수 (보유 수와 따로)
     var maxPer: Double = 0.20     // 한 종목 최대 (평가액 대비)
     var keepCash: Double = 0.20   // 남길 현금 (평가액 대비)
     /// 검토 문: 기본은 닫는다(켬 = 고른 뒤 내가 보고 주문, 끔 = 고르면 바로 주문)

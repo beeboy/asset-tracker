@@ -188,7 +188,8 @@ enum MockCalc {
                        prices: [String: Double], excluded: [String: String], soldToday: Set<String> = []) -> (picks: [Pick], skips: [Skip]) {
         let eq = equity(l, prices: prices)
         let pendingBuy = Set(l.pending.filter { $0.side == .buy }.map(\.code))
-        var slots = rule.count - l.positions.count - pendingBuy.count
+        // 그날 훑은 종목에서 새로 rule.count 종목을 고른다 (어제 산 보유가 자리를 막지 않는다. 보유·대기 종목은 건너뛰고 다음 순위로)
+        var slots = rule.count
         var avail = l.cash - rule.keepCash * eq
         var picks: [Pick] = [], skips: [Skip] = []
         for (i, h) in scan.hits.enumerated() {

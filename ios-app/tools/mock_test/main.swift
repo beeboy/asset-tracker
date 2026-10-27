@@ -78,6 +78,13 @@ check(selEx.picks.map(\.code) == ["000002"], "선정에서 예외 막음")
 // 오늘 판 종목은 다시 고르지 않음
 let selSold = MockCalc.select(scan, ledger: L, rule: rule, fees: fees, prices: [:], excluded: [:], soldToday: ["000001"])
 check(selSold.picks.map(\.code) == ["000002"] && selSold.skips.contains { $0.code == "000001" && $0.why.hasPrefix("오늘 판") }, "오늘 판 종목 막음: \(selSold.skips)")
+// 보유가 상위 N만큼 있어도 그날 훑은 종목에서 고른다 (보유 종목은 건너뜀)
+var full = L
+for c in ["H1", "H2", "H3", "H4", "000001"] {
+    full.positions[c] = MockPosition(code: c, name: c, qty: 1, cost: 1_000, gross: 1_000, opened: t0, openedDay: "2026-10-26", who: .rule, test: false)
+}
+let selFull = MockCalc.select(scan, ledger: full, rule: rule, fees: fees, prices: [:], excluded: [:])
+check(selFull.picks.map(\.code) == ["000002"] && selFull.skips.contains { $0.code == "000001" && $0.why == "이미 보유" }, "보유가 차도 고름: \(selFull.picks.map(\.code)) \(selFull.skips)")
 
 // 호가 채우기
 let book = MockCalc.Book(asks: [.init(p: 8_440, v: 100), .init(p: 8_420, v: 50), .init(p: 8_460, v: 1000)],
