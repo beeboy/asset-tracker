@@ -775,8 +775,6 @@ private struct TubScene: View {
                     inner.stroke(Sk.line(CGPoint(x: 246, y: y), CGPoint(x: 254, y: y)), with: .color(mark(y, Color(hex: 0x9AA6BD))), lineWidth: 1.2)
                     Sk.text(inner, t, 243, y, mark(y, Color(hex: dk ? 0x9AA6BD : 0x7D889E)), size: 8, anchor: .trailing)
                 }
-                // 출발: 바닥 곡선 안쪽
-                Sk.text(inner, String(localized: "출발"), 226, 145, mark(145, Color(hex: dk ? 0x9AA6BD : 0x7D889E)), size: 8, anchor: .trailing)
                 ctx.stroke(Self.tub, with: .color(dk ? .white : Color(hex: 0xB7CAE3)), lineWidth: 3)
                 let rim = Path(roundedRect: CGRect(x: 32, y: 46, width: 236, height: 8), cornerRadius: 4)
                 ctx.fill(rim, with: .color(.white))
