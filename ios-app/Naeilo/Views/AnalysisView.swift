@@ -564,7 +564,7 @@ struct ChanceBox: View {
             }
             .font(.system(size: 14)).foregroundStyle(Self.dim)
             title.padding(.top, 6)
-            bar.frame(height: 62).padding(.top, 10)
+            bar.frame(height: 50).padding(.top, 10)
             // 맨 아래 '셋 중 … 선을 넘음 · 지금 …' 줄은 뺀다. 박스 높이를 종목 탭 박스에 맞춘다 (2026-10-27)
         }
         .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 16)
@@ -594,38 +594,44 @@ struct ChanceBox: View {
         GeometryReader { g in
             let w = g.size.width
             let X = { (v: Double) -> CGFloat in CGFloat(min(1, max(0, v))) * w }
-            let xs = d.dots.map(X), lx = Self.spread(xs, gap: 38, w: w)
+            let xs = d.dots.map(X)
+            // 이름표: 세 점과 목표 이름을 한 줄에 놓고 서로 밀어 낸다 (0~2 = 점, 3 = 목표)
+            let tags = Self.tags(xs, goal: d.goal.map(X)), lx = Self.spread(tags.map(\.x), gap: 38, w: w)
             let names = [String(localized: "나쁠 때"), String(localized: "보통"), String(localized: "좋을 때")]
+            // 막대 위에 세 점을 겹치고 이름표는 그 아래. 인물·목표 옆 그림은 이 탭에서 뺀다 (2026-10-27)
             ZStack(alignment: .topLeading) {
-                ProgressTrack(look: look, fill: d.now).frame(width: w, height: 14).offset(y: 30)
+                ProgressTrack(look: look, fill: d.now).frame(width: w, height: 14).offset(y: 10)
                 if let gx = d.goal {
                     // 목표선 (점프 직전 라이트는 어두운 도로 위라 흰 선 + 옅은 그림자)
-                    Rectangle().fill(look == .jump ? bx(0xFFFFFF, 0xFFFFFF) : BoxInk.ink).frame(width: 2, height: 44)
+                    Rectangle().fill(look == .jump ? bx(0xFFFFFF, 0xFFFFFF) : BoxInk.ink).frame(width: 2, height: 22)
                         .shadow(color: look == .jump ? bx(0x16181D, 0.45, 0x000000, 0) : .clear, radius: 0.5)
-                        .offset(x: X(gx) - 1, y: 4)
-                    Text(d.goalLabel).font(.system(size: 10, weight: dk ? .regular : .bold)).foregroundStyle(BoxInk.ink).fixedSize()
-                        .position(x: min(w - 16, max(16, X(gx))), y: 56)
-                    // 목표선 옆에 서는 것 (오페라하우스·출구·일렁임·해·거품)
-                    TrackBuddy(look: look, goal: true)
-                        .frame(width: 60, height: 40, alignment: .bottomTrailing)
-                        .position(x: X(gx) - 3 - 30, y: 44 - 20)
+                        .offset(x: X(gx) - 1, y: 6)
                 }
                 ForEach(xs.indices, id: \.self) { i in
                     let r: CGFloat = i == 2 ? 8 : 7
                     Circle().fill(Self.dotC[i]).frame(width: r * 2, height: r * 2)
                         .overlay { if i == 1 && !dk { Circle().stroke(.white, lineWidth: 1.5) } }
-                        .position(x: xs[i], y: 19)
-                    Text(names[i]).font(.system(size: 10)).foregroundStyle(Self.labC[i]).fixedSize().position(x: lx[i], y: 0)
+                        .position(x: xs[i], y: 17)
                 }
-                // 지금 자리에 서는 작은 인물
-                TrackBuddy(look: look)
-                    .frame(width: 60, height: 40, alignment: .bottom)
-                    .position(x: min(w - 14, max(14, X(d.now))), y: 30 - 20)
+                ForEach(tags.indices, id: \.self) { j in
+                    let k = tags[j].kind
+                    Text(k == 3 ? d.goalLabel : names[k])
+                        .font(.system(size: 10, weight: k == 3 && !dk ? .bold : .regular))
+                        .foregroundStyle(k == 3 ? BoxInk.ink : Self.labC[k]).fixedSize()
+                        .position(x: lx[j], y: 42)
+                }
             }
         }
     }
 
-    /// 이름표 자리: 점 바로 위, 서로 gap 보다 가까우면 밀어 낸다 (박스 밖으로 나가지 않게)
+    /// 이름표 순서: 세 점(0~2)과 목표(3)를 가로 자리 순으로
+    static func tags(_ xs: [CGFloat], goal: CGFloat?) -> [(x: CGFloat, kind: Int)] {
+        var t = xs.enumerated().map { (x: $0.element, kind: $0.offset) }
+        if let goal { t.append((x: goal, kind: 3)) }
+        return t.sorted { $0.x < $1.x }
+    }
+
+    /// 이름표 자리: 서로 gap 보다 가까우면 밀어 낸다 (박스 밖으로 나가지 않게)
     static func spread(_ xs: [CGFloat], gap: CGFloat, w: CGFloat) -> [CGFloat] {
         guard !xs.isEmpty else { return [] }
         var l = xs.map { min(w - gap / 2, max(gap / 2, $0)) }
