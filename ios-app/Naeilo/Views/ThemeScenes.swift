@@ -1029,3 +1029,101 @@ struct ThemeTrack: View {
         }
     }
 }
+
+// MARK: 홈 장면 3 구면 뒤집기 (2026-10-27, 철수와 영희 자리): 10권 P6. 큰 구 하나가 진행률만큼 안과 밖이 바뀐다
+// 바깥 면 = 청록, 안쪽 면 = 호박색. 단계(E4): ① 굽이 ② 두 면이 서로를 통과 ③ 반환점(안도 밖도 아닌 네 잎) ④ 비틀리며 돌아 나옴 ⑤ 같은 구, 다른 면
+// 단계 구간은 임시값 (0.2 · 0.45 · 0.55 · 1). 움직임: 몇 초에 한 번 짧게, 굽이가 한 바퀴 돌고 처음 모양으로 돌아온다 (돌고 나면 같은 모양이라 끊김 없음)
+struct SphereScene: View {
+    let s: BoxScene
+    @State private var start: Date?
+    @Environment(\.accessibilityReduceMotion) private var still
+    @Environment(\.colorScheme) private var cs
+    private static let cx: CGFloat = 225, cy: CGFloat = 96, R: CGFloat = 50
+
+    var body: some View {
+        let dk = cs == .dark, down = ThemeMood(s.today) == .down
+        let dur = down ? 3.2 : 2.4
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: start == nil)) { tl in
+            let p = start.map { min(1, max(0, tl.date.timeIntervalSince($0) / dur)) } ?? 0
+            Canvas { ctx, _ in draw(ctx, dk: dk, down: down, p: p) }
+        }
+        .task(id: still) {
+            start = nil
+            guard !still else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(down ? 6 : 4.5))
+                if Task.isCancelled { break }
+                start = .now
+                try? await Task.sleep(for: .seconds(dur))
+                start = nil
+            }
+        }
+    }
+
+    /// p: 이번 움직임의 0~1 (쉬는 동안 0)
+    private func draw(_ ctx: GraphicsContext, dk: Bool, down: Bool, p: Double) {
+        let cx = Self.cx, cy = Self.cy, R = Self.R
+        let f = min(1, max(0, s.f))
+        let e = p * p * (3 - 2 * p)                 // 부드럽게 출발·정지
+        let phi = 2 * Double.pi * e                 // 굽이가 한 바퀴 (6갈래라 끝나면 같은 모양)
+        let k: Double = down ? 0.85 : 1             // 떨어진 날은 덜 출렁인다
+        let outC = Color(hex: dk ? 0x4FB3A5 : 0x3E9C8F), inC = Color(hex: dk ? 0xE9C46A : 0xE2B44A)
+        let bg0 = Color(hex: dk ? 0x0F1A24 : 0xEAF3F4), bg1 = Color(hex: dk ? 0x172634 : 0xF7F3E8)
+        ctx.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .linearGradient(Gradient(colors: [bg0, bg1]), startPoint: .zero, endPoint: pt(0, 170)))
+
+        func blob(_ r: (Double) -> Double) -> Path {
+            var path = Path()
+            for i in 0..<96 {
+                let t = 2 * Double.pi * Double(i) / 96, rr = R * CGFloat(r(t))
+                let q = pt(cx + rr * CGFloat(cos(t)), cy + rr * CGFloat(sin(t)))
+                i == 0 ? path.move(to: q) : path.addLine(to: q)
+            }
+            path.closeSubpath()
+            return path
+        }
+        func shine(_ o: Double = 0.22) { ctx.fill(circle(cx - 0.3 * R, cy - 0.34 * R, 0.24 * R), with: .color(.white.opacity(o))) }
+        // 처음 무늬 'ㄴ'. 다 뒤집히면 거울로 보인다 (바깥에서 뒷면을 보는 셈)
+        func mark(_ mirror: Bool) {
+            let sx: CGFloat = mirror ? -1 : 1, x0 = cx + sx * 0.14 * R, y0 = cy - 0.32 * R
+            var m = Path(); m.move(to: pt(x0, y0)); m.addLine(to: pt(x0, y0 + 0.24 * R)); m.addLine(to: pt(x0 + sx * 0.2 * R, y0 + 0.24 * R))
+            ctx.stroke(m, with: hex(0x14303A), style: StrokeStyle(lineWidth: 3.2, lineCap: .round, lineJoin: .round))
+        }
+
+        if f < 0.2 {
+            // ① 굽이: 테두리에 물결, 안쪽 색이 스쳤다가 겹치기 직전 사라진다 (E5)
+            let a = (0.03 + 0.05 * f / 0.2) * k
+            ctx.fill(blob { 1 + a * sin(6 * $0 + phi) }, with: .color(outC))
+            if p > 0 {
+                var g = Path(); g.move(to: pt(cx - 0.4 * R, cy - 0.56 * R)); g.addQuadCurve(to: pt(cx - 0.12 * R, cy + 0.64 * R), control: pt(cx + 0.16 * R, cy - 0.2 * R))
+                ctx.stroke(g, with: .color(inC.opacity(0.4 * sin(Double.pi * p))), style: StrokeStyle(lineWidth: 0.2 * R, lineCap: .round))
+            }
+            shine(); mark(false)
+        } else if f < 0.45 {
+            // ② 통과: 바깥 면과 안쪽 면이 서로 반대로 돌며 지나간다
+            let u = (f - 0.2) / 0.25
+            ctx.fill(blob { 1 + 0.12 * k * sin(6 * $0 + phi) }, with: .color(outC))
+            ctx.fill(blob { (0.55 + 0.17 * u) + 0.18 * k * sin(6 * $0 + Double.pi - phi) }, with: .color(inC.opacity(0.5 + 0.3 * u)))
+        } else if f < 0.55 {
+            // ③ 반환점: 안도 밖도 아닌 네 잎. 반 바퀴 돌면 같은 모양
+            let psi = Double.pi * e, a = 0.6 * k
+            ctx.fill(blob { 0.4 + a * max(0, cos(2 * ($0 - psi))) }, with: .color(outC))
+            ctx.fill(blob { 0.4 + a * max(0, -cos(2 * ($0 - psi))) }, with: .color(inC))
+            ctx.fill(circle(cx, cy, 0.25 * R), with: .linearGradient(Gradient(colors: [bg0, bg1]), startPoint: pt(0, cy - 0.25 * R), endPoint: pt(0, cy + 0.25 * R)))
+        } else if f < 1 {
+            // ④ 돌아 나옴: 겉은 안쪽 색, 바깥 색 굽이가 비틀리며 풀린다
+            let u = (f - 0.55) / 0.45
+            ctx.fill(blob { 1 + 0.12 * k * (1 - u) * sin(6 * $0 + phi + 0.5) }, with: .color(inC))
+            ctx.fill(blob { (0.72 - 0.5 * u) + 0.18 * k * (1 - u) * sin(6 * $0 + Double.pi + 0.5 - phi) }, with: .color(outC.opacity(0.1 + 0.5 * (1 - u))))
+        } else {
+            // ⑤ 같은 구: 모양은 처음과 같고 향하는 면만 다르다
+            ctx.fill(circle(cx, cy, R), with: .color(inC))
+            shine(0.22 + 0.12 * sin(Double.pi * p)); mark(true)
+        }
+
+        // 진행률만: 숫자 + 가는 막대 (반환점을 지나면 안쪽 색)
+        let barC = f < 0.5 ? outC : inC, x0: CGFloat = 186, w: CGFloat = 78
+        ctx.fill(Path(roundedRect: CGRect(x: x0, y: 157, width: w, height: 3), cornerRadius: 1.5), with: hex(dk, 0xC9D9D6, 0x2A3C48))
+        ctx.fill(Path(roundedRect: CGRect(x: x0, y: 157, width: w * CGFloat(f), height: 3), cornerRadius: 1.5), with: .color(barC))
+        Sk.text(ctx, AppModel.pct(f), x0 - 6, 158.5, Color(hex: dk ? 0xFFD98A : 0x2F5F59), size: 9, bold: true, anchor: .trailing)
+    }
+}

@@ -490,7 +490,7 @@ enum BoxLook: String, CaseIterable, Identifiable {
         case .tub: return String(localized: "욕조와 오리")
         case .dory: return String(localized: "도리와 문어")
         case .pino: return String(localized: "피노키오와 새")
-        case .mug: return String(localized: "철수와 영희")
+        case .mug: return String(localized: "구면 뒤집기")
         case .bar: return String(localized: "진행 막대")
         }
     }
@@ -551,7 +551,7 @@ struct SceneBox: View {
                     case .tub: TubScene(s: s)
                     case .dory: DoryScene(s: s)
                     case .pino: PinoScene(s: s)
-                    case .mug: MugScene(s: s)
+                    case .mug: SphereScene(s: s)
                     default: HorizonScene(s: s)
                     }
                 }
