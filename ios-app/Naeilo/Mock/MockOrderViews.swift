@@ -267,8 +267,8 @@ struct MockJournalView: View {
             ForEach(rows) { h in
                 if h.outside {
                     MockStockRow(code: h.code, name: h.name, mid: MockFmt.small(h.avg), pct: h.r,
-                                 price: MockFmt.man(h.value), band: mx > 0 ? abs(h.r) / mx : 0, filled: false, colW: colW) {
-                        MockTag(text: "외부", color: Theme.muted)
+                                 price: MockFmt.man(h.value), band: mx > 0 ? abs(h.r) / mx : 0, outside: true, colW: colW) {
+                        if anyPill { Color.clear.frame(width: colW[3] ?? 0, height: 1) }
                     }
                 } else {
                 Button { info = MockStockRef(code: h.code, name: h.name) } label: {
