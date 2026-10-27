@@ -415,7 +415,7 @@ struct DoryScene: View {
         ZStack(alignment: .topLeading) {
             Canvas { ctx, _ in
                 let all = Path(CGRect(x: 0, y: 0, width: 300, height: 170))
-                ctx.fill(all, with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x0F1A35 : 0xDCEEFB), Color(hex: dk ? 0x26406F : 0xF4F9FE)]), startPoint: .zero, endPoint: pt(0, 170)))
+                ctx.fill(all, with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x0F1A35 : 0xB3D9F4), Color(hex: dk ? 0x26406F : 0xF4F9FE)]), startPoint: .zero, endPoint: pt(0, 170)))
                 if dk {
                     for (x, y, r) in [(190, 20, 0.8), (230, 44, 0.6), (160, 36, 0.5)] as [(CGFloat, CGFloat, CGFloat)] { ctx.fill(circle(x, y, r), with: hex(0xC9D3EA)) }
                 } else {
@@ -556,7 +556,7 @@ struct PinoScene: View {
         ZStack(alignment: .topLeading) {
             Canvas { ctx, _ in
                 let all = Path(CGRect(x: 0, y: 0, width: 300, height: 170))
-                ctx.fill(all, with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x22170E : 0xFBF2E3), Color(hex: dk ? 0x4A331D : 0xEBD6B4)]), startPoint: .zero, endPoint: pt(0, 170)))
+                ctx.fill(all, with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x22170E : 0xEBD6B4), Color(hex: dk ? 0x4A331D : 0xFBF2E3)]), startPoint: .zero, endPoint: pt(0, 170)))
                 var planks = Path()
                 for x in [70.0, 140, 210, 280] as [CGFloat] { planks.move(to: pt(x, 0)); planks.addLine(to: pt(x, 152)) }
                 ctx.stroke(planks, with: dk ? hex(0x3A2816, 0.8) : hex(0xD7BC94), lineWidth: 1)
@@ -955,10 +955,10 @@ struct ThemeBackdrop: View {
     var body: some View {
         switch look {
         case .dory:
-            LinearGradient(stops: [.init(color: bx(0xE6F3FC, 0x0F1A35), location: 0), .init(color: bx(0xC4E3F6, 0x1B3866), location: 0.6), .init(color: bx(0x93CBEC, 0x1F6AA3), location: 1)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(stops: [.init(color: bx(0x93CBEC, 0x0F1A35), location: 0), .init(color: bx(0xC4E3F6, 0x1B3866), location: 0.6), .init(color: bx(0xE6F3FC, 0x1F6AA3), location: 1)], startPoint: .top, endPoint: .bottom)
                 .overlay { RadialGradient(colors: [bx(0xFFFFFF, 0.55, 0xBFE9FF, 0.22), bx(0xFFFFFF, 0, 0xBFE9FF, 0)], center: UnitPoint(x: 0.7, y: 1.2), startRadius: 0, endRadius: 200) }
         case .pino:
-            LinearGradient(colors: [bx(0xFBF2E3, 0x22170E), bx(0xEFDDC0, 0x4A331D)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: [bx(0xEFDDC0, 0x22170E), bx(0xFBF2E3, 0x4A331D)], startPoint: .top, endPoint: .bottom)
                 .overlay {
                     let plank = bx(0xB9915F, 0.4, 0x3A2816, 0.8).fixed(env)
                     Canvas { c, size in

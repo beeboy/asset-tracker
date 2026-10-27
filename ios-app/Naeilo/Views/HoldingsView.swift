@@ -541,10 +541,10 @@ struct MoodBackdrop: View {
         let dk = cs == .dark
         switch look {
         case .jump:
-            LinearGradient(colors: [bx(0xE4EAF7, 0x0B1022), bx(0xBAC7E8, 0x232A52)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: [bx(0xBAC7E8, 0x0B1022), bx(0xE4EAF7, 0x232A52)], startPoint: .top, endPoint: .bottom)
                 .overlay { if dk { stars([(0.67, 0.11, 0.9), (0.8, 0.26, 0.6), (0.57, 0.24, 0.5)]) } }
         case .horizon:
-            LinearGradient(colors: [bx(0xEAF0F9, 0x0C111D), bx(0xF8F0E5, 0x1C2747)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: [bx(0xC9DAF0, 0x0C111D), bx(0xF8F0E5, 0x1C2747)], startPoint: .top, endPoint: .bottom)
                 .overlay { RadialGradient(colors: [bx(0xFFBA68, 0.55, 0xFFD98A, 0.4), bx(0xFFBA68, 0, 0xFFD98A, 0)], center: UnitPoint(x: 1, y: 0.8), startRadius: 0, endRadius: 190) }
                 .overlay { if dk { stars([(0.2, 0.12, 0.8), (0.5, 0.07, 0.6), (0.77, 0.18, 0.9), (0.9, 0.08, 0.5)]) } }
         case .tub:
@@ -610,6 +610,7 @@ struct TagChart: View {
                 .frame(height: height).padding(.leading, 4)
                 HStack { Text(left); Spacer(); Text(right) }.appFont(11).foregroundStyle(Theme.muted).lineLimit(1)
             }
+            .zIndex(1)   // 끝 박동 점이 오른쪽 축선 위에 보이게
             Rectangle().fill(Theme.border).frame(width: 1, height: height)
             ZStack(alignment: .topLeading) {
                 if points.count > 1 {

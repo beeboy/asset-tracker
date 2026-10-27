@@ -669,8 +669,8 @@ private struct HorizonScene: View {
                     Sk.stars(ctx)
                 } else {
                     // 라이트: 새벽 대신 맑은 아침빛
-                    ctx.fill(all, with: .linearGradient(Gradient(colors: [Color(hex: 0xEAF0F9), Color(hex: 0xF8F0E5)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: 170)))
-                    ctx.fill(all, with: .radialGradient(Gradient(colors: [Color(hex: 0xFFBA68).opacity(0.55), Color(hex: 0xFFBA68).opacity(0)]), center: CGPoint(x: 300, y: 136), startRadius: 0, endRadius: 190))
+                    ctx.fill(all, with: .linearGradient(Gradient(colors: [Color(hex: 0xC9DAF0), Color(hex: 0xF8F0E5)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: 170)))
+                    ctx.fill(all, with: .radialGradient(Gradient(colors: [Color(hex: 0xFFBA68).opacity(0.6), Color(hex: 0xFFBA68).opacity(0)]), center: CGPoint(x: x1 - 8, y: 140), startRadius: 0, endRadius: 64))
                 }
                 let line = Color(hex: dk ? 0x4A5672 : 0xB4BDCC), road = Color(hex: dk ? 0xF2C14E : 0xE0A21E), lab = Color(hex: dk ? 0x8A93A6 : 0x5F6670)
                 ctx.stroke(Sk.line(CGPoint(x: x0, y: y), CGPoint(x: x1, y: y)), with: .color(line), lineWidth: 1.5)
@@ -838,7 +838,7 @@ private struct JumpScene: View {
         ZStack(alignment: .topLeading) {
             Canvas { ctx, _ in
                 // 라이트: 하늘만 밝히고 도로는 어둡게 (차선 불빛이 묻히지 않게)
-                ctx.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x0B1022 : 0xE4EAF7), Color(hex: dk ? 0x232A52 : 0xBAC7E8)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: 170)))
+                ctx.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x0B1022 : 0xBAC7E8), Color(hex: dk ? 0x232A52 : 0xE4EAF7)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: 170)))
                 if dk { for (x, y, r) in [(200, 18, 0.9), (240, 44, 0.6), (170, 40, 0.5)] as [(CGFloat, CGFloat, CGFloat)] { ctx.fill(Sk.dot(x, y, r), with: .color(Color(hex: 0xC9D3EA))) } }
                 ctx.fill(Path(CGRect(x: 0, y: 128, width: 300, height: 42)), with: .color(Color(hex: dk ? 0x151925 : 0x2F3650)))
                 ctx.stroke(Sk.line(CGPoint(x: 0, y: 160), CGPoint(x: 300, y: 160)), with: .color(Color(hex: dk ? 0x3A4155 : 0x5A6585)), style: StrokeStyle(lineWidth: 1.5, dash: [10, 8]))
