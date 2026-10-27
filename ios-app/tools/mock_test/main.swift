@@ -60,9 +60,9 @@ var L = MockLedger(book: .rule, started: t0)
 let rule = MockSelectRule()
 let sel = MockCalc.select(scan, ledger: L, rule: rule, fees: fees, prices: [:], excluded: [:])
 check(sel.picks.count == 2, "두 종목 고름")
-// 쓸 돈 = min(20% × 1천만 = 200만, (1천만 − 200만)/5 = 160만) = 160만
-check(sel.picks[0].qty == Int((1_600_000 / (8_336 * 1.00015)).rounded(.down)), "수량: \(sel.picks[0].qty)")
-check(sel.picks.allSatisfy { $0.budget <= 1_600_000 }, "예산 안")
+// 쓸 돈 = 최대 비중 20% × 1천만 = 200만 (고르기는 현금을 나눠 보지 않는다)
+check(sel.picks[0].qty == Int((2_000_000 / (8_336 * 1.00015)).rounded(.down)), "수량: \(sel.picks[0].qty)")
+check(sel.picks.allSatisfy { $0.budget <= 2_000_000 && $0.short == nil }, "예산 안 · 현금 넉넉")
 // 현금 부족
 var poor = L; poor.cash = 9_000
 // 오늘 장부처럼: 보유 종목으로 평가액은 크고 현금만 적다
@@ -70,6 +70,14 @@ poor.positions["Z"] = MockPosition(code: "Z", name: "Z", qty: 1_000, cost: 10_00
 let selPoor = MockCalc.select(scan, ledger: poor, rule: rule, fees: fees, prices: [:], excluded: [:])
 // 고르기는 현금을 보지 않는다: 현금이 없어도 고르고 현금 부족으로 표시한다
 check(selPoor.picks.count == 2 && selPoor.picks.allSatisfy { $0.short == true && $0.why.hasSuffix("현금 부족") }, "현금 부족도 고름: \(selPoor.picks)")
+// 오늘 장부 그대로: 평가액 1,010만 · 현금 206만 · 남길 현금 20% → 쓸 수 있는 돈 ≈ 4만. 1만원 종목도 202만 몫으로 고르고 현금 부족 표시
+var today = L; today.cash = 2_060_000
+today.positions["Z"] = MockPosition(code: "Z", name: "Z", qty: 804, cost: 8_041_206, gross: 8_040_000, opened: t0, openedDay: "2026-10-20", who: .rule, test: false)
+let tenK = MockScan(at: t0, bundleId: bundle.id, bundleName: "A", pieceTexts: [], barDay: "", total: 1,
+                    hits: [MockHit(code: "8", name: "만원", price: 10_000, change: nil, score: 1, why: "")], dropped: [:])
+let selToday = MockCalc.select(tenK, ledger: today, rule: rule, fees: fees, prices: [:], excluded: [:])
+check(selToday.picks.count == 1 && selToday.picks[0].qty == Int((2_020_000 / (10_000 * (1 + fees.commission))).rounded(.down))
+      && selToday.picks[0].short == true, "오늘 장부 1만원 종목: \(selToday.picks) \(selToday.skips)")
 // 0주
 let pricey = MockScan(at: t0, bundleId: bundle.id, bundleName: "A", pieceTexts: [], barDay: "", total: 1,
                       hits: [MockHit(code: "9", name: "비싼", price: 3_000_000, change: nil, score: 1, why: "")], dropped: [:])
