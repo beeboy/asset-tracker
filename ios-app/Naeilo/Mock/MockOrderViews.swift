@@ -570,6 +570,8 @@ struct MockAccountView: View {
         let gap = { (e: MockEvent) in MockCalc.slipGap(side: e.side ?? .buy, expect: e.expect ?? 0, actual: e.price ?? 0) }
         let now = fs.filter { MockFmt.day($0.at) == today }
         let past = Array(fs.filter { MockFmt.day($0.at) != today }.suffix(12))
+        let nowBars = Array(now.suffix(20))   // 막대는 오늘 최근 20건까지 (평균·금액은 오늘 모두)
+        let sp: CGFloat = nowBars.count + past.count > 10 ? 3 : 8   // 막대가 많으면 붙여서 카드 폭 안에
         let won = now.reduce(0.0) { $0 + (($1.price ?? 0) - ($1.expect ?? 0)) * Double($1.qty ?? 0) * ($1.side == .sell ? -1 : 1) }
         let avg = now.isEmpty ? 0 : now.map(gap).reduce(0, +) / Double(now.count)
         let top = max(0.002, (now + past).map { abs(gap($0)) }.max() ?? 0)
@@ -578,21 +580,21 @@ struct MockAccountView: View {
             if fs.isEmpty {
                 mt("아직 체결 없음").appFont(13).foregroundStyle(Theme.muted)
             } else {
-                HStack(alignment: .center, spacing: 8) {
+                HStack(alignment: .center, spacing: sp) {
                     VStack(alignment: .leading) {
                         mt("비싸게").foregroundStyle(Theme.orange)
                         Spacer()
                         mt("싸게").foregroundStyle(Theme.teal)
                     }
-                    .appFont(11, .semibold).frame(height: 96)
-                    ForEach(now) { bar(gap($0), top) }
+                    .appFont(11, .semibold).frame(height: 96).fixedSize(horizontal: true, vertical: false).padding(.trailing, 8 - sp)
+                    ForEach(nowBars) { bar(gap($0), top) }
                     if !now.isEmpty && !past.isEmpty { Rectangle().fill(Theme.line).frame(width: 1, height: 70).padding(.horizontal, 4) }
                     ForEach(past) { bar(gap($0), top).opacity(0.45) }
                     Spacer(minLength: 0)
                 }
                 .background { Rectangle().fill(Theme.line).frame(height: 1.5) }
                 HStack(spacing: 0) {
-                    if !now.isEmpty { mt("오늘").frame(width: CGFloat(now.count) * 26, alignment: .leading) }
+                    if !now.isEmpty { mt("오늘").lineLimit(1).frame(maxWidth: CGFloat(nowBars.count) * (18 + sp), alignment: .leading) }
                     if !past.isEmpty { mt("지난 날") }
                     Spacer()
                 }
@@ -604,8 +606,8 @@ struct MockAccountView: View {
     private func bar(_ g: Double, _ top: Double) -> some View {
         let h = max(3, 46 * min(1, abs(g) / top))
         let r = g > 0 ? UnevenRoundedRectangle(topLeadingRadius: 4, topTrailingRadius: 4) : UnevenRoundedRectangle(bottomLeadingRadius: 4, bottomTrailingRadius: 4)
-        return r.fill(g > 0 ? Theme.orange : Theme.teal).frame(width: 18, height: h)
-            .offset(y: g > 0 ? -h / 2 : h / 2).frame(width: 18, height: 96)
+        return r.fill(g > 0 ? Theme.orange : Theme.teal).frame(maxWidth: 18).frame(height: h)
+            .offset(y: g > 0 ? -h / 2 : h / 2).frame(maxWidth: 18).frame(height: 96)
     }
 
     // MARK: 불빛 둘 — [실전] 실전 자동주문 · 모두 멈춤 / [모의] 돌리기 주문 · 돌리기 멈춤
