@@ -543,7 +543,7 @@ def mock_get(path: str) -> dict | None:
 # 주문 기록은 toss_orders.log 에 남긴다 (종목·방향·수량·가격·결과만. 키·토큰·계좌는 안 남김).
 TOSS_LIVE = ROOT / "toss_live.json"
 TOSS_ORDERS_LOG = ROOT / "toss_orders.log"
-ORDER_ID = re.compile(r"[A-Za-z0-9_\-]{1,64}")
+ORDER_ID = re.compile(r"[A-Za-z0-9_\-]{1,256}")  # 실제 토스 주문번호는 86자 (문서 예시는 64자, 2026-10-27 첫 실주문에서 확인)
 CLIENT_ID = re.compile(r"[A-Za-z0-9\-]{8,64}")
 ORDER_LOG_LOCK = threading.Lock()
 TOSS_GATES.update({"order": TossGate(9), "order_history": TossGate(4), "order_info": TossGate(2), "asset": TossGate(4)})  # 문서: ORDER 10 · ORDER_HISTORY 5 · ORDER_INFO 6(9:00~9:10 은 3) · ASSET 5 (초당)
