@@ -542,7 +542,8 @@ object SitePrices {   // ios: Data/Market.swift:356
         val last = had?.dates?.lastOrNull()   // ios: Data/Market.swift:401
         if (had != null && last != null && had.dates.size > 200 && Day.dday(last) >= -20) {
             val n = daily(k, range = "1mo"); val first = n?.dates?.firstOrNull()   // ios: Data/Market.swift:402
-            if (n != null && first != null) {
+            // 새 분할이면 Yahoo 는 지난 값을 다 바꾼다: 겹친 날이 다르면 3년치를 다시 (마지막 날은 장중 값일 수 있어 빼고 본다)
+            if (n != null && first != null && !FlowBars.rescaled(had.dates, had.closes, n.dates.zip(n.closes).toMap(), skipLast = 1, tol = 0.01)) {
                 val keep = had.dates.indexOfFirst { it >= first }.takeIf { it >= 0 } ?: had.dates.size   // ios: Data/Market.swift:403
                 val ds = had.dates.subList(0, keep) + n.dates; val cs = had.closes.subList(0, keep) + n.closes   // ios: Data/Market.swift:404
                 val cut = maxOf(0, ds.size - 800)   // 3년 남짓만 둔다   // ios: Data/Market.swift:405
@@ -580,7 +581,8 @@ object SitePrices {   // ios: Data/Market.swift:356
 }
 
 /** 내 토스 키로 받는 지난 종가(일봉)와 원/달러. 키를 넣은 기기만 (공개 버전은 사용자 키로만 시세를 보여 준다).
- *  일봉은 수정 안 한 종가(adjusted=false): 사이트 data/prices 의 close 와 같은 기준. 받은 종목은 사이트 값 대신 쓰고, 못 받은 종목은 사이트 값 그대로.
+ *  일봉은 수정주가(adjusted=true): 분할·병합을 토스가 지난 값에 반영한다(미국은 5% 넘는 차이만, 배당은 거의 안 바뀜). 사이트 data/prices 의 close(분할 반영)와 같은 기준.
+ *  받은 종목은 사이트 값 대신 쓰고, 못 받은 종목은 사이트 값 그대로.
  *  원/달러 지난 흐름(KRW=X)은 토스에 일봉이 없어 아직 사이트 값이다. */
 object TossHistory {   // ios: Data/Market.swift:439
     @Serializable data class FX(var rate: Double, var prev: Double, var got: Double)   // 지금, 24시간 전, 받은 시각(초)   // ios: Data/Market.swift:440
@@ -594,7 +596,7 @@ object TossHistory {   // ios: Data/Market.swift:439
     fun merged(p: SitePrices.File?, t: File?): SitePrices.File? {   // ios: Data/Market.swift:446
         if (t == null || !TossKeys.on || t.h.isEmpty()) return p   // ios: Data/Market.swift:447
         val out = p?.copy() ?: SitePrices.File(got = 0.0, updated = "", asked = emptyList(), h = emptyMap())   // ios: Data/Market.swift:448
-        out.h = out.h + t.h.mapValues { (k, v) -> TossSplit.fit(v, p?.h?.get(k)) }   // ios: Data/Market.swift:449 분할 전 날은 사이트 기준으로 맞춘다
+        out.h = out.h + t.h   // ios: Data/Market.swift:516
         return out   // ios: Data/Market.swift:450
     }
 
@@ -621,6 +623,9 @@ object TossHistory {   // ios: Data/Market.swift:439
         if (!Store.defaults.getBoolean("toss_hist_miss_reset_relay", false)) { miss.clear(); Store.defaults.edit().putBoolean("toss_hist_miss_reset_relay", true).apply() }   // ios: Data/Market.swift:475
         var stop = false   // ios: Data/Market.swift:476
         val ohlc = FlowBars.read(FlowBars.tossName); var ohlcDirty = false   // 차트 탭 캔들: 같은 응답에서 시가·고가·저가·거래량도 남긴다   // ios: Data/Market.swift:477
+        // 한 번만: 예전 판은 수정 안 한 일봉(adjusted=false)을 남겼다 (엔비디아 2024-06 분할 전이 10배). 지우고 수정주가로 3년치를 다시 받는다   // ios: Data/Market.swift:545
+        val reset = !Store.defaults.getBoolean("toss_hist_adjusted", false)
+        if (reset) { fh.clear(); fday.clear(); ohlc.b = emptyMap(); ohlc.day = emptyMap(); ohlcDirty = true; Store.defaults.edit().putBoolean("toss_hist_adjusted", true).apply() }
         Log.i("naeilo.flow", "토스 일봉 받기: ${keys.size}종목")
         for ((k, y) in keys.entries.sortedBy { it.key }) {   // ios: Data/Market.swift:478
             if (stop) break
@@ -638,7 +643,7 @@ object TossHistory {   // ios: Data/Market.swift:439
             val rows = mutableMapOf<String, FlowBars.Row>()   // ios: Data/Market.swift:489
             repeat(if (full) 5 else 1) {   // ios: Data/Market.swift:490
                 if (it > 0 && (before == null || !ok)) return@repeat
-                var path = "/api/toss/v1/candles?symbol=${enc(c)}&interval=1d&adjusted=false&count=${if (full) 200 else 30}"   // ios: Data/Market.swift:491
+                var path = "/api/toss/v1/candles?symbol=${enc(c)}&interval=1d&adjusted=true&count=${if (full) 200 else 30}"   // ios: Data/Market.swift:491
                 before?.let { b -> path += "&before=" + enc(b) }   // ios: Data/Market.swift:492
                 val (code, o, e) = TossFeed.userGet(path)   // ios: Data/Market.swift:493
                 // 404 가 중계 쪽(없는 경로)이면 종목 탓이 아니다: 막지 않고 이번엔 그만 (중계를 고치면 다음 갱신에 받는다)
@@ -660,6 +665,11 @@ object TossHistory {   // ios: Data/Market.swift:439
                 if (before == null || oldest <= from) before = null   // ios: Data/Market.swift:510
             }
             if (!ok || bars.isEmpty()) continue   // ios: Data/Market.swift:512
+            // 새 분할·병합이면 겹친 날 종가가 달라진다: 지우고 다음 갱신에 3년치를 다시 (국내 최근 두 날은 NXT·15:31 값이 바뀌어 빼고 본다)   // ios: Data/Market.swift:585
+            val s0 = ohlc.b[k]
+            if (!full && s0 != null && FlowBars.rescaled(s0.d, s0.c, bars, skipLast = 2, tol = 0.01)) {
+                fh.remove(k); fday.remove(k); ohlc.b = ohlc.b - k; ohlc.day = ohlc.day - k; ohlcDirty = true; continue
+            }
             val all: MutableMap<String, Double> = if (full) mutableMapOf() else have!!.dates.zip(have.closes).toMap().toMutableMap()   // ios: Data/Market.swift:513
             for ((d, v) in bars) all[d] = v   // ios: Data/Market.swift:514
             val ds = all.keys.filter { it >= from && (it < md || (it == md && closed)) }.sorted()   // ios: Data/Market.swift:515
@@ -673,7 +683,7 @@ object TossHistory {   // ios: Data/Market.swift:439
         // 국내 일봉 종가는 KRX+NXT 통합이라 NXT 애프터마켓(~20:00) 마지막 값이다 (토스 Open API FAQ).
         // 토스 기준가(전일 종가)는 KRX 종가라서, 종가 단일가 체결이 들어가는 그날 15:31 1분봉 종가로 최근 두 날의 일봉 종가를 바꾼다.
         // 날짜마다 한 번 받으면 끝 (못 받으면 1시간 뒤 다시)
-        val krx = (f.krx ?: emptyMap()).mapValues { it.value.toMutableMap() }.toMutableMap(); val krxTry = (f.krxTry ?: emptyMap()).toMutableMap()   // ios: Data/Market.swift:589
+        val krx = ((if (reset) null else f.krx) ?: emptyMap()).mapValues { it.value.toMutableMap() }.toMutableMap(); val krxTry = ((if (reset) null else f.krxTry) ?: emptyMap()).toMutableMap()   // ios: Data/Market.swift:589
         for ((k, y) in keys.entries.sortedBy { it.key }) {
             if (stop) break
             if (!(y.endsWith(".KS") || y.endsWith(".KQ"))) continue
@@ -790,23 +800,6 @@ object MarFeed {   // ios: Data/Market.swift:541
         // 사이트·중계가 앞 날짜 고시도 주면 같이 둔다 (앱을 처음 깔았거나 저녁에 새 고시만 받은 때도 오전 8시 59분 전엔 앞 고시)
         val pv = jObj(o["USD_prev"])?.let { p -> num(p["rate"])?.let { r -> (p["date"] as? String)?.let { Prev(rate = r, date = it) } } }   // ios: Data/Market.swift:606
         return File(rate = rate, date = date, got = nowSec(), prev = pv?.let { if (it.rate > 0 && it.date < date) it else null })   // ios: Data/Market.swift:607
-    }
-}
-
-/** 토스 일봉(adjusted=false)의 분할 전 날을 사이트(분할 반영) 비로 맞춘다. ios: Data/Market.swift TossSplit */
-object TossSplit {
-    fun fit(t: YahooSample.Hist, site: YahooSample.Hist?): YahooSample.Hist {
-        if (site == null || site.dates.isEmpty()) return t
-        val ref = site.dates.zip(site.closes).toMap()
-        var f = 1.0
-        val out = t.closes.toMutableList()
-        for (i in out.indices.reversed()) {
-            val c = out[i]
-            val s = ref[t.dates[i]]
-            if (c > 0 && s != null && s > 0 && kotlin.math.abs(s / c / f - 1) > 0.3) f = s / c
-            out[i] = c * f
-        }
-        return YahooSample.Hist(t.dates, out)
     }
 }
 

@@ -367,6 +367,13 @@ data class FlowBars(   // ios: Data/FlowData.swift:317
         const val tossName = "flow_toss.json"; const val alpacaName = "flow_alpaca_split.json"; const val longbridgeName = "flow_longbridge_adj.json"   // ios: Data/FlowData.swift:326
         fun read(name: String): FlowBars = Store.read(serializer(), name) ?: FlowBars()   // ios: Data/FlowData.swift:327
         fun write(f: FlowBars, name: String) = Store.write(serializer(), f, name)   // ios: Data/FlowData.swift:328
+
+        /** 분할·병합 확인 (모든 일봉 출처가 같이 쓴다): 받아 둔 종가(ds·cs, 끝 skipLast 날 빼고)와 새로 받은 같은 날 종가가 tol 넘게 다르면
+         *  출처가 지난 값을 다시 맞춘 것이다. 그러면 이어 붙이지 말고 3년치를 다시 받는다. ios: Data/FlowData.swift FlowBars.rescaled */
+        fun rescaled(ds: List<String>, cs: List<Double>, new: Map<String, Double>, skipLast: Int = 0, tol: Double = 0.001): Boolean {
+            val n = maxOf(0, minOf(ds.size, cs.size) - skipLast)
+            return (0 until n).any { i -> new[ds[i]]?.let { cs[i] > 0 && abs(it / cs[i] - 1) > tol } ?: false }
+        }
     }
 
     /** 새로 받은 줄을 잇는다. full 이면 갈아 끼우고, keep 에 맞는 날만 남긴다 (끝나기 전 오늘 일봉·3년 넘은 날 빼기) */
@@ -441,7 +448,7 @@ object FlowAlpaca {   // ios: Data/FlowData.swift:344
         for (key in need.keys) {   // ios: Data/FlowData.swift:399
             // 겹친 날 종가가 0.1% 넘게 다르면 새 분할: 지운다 (다음 받기에 3년치를 다시)
             val s0 = f.b[key]; val r0 = rows[key]   // ios: Data/FlowData.swift:400,401
-            if (s0 != null && s0.d.size >= 30 && r0 != null && s0.d.indices.any { i -> r0[s0.d[i]]?.let { abs(it.c / s0.c[i] - 1) > 0.001 } ?: false }) {   // ios: Data/FlowData.swift:401
+            if (s0 != null && s0.d.size >= 30 && r0 != null && FlowBars.rescaled(s0.d, s0.c, r0.mapValues { it.value.c })) {   // ios: Data/FlowData.swift:401
                 f.b = f.b - key; day.remove(key); continue   // ios: Data/FlowData.swift:402
             }
             f.merge(key, rows[key] ?: emptyMap(), full = fresh && (f.b[key]?.d?.size ?: 0) < 30, keep = { it >= from && (it < md || (it == md && closed)) })   // ios: Data/FlowData.swift:400
@@ -494,7 +501,7 @@ object FlowLongbridge {   // ios: Data/FlowData.swift:416
             var rows = ask(if (full) 800 else 15) ?: continue   // ios: Data/FlowData.swift:450
             // 겹친 날 종가가 0.1% 넘게 다르면 수정 기준이 바뀐 것: 전부 다시
             val s0 = f.b[key]   // ios: Data/FlowData.swift:452
-            if (!full && s0 != null && s0.d.indices.any { i -> rows[s0.d[i]]?.let { abs(it.c / s0.c[i] - 1) > 0.001 } ?: false }) {   // ios: Data/FlowData.swift:452
+            if (!full && s0 != null && FlowBars.rescaled(s0.d, s0.c, rows.mapValues { it.value.c })) {   // ios: Data/FlowData.swift:452
                 rows = ask(800) ?: continue; full = true   // ios: Data/FlowData.swift:453,454,455,456
             }
             got = true   // ios: Data/FlowData.swift:458
