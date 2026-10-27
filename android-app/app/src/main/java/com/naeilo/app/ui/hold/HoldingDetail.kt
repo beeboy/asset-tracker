@@ -121,7 +121,7 @@ private fun won(x: Double): String = cformat("%,d", x.swRound().roundToLong())
 
 // 종목 세부 (시안 v38)
 
-/** 요약 박스(이름+티커, 현재가 큰 값·괄호 다른 통화, $/원) → 내 평가금 그래프(축 꼬리표 총 금액·달라진 금액·시작 금액) → 평균 단가·보유 수량 → 평단 계산기 */
+/** 요약 박스(이름+티커, 현재가 큰 값·괄호 다른 통화, $/원) → 한 주 가격 그래프(축 꼬리표 지금 가격·달라진 금액·시작 가격) → 평균 단가·보유 수량 → 평단 계산기 */
 // ios: Views/HoldingsView.swift:573,574,593
 @Composable
 fun HoldingDetailView(m: AppModel,
@@ -148,15 +148,14 @@ fun HoldingDetailView(m: AppModel,
     fun pair(v: Double): Pair<String, String?> = if (isUsd) Pair(price(v, du), price(v, !du)) else Pair(price(v, false), null)
 
     val h = m.holdings.firstOrNull { it.symbol == sym.id } ?: Holding(symbol = sym.id, qty = 0.0, avg = sym.close)   // ios: Views/HoldingsView.swift:594
-    val q = if (h.qty > 0) h.qty else 1.0   // ios: Views/HoldingsView.swift:595
-    // 그래프는 내 평가금 (고른 통화). $ 보기면 달러 정수, 원 보기면 만원
+    // 그래프는 한 주 가격 (고른 통화). $ 보기면 소수 둘째 자리, 원 보기면 원 단위 (2026-10-27)
     val k = if (isUsd && !du) Market.shared.valFx else 1.0   // ios: Views/HoldingsView.swift:597
     val stamp = Market.shared.updatedAt
     val day = if (period == Period.d1) mins else null   // ios: Views/HoldingsView.swift:650
-    val pts = remember(period, sym, stamp, q, k, day) { (day?.let { listOf(Market.shared.quote(sym).prevClose) + it.closes } ?: m.prices.series(sym, period)).map { it * q * k } }   // ios: Views/HoldingsView.swift:651 (기간·시세가 바뀔 때만)
-    val big = { v: Double -> if (du) "$" + won(abs(v)) else HoldFmt.won(abs(v)) }   // ios: Views/HoldingsView.swift:599
+    val pts = remember(period, sym, stamp, k, day) { (day?.let { listOf(Market.shared.quote(sym).prevClose) + it.closes } ?: m.prices.series(sym, period)).map { it * k } }   // ios: Views/HoldingsView.swift:651 (기간·시세가 바뀔 때만)
+    val big = { v: Double -> if (du) "$" + abs(v).usdText() else won(abs(v)) + tr("원") }   // ios: Views/HoldingsView.swift:599
     val S = pts.firstOrNull() ?: 0.0; val E = pts.lastOrNull() ?: 0.0; val up = E >= S   // ios: Views/HoldingsView.swift:600
-    val p = pair(sym.last); val a = pair(h.avg)   // ios: Views/HoldingsView.swift:601
+    val p = pair(sym.last); val a = pair(h.avg); val v = pair(sym.last * h.qty)   // ios: Views/HoldingsView.swift:601
 
     // ios: Views/HoldingsView.swift:654 캡처용: --es editMode buy 면 고치기를 바로 연다
     LaunchedEffect(Unit) { if (m.arg("editMode") != null && !opened) { opened = true; editing = true } }
@@ -225,6 +224,8 @@ fun HoldingDetailView(m: AppModel,
                                 Kv("평균 단가", buildAnnotatedString { append(a.first); a.second?.let { withStyle(SpanStyle(fontSize = fx(12f), fontWeight = FontWeight.Normal, color = Theme.sub)) { append(" ($it)") } } })
                                 HDivider(Theme.line)   // ios: Views/HoldingsView.swift:638
                                 Kv("보유 수량", AnnotatedString(h.qty.swFmt() + tr("주")))   // ios: Views/HoldingsView.swift:639
+                                HDivider(Theme.line)
+                                Kv("평가금", buildAnnotatedString { append(v.first); v.second?.let { withStyle(SpanStyle(fontSize = fx(12f), fontWeight = FontWeight.Normal, color = Theme.sub)) { append(" ($it)") } } })   // 축이 한 주 가격이라 내 평가금은 여기 (2026-10-27)
                             }
                         }
                         AvgCalc(sym = sym, qty = h.qty, avg = h.avg, du = du)   // ios: Views/HoldingsView.swift:642
