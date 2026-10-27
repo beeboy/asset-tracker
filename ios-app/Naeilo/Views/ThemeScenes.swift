@@ -3,7 +3,7 @@ import UIKit
 
 // MARK: 새 테마 셋 (2026-10-24): 도리와 문어 · 피노키오와 새 · 철수와 영희(비튼 무궁화)
 // 홈 장면(300×170 판) + 종목·흐름 띠·바탕 + 분석 막대 + 작은 등장인물. 기준 시안: 새 홈 3장, 종목·흐름·분석 다크 18장
-// 공통: 등장인물 자리 = 목표 대비 지금, 50% 자리에 '계획' 눈금, 끝점 = 목표 금액.
+// 공통: 등장인물 자리 = 목표 대비 지금, 25·50·75% 눈금, 끝점 = 목표 금액.
 // 장면 그림은 값이 바뀔 때만 다시 그리고, 움직임은 작은 조각만 정해진 박자에 짧게 (화면 밖·동작 줄이기면 멈춘다)
 
 /// 오른 날·떨어진 날 (오늘 등락이 없으면 오른 날처럼 차분하게)
@@ -442,9 +442,12 @@ struct DoryScene: View {
                     var p = Path(); p.move(to: pt(a.0, a.1)); p.addQuadCurve(to: pt(b.0, b.1), control: pt(c1.0, c1.1)); p.addQuadCurve(to: pt(e.0, e.1), control: pt(c2.0, c2.1)); p.closeSubpath()
                     ctx.fill(p, with: hex(dk, 0x3A9A6A, 0x3FAE7A))
                 }
-                // 계획 눈금 (50%)
-                ctx.stroke(Sk.line(pt(165, 150), pt(165, 160)), with: hex(dk, 0x8A5A00, 0xFFD98A), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
-                Sk.text(ctx, String(localized: "계획"), 165, 165.5, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 8, bold: !dk, anchor: .center)
+                // 25·50·75% 눈금 (도리 자리와 같은 축)
+                for (t, f) in Sk.pctTicks {
+                    let x = 62 + 206 * CGFloat(f)
+                    ctx.stroke(Sk.line(pt(x, 150), pt(x, 160)), with: hex(dk, 0x8A5A00, 0xFFD98A), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
+                    Sk.text(ctx, t, x, 165.5, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 8, bold: !dk, anchor: .center)
+                }
                 // 수족관
                 let tank = Path(roundedRect: CGRect(x: 6, y: 90, width: 44, height: 66), cornerRadius: 3)
                 ctx.fill(tank, with: dk ? hex(0x9FD6EE, 0.18) : hex(0xFFFFFF, 0.28)); ctx.stroke(tank, with: hex(dk, 0xFFFFFF, 0xCFEFFF), lineWidth: 1.5)
@@ -570,10 +573,13 @@ struct PinoScene: View {
                 ctx.fill(all, with: .radialGradient(Gradient(colors: [lamp.opacity(dk ? 0.34 : 0.45), lamp.opacity(0)]), center: pt(42, 119), startRadius: 0, endRadius: 150))
                 ctx.fill(Path(CGRect(x: 0, y: 152, width: 300, height: 18)), with: hex(dk, 0xD2AE7E, 0x2C1D10))
                 ctx.fill(Path(CGRect(x: 0, y: 152, width: 300, height: 1.5)), with: hex(dk, 0xB58D5C, 0x5A3E22))
-                // 계획 눈금 (50%) · 끝 = 목표
+                // 25·50·75% 눈금 (코끝 자리와 같은 축) · 끝 = 목표
                 let mark = dk ? 0xFFD98A : 0x8A5A00 as UInt32, label = Color(hex: dk ? 0xFFD98A : 0x6E4600)
-                ctx.stroke(Sk.line(pt(177, 146), pt(177, 158)), with: hex(mark), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
-                Sk.text(ctx, String(localized: "계획"), 177, 164.5, label, size: 8, bold: !dk, anchor: .center)
+                for (t, f) in Sk.pctTicks {
+                    let x = 64 + 226 * CGFloat(f)
+                    ctx.stroke(Sk.line(pt(x, 146), pt(x, 158)), with: hex(mark), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
+                    Sk.text(ctx, t, x, 164.5, label, size: 8, bold: !dk, anchor: .center)
+                }
                 ctx.stroke(Sk.line(pt(290, 146), pt(290, 158)), with: hex(mark), lineWidth: 1.5)
                 Sk.text(ctx, s.target, 290, 164, label, size: 8.5, bold: true, anchor: .trailing)
             }
@@ -695,9 +701,12 @@ struct MugScene: View {
                     ctx.fill(Path(ellipseIn: CGRect(x: x - rx, y: y - ry, width: rx * 2, height: ry * 2)), with: dk ? hex(0xE9F3FB, 0.6) : hex(0xFFFFFF))
                 }
                 for r in [CGRect(x: 96, y: 150, width: 3, height: 1.5), CGRect(x: 180, y: 158, width: 4, height: 1.5), CGRect(x: 236, y: 147, width: 2, height: 1.5)] { ctx.fill(Path(r), with: hex(dk, 0xC9A673, 0x6E583A, 0.8)) }
-                // 계획 눈금 (50%). 다크 흙 위에선 금색으로 (다른 새 테마 다크와 같은 색)
-                ctx.stroke(Sk.line(pt(174, 140), pt(174, 152)), with: hex(dk, 0x7A4A10, 0xFFD98A), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
-                Sk.text(ctx, String(localized: "계획"), 174, 159.5, Color(hex: dk ? 0xFFD98A : 0x7A4A10), size: 8, bold: !dk, anchor: .center)
+                // 25·50·75% 눈금 (기훈 자리와 같은 축). 다크 흙 위에선 금색으로 (다른 새 테마 다크와 같은 색)
+                for (t, f) in Sk.pctTicks {
+                    let x = 68 + 212 * CGFloat(f)
+                    ctx.stroke(Sk.line(pt(x, 140), pt(x, 152)), with: hex(dk, 0x7A4A10, 0xFFD98A), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
+                    Sk.text(ctx, t, x, 159.5, Color(hex: dk ? 0xFFD98A : 0x7A4A10), size: 8, bold: !dk, anchor: .center)
+                }
                 // 영희 앞 분필 선 (사선)
                 ctx.stroke(Sk.line(pt(64, 137.5), pt(50, 170)), with: dk ? hex(0xFBF6EA, 0.9) : hex(0xFFFFFF), style: StrokeStyle(lineWidth: 2.6, lineCap: .square))
                 // 왼쪽 끝 나무

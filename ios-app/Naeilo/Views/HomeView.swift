@@ -62,25 +62,23 @@ struct HomeView: View {
         }
     }
 
-    /// 장면 박스 값: 가로 자리 = 지금 값 ÷ 목표(본전), 계획 자리 = 내 길 계획선(적립 포함)의 오늘 값, 눈금 = 계획선의 1년·2년 값
+    /// 장면 박스 값: 가로 자리 = 지금 값 ÷ 목표(본전), 계획 자리 = 내 길 계획선(적립 포함)의 오늘 값. 눈금은 모든 모양이 25·50·75% (2026-10-27)
     private var scene: BoxScene {
         let p = m.myPath, K = max(1, p.key), me = m.trackValue, n = p.need(p.start)
         let onPlan = n <= 0 || me >= n
         if m.isGoal {
             let value = m.isGoal && !m.bare
-            let years = Int(p.end.rounded(.up))
-            let ticks: [(String, Double)] = years > 1 ? (1..<years).map { y in (String(localized: "\(String(describing: y))년"), p.need(Double(y)) / K) } : []
             return BoxScene(label: value ? String(localized: "평가액") : String(localized: "모은 돈"),
                             amount: m.bare ? m.goalSaved * 1e4 : m.total,
-                            f: me / K, plan: n > 0 ? n / K : nil, ticks: ticks,
-                            target: AppModel.wonK(m.gK), half: AppModel.wonK(m.gK / 2),
+                            f: me / K, plan: n > 0 ? n / K : nil,
+                            target: AppModel.wonK(m.gK),
                             today: value && m.route == .plus && m.total > 0 ? m.todayMove : nil,
                             ret: value && m.cost > 0 ? m.ret : nil,
                             status: m.goalReached ? String(localized: "목표 도달!") : onPlan ? String(localized: "계획대로") : String(localized: "조금 늦어요"))
         }
         let need = m.cost / max(1, m.total) - 1
         return BoxScene(label: String(localized: "평가액"), amount: m.total, f: me / K, plan: n > 0 ? n / K : nil,
-                        target: String(localized: "본전"), half: String(localized: "절반"),
+                        target: String(localized: "본전"),
                         today: m.total > 0 ? m.todayMove : nil, ret: m.ret,
                         status: need > 0 ? String(localized: "본전까지 +\(String(describing: String(format: "%.1f", need * 100)))%") : String(localized: "본전 도달"))
     }
@@ -505,9 +503,7 @@ struct BoxScene {
     var amount: Double         // 크게 쓰는 금액 (원)
     var f: Double              // 지금 자리 (0 = 출발, 1 = 목표)
     var plan: Double?          // 계획 자리
-    var ticks: [(String, Double)] = []   // 1년·2년 눈금 자리 (계획선 위)
     var target: String         // 10억 · 본전
-    var half: String           // 가운데 눈금 글 (5억)
     var today: Double?         // 오늘 등락
     var ret: Double?           // 넣은 돈 대비
     var status: String         // 계획대로 · 본전까지 +3.1%
@@ -614,6 +610,8 @@ struct TileWall: View {
 
 /// 장면 그림 도구: 300×170 판 좌표
 enum Sk {
+    /// 평가액 박스 가로 눈금: 모든 모양이 같은 % (욕조는 세로로 따로 그린다)
+    static let pctTicks: [(String, Double)] = [("25%", 0.25), ("50%", 0.5), ("75%", 0.75)]
     static func p(_ pts: [(CGFloat, CGFloat)]) -> Path {
         var path = Path()
         for (i, q) in pts.enumerated() { i == 0 ? path.move(to: CGPoint(x: q.0, y: q.1)) : path.addLine(to: CGPoint(x: q.0, y: q.1)) }
@@ -678,7 +676,7 @@ private struct HorizonScene: View {
                     ctx.stroke(Sk.line(CGPoint(x: x0, y: y), CGPoint(x: me, y: y)),
                                with: .linearGradient(Gradient(colors: [road.opacity(dk ? 0.15 : 0.2), road.opacity(dk ? 0.9 : 1)]), startPoint: CGPoint(x: x0, y: y), endPoint: CGPoint(x: me, y: y)), lineWidth: 2.5)
                 }
-                for (t, f) in s.ticks where f > 0 && f < 1 {
+                for (t, f) in Sk.pctTicks {
                     ctx.stroke(Sk.line(CGPoint(x: X(f), y: y - 4), CGPoint(x: X(f), y: y + 4)), with: .color(line), lineWidth: 1)
                     Sk.text(ctx, t, X(f), 150, lab, anchor: .center)
                 }
@@ -849,14 +847,8 @@ private struct JumpScene: View {
                     ctx.stroke(Sk.line(CGPoint(x: x, y: 128), CGPoint(x: x, y: long ? 134 : 131)), with: .color(tick), lineWidth: 1)
                 }
                 Sk.text(ctx, String(localized: "출발"), x0, 166, tick, size: 8, anchor: .center)
-                Sk.text(ctx, s.half, X(0.5), 166, tick, size: 8, anchor: .center)
-                if let p = s.plan {
-                    let x = X(p), pole = Color(hex: dk ? 0x9AA2B2 : 0x6B7489)
-                    ctx.stroke(Sk.line(CGPoint(x: x, y: 96), CGPoint(x: x, y: 131)), with: .color(pole), lineWidth: 2)
-                    let sign = Path(roundedRect: CGRect(x: x - 12, y: 86, width: 24, height: 13), cornerRadius: 2)
-                    ctx.fill(sign, with: .color(Color(hex: dk ? 0x2B3350 : 0xFFFFFF))); ctx.stroke(sign, with: .color(pole), lineWidth: 1)
-                    Sk.text(ctx, String(localized: "계획"), x, 92.5, Color(hex: dk ? 0xFFD98A : 0x9A6A00), size: 8, bold: !dk, anchor: .center)
-                }
+                // 계획 표지판은 뺀다 (2026-10-27). 눈금 글은 %만
+                for (t, f) in Sk.pctTicks { Sk.text(ctx, t, X(f), 166, tick, size: 8, anchor: .center) }
                 if let v = s.today { Sk.text(ctx, Sk.today(v), 6, 120, Sk.todayColor(v)) }
             }
             // 목표: 파란 일렁임
