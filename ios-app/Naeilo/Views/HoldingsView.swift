@@ -573,7 +573,7 @@ struct MoodBackdrop: View {
 /// 눈금 글·가로선 없이 오른쪽 축에 꼬리표만. 시작 점은 속 빈 점, 시작 금액 높이에서 축까지 옅은 점선 (Sparkline 위에 얹는다)
 struct TagChart: View {
     struct Tag { var at: Double; var dy: CGFloat = 0; let text: String; let bg: Color; var fg: Color = .black }
-    static let gray = Color(hex: 0x8A949E)
+    static let gray = Color(hex: 0xD3D9DF, dark: 0x8A949E)   // 시작 금액 꼬리표: 라이트는 옅은 회색(검정 글 대비 14:1), 다크는 그대로
     let points: [Double]
     var height: CGFloat = 120
     let tags: [Tag]
