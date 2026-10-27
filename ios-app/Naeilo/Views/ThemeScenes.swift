@@ -578,8 +578,7 @@ struct PinoScene: View {
                 ctx.stroke(circle(198, 48, 6), with: .color(tool), lineWidth: 2)
                 let lamp = Color(hex: dk ? 0xFFD58A : 0xFFCE78)
                 ctx.fill(all, with: .radialGradient(Gradient(colors: [lamp.opacity(dk ? 0.34 : 0.45), lamp.opacity(0)]), center: pt(42, 119), startRadius: 0, endRadius: 150))
-                ctx.fill(Path(CGRect(x: 0, y: 152, width: 300, height: 18)), with: hex(dk, 0xD2AE7E, 0x2C1D10))
-                ctx.fill(Path(CGRect(x: 0, y: 152, width: 300, height: 1.5)), with: hex(dk, 0xB58D5C, 0x5A3E22))
+                // 바닥 띠는 뺀다 (2026-10-27)
                 // 25·50·75% 눈금 (코끝 자리와 같은 축) · 끝 = 목표
                 let mark = dk ? 0xFFD98A : 0x8A5A00 as UInt32, label = Color(hex: dk ? 0xFFD98A : 0x6E4600)
                 for (t, f) in Sk.pctTicks {
