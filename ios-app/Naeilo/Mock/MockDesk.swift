@@ -59,7 +59,13 @@ struct MockState: Codable {
     var fillAlert: Bool? = nil                // 체결 알림 (없으면 켬)
     var curves: [MockCurve]? = nil            // 하루 거래량 곡선 (최근 20 거래일). 새 배수 재기용
     var bigCodes: [String]? = nil             // 곡선을 만들 큰 종목 (마지막 훑기 기준 20개)
-    var curveTried: String? = nil             // 곡선을 받으려 한 때 (날짜+a/p, 하루 두 번까지)
+    var curveTried: String? = nil             // 곡선을 받은 때 (날짜+a/p, 하루 두 번까지). 실패하면 적지 않고 10분 뒤 다시
+    var curveNote: String? = nil              // 곡선 마지막 받기 실패 이유 (받으면 지운다)
+    var near: [String]? = nil                 // 조건 문턱에 가까운 종목 (가까운 순, 마지막 전체 훑기 기준)
+    var nearKey: String? = nil                // near 를 만든 조건 (조건이 바뀌면 전체부터 다시)
+    var fullAt: Date? = nil                   // 마지막 전체 훑기
+    var firstHit: [String: Date]? = nil       // 오늘 장중 처음 걸린 시각 (15분 재확인)
+    var firstHitDay: String? = nil
     var warns: [String: [String]]? = nil      // 걸린 종목 위쪽 30개의 유의사항 (VI·투자경고·거래정지…). 마지막 훑기 기준
     var warnsAt: Date? = nil
     var realBaseDay: String? = nil            // [실전] 하루 손실 한도 기준을 잡은 날
@@ -325,7 +331,36 @@ final class MockDesk {
         return phase
     }
 
+    /// 지금 하루 구간. 장 일정이 닫힘인데 시각이 장중이면 휴장
+    func seg(_ now: Date = Date()) -> MockClock.Seg {
+        let g = MockClock.seg(now)
+        if phase == .closed && (g == .watch || g == .pick || g == .tidy) { return .holiday }
+        return g
+    }
+
     // MARK: 관찰
+
+    /// 훑기 조건 표시 (조건·범위가 바뀌면 가까운 종목을 다시 잰다)
+    private func nearKey(_ b: MockBundle) -> String { b.scope.rawValue + "|" + b.pieces.map(\.text).joined(separator: "|") }
+
+    /// 이번 훑기가 전체인가: 오늘 첫 훑기 · 조건이 바뀜 · 가까운 종목 없음 · 전체 간격이 지남
+    func fullDue(_ b: MockBundle, now: Date = Date()) -> Bool {
+        guard let at = s.fullAt, MockFmt.day(at) == MockFmt.day(now), s.nearKey == nearKey(b), !(s.near ?? []).isEmpty else { return true }
+        // 장 전에 한 전체 훑기는 지난 봉 기준이라, 9:00이 지나면 한 번 더 전체
+        if MockClock.minute(now) >= MockClock.watchFrom && MockClock.minute(at) < MockClock.watchFrom { return true }
+        return now.timeIntervalSince(at) >= MockClock.fullEvery
+    }
+
+    /// 관찰 탭 한 줄: 다음 훑기가 전체인지 가까운 종목만인지, 몇 종목인지, 다음 전체 시각
+    var scanPlan: String? {
+        guard let b = bundle, !b.pieces.isEmpty else { return nil }
+        if fullDue(b) {
+            let first = s.fullAt.map { MockFmt.day($0) != MockFmt.day(Date()) } ?? true
+            return "다음 훑기 · 전체 \(Self.universe.count.formatted())종목" + (first ? " · 오늘 첫 바퀴" : "")
+        }
+        let next = (s.fullAt ?? Date()).addingTimeInterval(MockClock.fullEvery)
+        return "다음 훑기 · 가까운 \((s.near ?? []).count.formatted())종목만 · 전체 \(MockFmt.time(next))"
+    }
 
     func runObserve() async {
         guard await waitTick(), busy == nil else { return }
@@ -365,10 +400,12 @@ final class MockDesk {
             return
         }
         defer { progress = nil }
-        let t0 = Date(), stocks = Self.universe, codes = stocks.map(\.code)
+        // 오늘 첫 훑기·간격마다는 전체, 그 사이는 조건 문턱에 가까운 종목만 (MockClock.fullEvery · nearMin)
+        let t0 = Date(), full = fullDue(b, now: t0), nearSet = Set(s.near ?? [])
+        let stocks = full ? Self.universe : Self.universe.filter { nearSet.contains($0.code) }, codes = stocks.map(\.code)
         let need = max(61, ([b] + s.exceptions.bundles).map(\.need).max() ?? 0), count = min(200, need)
-        // 같은 날·같은 봉 수면 멈춘 데서 이어 받는다 (기준일이 바뀌면 처음부터)
-        let key = "\(MockFmt.day(Date()))|\(count)|\(codes.count)"
+        // 같은 날·같은 봉 수·같은 방식이면 멈춘 데서 이어 받는다 (기준일이 바뀌면 처음부터)
+        let key = "\(MockFmt.day(Date()))|\(count)|\(full ? "all" : "near")|\(codes.count)"
         if partial?.key != key { partial = Partial(key: key) }
         progress = (partial?.n ?? 0, codes.count)
         do {
@@ -383,22 +420,33 @@ final class MockDesk {
             partial = nil; paused = nil
             let exHits = MockCalc.exceptionHits(s.exceptions.bundles, stocks: stocks, bars: got.bars)
             let ex = excluded(extra: exHits)
-            let scan = MockCalc.scan(b, stocks: stocks, bars: got.bars, excluded: Set(ex.keys), at: Date(), seconds: Date().timeIntervalSince(t0),
+            var scan = MockCalc.scan(b, stocks: stocks, bars: got.bars, excluded: Set(ex.keys), at: Date(), seconds: Date().timeIntervalSince(t0),
                                      frac: MockCalc.frac(s.curves ?? [], at: Date()))
-            s.bigCodes = MockCalc.big(got.bars, n: 20)
+            scan.full = full
+            if full {
+                // 전체 바퀴: 가까운 종목 줄을 새로 세운다 (새로 가까워진 종목이 들어온다)
+                s.bigCodes = MockCalc.big(got.bars, n: 20)
+                s.near = MockCalc.near(b, stocks: stocks, bars: got.bars, excluded: Set(ex.keys))
+                s.nearKey = nearKey(b); s.fullAt = Date()
+            }
+            let mode = full ? " · 전체" : " · 가까운 종목만"
             let dropText = scan.dropped.sorted { $0.key < $1.key }.map { (k, n) in (k < 0 ? "자료 없음" : (k < scan.pieceTexts.count ? scan.pieceTexts[k] : "?")) + " \(n)" }.joined(separator: " · ")
-            let ev = log(.scan, book: .rule, text: "\(b.name) · 걸린 \(scan.hits.count) / \(scan.total) · 기준 \(scan.barDay)" + (dropText.isEmpty ? "" : " · 떨어진 " + dropText) + newText(scan), bundle: b.name)
+            let ev = log(.scan, book: .rule, text: "\(b.name) · 걸린 \(scan.hits.count) / \(scan.total)" + mode + " · 기준 \(scan.barDay)" + (dropText.isEmpty ? "" : " · 떨어진 " + dropText) + newText(scan), bundle: b.name)
             if !scan.excluded.isEmpty {
                 let why = Dictionary(grouping: scan.excluded, by: { (ex[$0] ?? "").components(separatedBy: " · ").first ?? "" }).map { "\($0.key) \($0.value.count)" }.joined(separator: " · ")
                 log(.exclude, book: .rule, text: "예외로 뺀 \(scan.excluded.count) · " + why, bundle: b.name, ref: ev.id)
             }
             s.scan = scan; s.scanEvent = ev.id; s.exceptHits = exHits
             addSeen(scan)
+            // 15분 재확인: 장중에 처음 걸린 시각 (장 밖 훑기는 지난 봉이라 세지 않는다)
+            let today = MockFmt.day(scan.at)
+            if s.firstHitDay != today { s.firstHit = [:]; s.firstHitDay = today }
+            if phase == .open { for h in scan.hits where s.firstHit?[h.code] == nil { s.firstHit?[h.code] = scan.at } }
             await refreshWarns(scan)
             for h in scan.hits { s.prices[h.code] = h.price }
             let errN = got.errors.count
             s.runs["observe"] = MockRun(at: Date(), ok: errN < codes.count / 10,
-                                        text: "\(MockFmt.time(Date())) 훑음 · \(Int(scan.seconds))초 · 일봉 기준 \(scan.barDay)" + (errN > 0 ? " · 못 받은 \(errN)" : ""))
+                                        text: "\(MockFmt.time(Date())) 훑음" + mode + " \(scan.total.formatted()) · \(Int(scan.seconds))초 · 일봉 기준 \(scan.barDay)" + (errN > 0 ? " · 못 받은 \(errN)" : ""))
         } catch is CancellationError {
             // 취소(앱 나감·화면 전환)는 오류가 아니다. 받은 묶음은 두고 멈춤으로
             paused = obsFrom
@@ -438,21 +486,32 @@ final class MockDesk {
     }
 
     /// 하루 거래량 곡선: 장 밖(8:30 전·15:45 뒤)에 하루 두 번까지 큰 종목 20개의 마지막 거래일 1분봉을 받아 하나 더한다
+    /// 큰 종목은 마지막 전체 훑기 기준, 아직 없으면 고정 20개. 받기에 실패하면 그때를 태우지 않고 10분 뒤 다시 (2026-10-27)
     private var curving = false
+    private var curveLast: Date?
+    static let bigDefault = ["005930", "000660", "373220", "207940", "005380", "000270", "068270", "105560", "035420", "055550",
+                             "005490", "012450", "035720", "006400", "051910", "028260", "329180", "086790", "032830", "011200"]
     func curveIfNeeded(now: Date = Date()) async {
-        var cal = Calendar(identifier: .gregorian); cal.timeZone = MockFmt.kst
-        let c = cal.dateComponents([.hour, .minute], from: now), m = (c.hour ?? 0) * 60 + (c.minute ?? 0)
+        let m = MockClock.minute(now)
         let key = MockFmt.day(now) + (m < 720 ? "a" : "p")
-        guard !curving, m < 510 || m >= 945, s.curveTried != key, let codes = s.bigCodes, !codes.isEmpty else { return }
+        guard !curving, m < MockClock.curveUntil || m >= MockClock.curveFrom, s.curveTried != key,
+              now.timeIntervalSince(curveLast ?? .distantPast) >= 600 else { return }
+        let codes = (s.bigCodes ?? []).isEmpty ? Self.bigDefault : s.bigCodes!
         curving = true; defer { curving = false }
-        s.curveTried = key
-        var days: [String: [[MockBar]]] = [:]
+        curveLast = now
+        var days: [String: [[MockBar]]] = [:], n = 0
         for code in codes {
-            if let r = try? await MockFeed.minutes(code), !r.day.isEmpty, !r.bars.isEmpty { days[r.day, default: []].append(r.bars) }
+            if let r = try? await MockFeed.minutes(code), !r.day.isEmpty, !r.bars.isEmpty { days[r.day, default: []].append(r.bars); n += 1 }
         }
-        guard let best = days.max(by: { $0.key < $1.key }), !(s.curves ?? []).contains(where: { $0.day == best.key }),
-              let cum = MockCalc.curve(best.value) else { return }
+        guard let best = days.max(by: { $0.key < $1.key }) else {
+            s.curveNote = "\(MockFmt.time(now)) 받기 실패 · 1분봉 0/\(codes.count) · 10분 뒤 다시"; save(); return
+        }
+        if (s.curves ?? []).contains(where: { $0.day == best.key }) { s.curveTried = key; s.curveNote = nil; save(); return }
+        guard let cum = MockCalc.curve(best.value) else {
+            s.curveNote = "\(MockFmt.time(now)) 받기 실패 · 1분봉 \(n)/\(codes.count) · 10분 뒤 다시"; save(); return
+        }
         s.curves = Array(((s.curves ?? []) + [MockCurve(day: best.key, cum: cum)]).sorted { $0.day < $1.day }.suffix(20))
+        s.curveTried = key; s.curveNote = nil
         save()
     }
 
@@ -532,6 +591,22 @@ final class MockDesk {
             return false
         }
         let today = MockFmt.day(Date())
+        // 거래대금 바닥 (MockClock.amountFloor 억) · 장중이면 15분 재확인 (처음 걸린 뒤 recheck 지난 훑기에서 다시 걸린 종목만)
+        let floor = MockClock.amountFloor, first = s.firstHitDay == today ? (s.firstHit ?? [:]) : [:]
+        sc.hits = sc.hits.filter { h in
+            let amt = h.amount ?? 0
+            if amt < floor {
+                capped.append(MockCalc.Skip(code: h.code, name: h.name, why: "거래대금 바닥 · \(MockFmt.num((amt * 10).rounded() / 10))억 < \(MockFmt.num(floor))억"))
+                return false
+            }
+            guard phase == .open else { return true }
+            guard let t = first[h.code], scan.at.timeIntervalSince(t) >= MockClock.recheck else {
+                let from = first[h.code].map { " · \(MockFmt.time($0.addingTimeInterval(MockClock.recheck)))부터" } ?? ""
+                capped.append(MockCalc.Skip(code: h.code, name: h.name, why: "재확인 대기" + from))
+                return false
+            }
+            return true
+        }
         let sold = Set(ledgerEvents(b).filter { $0.kind == .fill && $0.side == .sell && MockFmt.day($0.at) == today }.compactMap(\.code))
         let (picks, rest) = MockCalc.select(sc, ledger: ledger(b), rule: s.select, fees: s.fees, prices: s.prices, excluded: excluded(), soldToday: sold)
         let skips = capped + rest
@@ -547,8 +622,8 @@ final class MockDesk {
         s.picks = picks; s.picksBook = b; s.pickEvents = pe; s.skips = skips; s.pickedAt = Date(); s.dropped = []
         s.aiViews = [:]
         lastPicks = picks
-        let shortN = skips.filter(\.short).count
-        s.runs["select"] = MockRun(at: Date(), ok: true, text: "\(MockFmt.time(Date())) 고름 · \(picks.count)종목 · 현금 부족 \(shortN)건")
+        let shortN = skips.filter(\.short).count + picks.filter { $0.short == true }.count
+        s.runs["select"] = MockRun(at: Date(), ok: true, text: "\(MockFmt.time(Date())) 고름 · \(picks.count)종목 · 한 번 ≤\(MockFmt.num((s.select.roundMax ?? 0.10) * 100))% · 현금 부족 \(shortN)건")
         if buy { await order() }
     }
 
@@ -650,7 +725,6 @@ final class MockDesk {
         // 주문 직전에 예외를 또 한 번 막는다 (손 주문은 막지 않는다)
         if who != .hand, let why = excluded()[code] { log(.exclude, book: b, who: who, code: code, name: name, text: "주문 직전 예외 · " + why, ref: ref); return false }
         if ledger(b).pending.contains(where: { $0.code == code }) { log(.order, book: b, who: who, code: code, name: name, text: "같은 종목 주문 대기 중 · 안 냄", ref: ref); return false }
-        if who != .hand && ledger(b).positions[code] != nil { log(.order, book: b, who: who, code: code, name: name, text: "이미 보유 · 안 냄", ref: ref); return false }
         var book: MockCalc.Book
         do { book = try await broker(b).book(code) }
         catch is CancellationError { return false }
@@ -669,13 +743,16 @@ final class MockDesk {
         // 미수 안 씀: 주수를 정한 주문(손 주문)이 현금보다 크면 줄이지 않고 거부한다. 결제 대기 돈은 쓰지 못한다
         // 실전 장부는 토스 주문가능 현금도 넘지 않는다 (모르면 한 번 읽는다. 그래도 모르면 사지 않는다)
         if b == .real && account == nil { await refreshAccount() }
-        let room = b == .real ? min(l.cash, account?.cash ?? 0) : l.cash
+        let cash = b == .real ? min(l.cash, account?.cash ?? 0) : l.cash
+        // [모의] 장부는 모든 매수(규칙·AI·손)가 남길 현금(평가액 대비, 고르기 규칙)을 지킨다. [실전]은 그대로
+        let keep = b == .rule ? s.select.keepCash * equity(b) : 0
+        let room = MockCalc.usable(cash: cash, keep: keep)
         let can = Int((room / unit).rounded(.down))
         if qty != nil && q > can {
             let need = Double(q) * unit
             let why = l.cash + l.settling >= need
                 ? "현금 부족 · 결제 대기 " + MockFmt.won(l.settling) + "은 이틀 안에 들어올 돈 · 미수 안 씀 · 거부"
-                : "현금 부족 · 필요 " + MockFmt.won(need) + " · 쓸 수 있는 돈 " + MockFmt.won(l.cash) + " · 거부"
+                : "현금 부족 · 필요 " + MockFmt.won(need) + (keep > 0 ? " · 남길 현금 " + MockFmt.won(keep) : "") + " · 쓸 수 있는 돈 " + MockFmt.won(room) + " · 거부"
             log(.reject, book: b, who: who, code: code, name: name, text: why, test: test, side: .buy, qty: q, ref: ref)
             notify("거부 · " + name, why)
             return false
@@ -684,8 +761,9 @@ final class MockDesk {
         q = min(q, can)
         guard q >= 1 else {
             let wait = l.settling > 0 ? " · 결제 대기 " + MockFmt.won(l.settling) : ""
-            log(l.cash < px ? .short : .order, book: b, who: who, code: code, name: name,
-                text: l.cash < px ? "현금 부족 · 남은 " + MockFmt.won(l.cash) + wait : "0주 · 주문 안 냄 (정상)", test: test, ref: ref)
+            let why = keep > 0 ? "현금 부족 · 남길 현금 " + MockFmt.won(keep) + " · 쓸 수 있는 " + MockFmt.won(room) : "현금 부족 · 남은 " + MockFmt.won(l.cash)
+            log(room < unit ? .short : .order, book: b, who: who, code: code, name: name,
+                text: room < unit ? why + wait : "0주 · 주문 안 냄 (정상)", test: test, ref: ref)
             return false
         }
         // 미끄러짐 한도: 다 채우면 평균 단가가 1호가 + 한도를 넘을 때, 한도 값까지만 지금 채우고 남은 몫은 지정가로 30분 기다린다
@@ -979,8 +1057,11 @@ final class MockDesk {
             obsFrom = "auto"
             await observe()
             // 훑기가 끝났을 때만 고른다 (멈춤·실패면 옛 결과로 고르지 않는다)
-            if s.runs["observe"]?.ok == true { for b in autoBooks where !halted { await select(b, buy: autoOrder) } }
-            picked = true
+            // 고르기·매수는 '고르고 주문' 구간만 (지켜보기·정리는 훑기만, 팔기 규칙은 위에서 계속 돈다)
+            if s.runs["observe"]?.ok == true && seg().buys {
+                for b in autoBooks where !halted { await select(b, buy: autoOrder) }
+                picked = true
+            }
         }
         await addMark()
         ticking = false

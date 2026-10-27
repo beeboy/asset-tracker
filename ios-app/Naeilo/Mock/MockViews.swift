@@ -129,6 +129,7 @@ struct MockBox<Fig: View>: View {
     var sideColor: Color = BoxInk.sub
     let tailL: Text
     let tailR: String
+    var seg = false            // 오른쪽에 하루 구간 알약 (고르고 주문 구간이 아닐 때만)
     @ViewBuilder var shape: Fig
 
     var body: some View {
@@ -139,6 +140,7 @@ struct MockBox<Fig: View>: View {
                 if MockDesk.shared.shown == .real {
                     mt("실전").appFont(11, .bold).foregroundStyle(.white).padding(.horizontal, 8).padding(.vertical, 3).background(BoxInk.up, in: Capsule())
                 }
+                if seg { MockSegPill() }
                 MockStatePill()
             }
             HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -211,15 +213,15 @@ struct MockTabBox: View {
                        big: mt("\(hits)종목").foregroundColor(BoxInk.ink),
                        side: "\(total.formatted()) 중",
                        tailL: mt("걸림 " + String(format: "%.1f%%", r * 100)).foregroundColor(BoxInk.sub),
-                       tailR: sc.map { MockFmt.time($0.at) + " · 일봉 " + MockFmt.md($0.barDay) } ?? "아직 안 훑음") {
+                       tailR: sc.map { MockFmt.time($0.at) + " · 일봉 " + MockFmt.md($0.barDay) } ?? "아직 안 훑음", seg: true) {
             MockShareBar(value: r, color: BoxInk.good, minShare: hits > 0 ? 0.06 : 0)
         }
     }
 
     private func select(_ d: MockDesk) -> some View {
         let l = d.ledger(d.shown)
-        let waitBuys = Set(l.pending.filter { $0.side == .buy && l.positions[$0.code] == nil }.map(\.code))
-        let n = l.positions.count + waitBuys.count + d.picks.count
+        // 고른 종목 카드와 같은 셈: 대기 주문 + 고른 종목 (보유는 카드에 안 보이니 뺌)
+        let n = l.pending.count + d.picks.count
         let bought = l.positions.values.reduce(0) { $0 + $1.cost }
         let all = bought + l.cash + l.reserved + l.settling
         let r = all > 0 ? bought / all : 0
@@ -227,7 +229,7 @@ struct MockTabBox: View {
                        big: mt("\(n)종목").foregroundColor(BoxInk.ink),
                        side: MockFmt.man(bought),
                        tailL: mt("산 돈 " + String(format: "%.0f%%", r * 100)).foregroundColor(BoxInk.sub),
-                       tailR: "현금 " + (d.shownCash.map(MockFmt.man) ?? "계좌 못 읽음") + (l.settling > 0 ? " · 결제 대기 " + MockFmt.man(l.settling) : "")) {
+                       tailR: "현금 " + (d.shownCash.map(MockFmt.man) ?? "계좌 못 읽음") + (l.settling > 0 ? " · 결제 대기 " + MockFmt.man(l.settling) : ""), seg: true) {
             MockShareBar(value: r, color: Theme.gold)
         }
     }
@@ -243,7 +245,7 @@ struct MockTabBox: View {
                        big: mt(d.shownEquity.map(MockFmt.man) ?? "계좌 못 읽음").foregroundColor(BoxInk.ink),
                        side: pl.map { ($0 < 0 ? "−" : $0 > 0 ? "+" : "") + Self.man(abs($0)) + (real ? " 비용 뒤" : " 오늘") } ?? "—", sideColor: c,
                        tailL: mt("주문가능 " + (d.shownCash.map(Self.man) ?? "—")).foregroundColor(BoxInk.sub),
-                       tailR: room > 0 ? "한도까지 " + Self.man(room) : "한도 넘음") {
+                       tailR: room > 0 ? "손실 한도까지 " + Self.man(room) : "손실 한도 넘음") {
             MockShareBar(value: cap > 0 ? 1 - room / cap : 0, color: room > 0 ? BoxInk.gold : BoxInk.up)
         }
     }
@@ -268,6 +270,21 @@ struct MockTabBox: View {
 }
 
 /// 상태 알약: 도는 중 · 정상 n분 전 · 장 밖(시험) · 장 확인 못 함. 1분 주기는 보이지 않는다 (깜빡이지 않게)
+/// 하루 구간 알약: 지켜보기·정리는 금색, 장 시작 전·마감 후·휴장은 '정지'. 고르고 주문 구간엔 숨긴다
+struct MockSegPill: View {
+    var body: some View {
+        TimelineView(.everyMinute) { ctx in
+            let g = MockDesk.shared.seg(ctx.date)
+            if !g.buys {
+                let c = g == .watch || g == .tidy ? BoxInk.gold : BoxInk.dim
+                mt(g == .watch || g == .tidy ? g.name : g.name + " · 정지").appFont(11, .semibold).foregroundStyle(c)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .overlay(Capsule().stroke(c.opacity(0.6)))
+            }
+        }
+    }
+}
+
 struct MockStatePill: View {
     var body: some View {
         TimelineView(.everyMinute) { ctx in
@@ -957,7 +974,7 @@ struct MockObserveView: View {
         MockScreen(tab: .observe) {
             condCard(d)
             if let sc = d.s.scan { hitsCard(sc) }
-            MockCurveCard(curves: d.s.curves ?? [])
+            MockCurveCard(curves: d.s.curves ?? [], note: d.s.curveNote)
         }
         .onPreferenceChange(HoldColW.self) { colW = $0 }
         .sheet(item: $info) { MockStockSheet(code: $0.code, name: $0.name, seen: true) }
@@ -983,6 +1000,7 @@ struct MockObserveView: View {
             }
             if let r = d.s.runs["observe"], !r.ok { MockRunLine(run: r) }
             HStack {
+                if let plan = d.scanPlan { mt(plan).appFont(12).foregroundStyle(Theme.muted).lineLimit(2) }
                 Spacer()
                 MockGoPill(title: "지금 훑기") { await d.runObserve() }
             }
@@ -1055,6 +1073,7 @@ struct MockObserveView: View {
 /// 하루 거래량 곡선 (관찰 탭 아래): 최근 곡선들의 칸별 가운데 값 · 지금 쌓임 · 시각별 쌓임. 새 배수가 나누는 값
 struct MockCurveCard: View {
     let curves: [MockCurve]
+    var note: String? = nil
     private static let marks = [2, 4, 12, 20, 24]   // 9:30 10:00 12:00 14:00 15:00
 
     var body: some View {
@@ -1074,10 +1093,19 @@ struct MockCurveCard: View {
                 mt(Self.marks.map { k in "\(Self.time(k)) \(Int((mid[k] * 100).rounded()))%" }.joined(separator: " · "))
                     .appFont(11).foregroundStyle(Theme.muted).monospacedDigit()
             } else {
-                mt("아직 없어요 · 한 번 훑은 뒤 15:45 뒤나 8:30 전에 앱을 열어 두면 하루치가 쌓여요")
-                    .appFont(12).foregroundStyle(Theme.muted)
+                // 비어 있을 때: 언제 쌓이는지 · 마지막 실패 이유
+                mt("아직 곡선이 없어요").appFont(13, .semibold).foregroundStyle(Theme.sub)
+                mt("장 밖(8:30 전·15:45 뒤)에 투자 모드로 앱을 열어 두면 하루 하나씩 쌓여요 · " + Self.next())
+                    .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                if let note { mt(note).appFont(12).foregroundStyle(Theme.orange) }
             }
         }
+    }
+
+    /// 다음 받을 때: 장중이면 15:45, 장 밖이면 곧
+    private static func next() -> String {
+        let m = MockClock.minute(Date())
+        return m >= MockClock.curveUntil && m < MockClock.curveFrom ? "다음 \(MockClock.hm(MockClock.curveFrom))" : "곧 받아요"
     }
 
     private static func time(_ k: Int) -> String {
@@ -1131,6 +1159,7 @@ struct MockPickRow: Identifiable {
     var pct: Double              // 체결 = 산 값 대비, 나머지 = 오늘 등락
     var side: MockSide = .buy
     var orderId: UUID? = nil
+    var add = false              // 보유 종목 추가 매수
     var id: String { code + kind.rawValue + side.rawValue }
 }
 
@@ -1207,17 +1236,16 @@ struct MockSelectView: View {
         let l = d.ledger(d.shown)
         let change = Dictionary((d.s.scan?.hits ?? []).map { ($0.code, $0.change ?? 0) }, uniquingKeysWith: { a, _ in a })
         func px(_ c: String, _ fallback: Double) -> Double { d.s.prices[c] ?? fallback }
+        // 보유 종목은 일지에서 본다 (여기는 대기 주문 · 오늘 고른 것 · 뺀 것만)
         var out: [MockPickRow] = []
-        for p in l.positions.values.sorted(by: { $0.opened < $1.opened }) {
-            let now = px(p.code, p.avg)
-            out.append(MockPickRow(code: p.code, name: p.name, qty: p.qty, kind: .filled, price: now, pct: p.avg > 0 ? now / p.avg - 1 : 0))
-        }
         for o in l.pending {
             let now = px(o.code, o.limit ?? 0)
-            out.append(MockPickRow(code: o.code, name: o.name, qty: o.qty, kind: .wait, price: now, pct: change[o.code] ?? 0, side: o.side, orderId: o.id))
+            out.append(MockPickRow(code: o.code, name: o.name, qty: o.qty, kind: .wait, price: now, pct: change[o.code] ?? 0, side: o.side, orderId: o.id,
+                                   add: o.side == .buy && l.positions[o.code] != nil))
         }
         for p in d.picks {
-            out.append(MockPickRow(code: p.code, name: p.name, qty: p.qty, kind: .pick, price: px(p.code, p.price), pct: change[p.code] ?? 0))
+            out.append(MockPickRow(code: p.code, name: p.name, qty: p.qty, kind: .pick, price: px(p.code, p.price), pct: change[p.code] ?? 0,
+                                   add: l.positions[p.code] != nil))
         }
         for p in d.dropped {
             out.append(MockPickRow(code: p.code, name: p.name, qty: p.qty, kind: .dropped, price: px(p.code, p.price), pct: change[p.code] ?? 0))
@@ -1263,7 +1291,7 @@ struct MockSelectView: View {
         case .filled:
             Color.clear.frame(width: 1, height: 1)
         case .wait, .pick:
-            MockQtyPill(text: (r.side == .sell ? "팔기 " : "") + "\(r.qty)주 대기", done: false)
+            MockQtyPill(text: (r.side == .sell ? "팔기 " : r.add ? "추가 " : "") + "\(r.qty)주 대기", done: false)
         case .dropped:
             mt("뺌").appFont(12, .bold).foregroundStyle(Theme.muted).lineLimit(1)
                 .padding(.horizontal, 6).padding(.vertical, 3)

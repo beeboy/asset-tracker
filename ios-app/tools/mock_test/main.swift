@@ -60,24 +60,74 @@ var L = MockLedger(book: .rule, started: t0)
 let rule = MockSelectRule()
 let sel = MockCalc.select(scan, ledger: L, rule: rule, fees: fees, prices: [:], excluded: [:])
 check(sel.picks.count == 2, "두 종목 고름")
-// 쓸 돈 = min(20% × 1천만 = 200만, (1천만 − 200만)/5 = 160만) = 160만
-check(sel.picks[0].qty == Int((1_600_000 / (8_336 * 1.00015)).rounded(.down)), "수량: \(sel.picks[0].qty)")
-check(sel.picks.allSatisfy { $0.budget <= 1_600_000 }, "예산 안")
+// 쓸 돈 = min(최대 비중 20% × 1천만 = 200만, 한 번 10% × 1천만 ÷ 실제 고른 2종목 = 50만) = 50만 (고르기는 현금을 나눠 보지 않는다)
+check(sel.picks[0].qty == Int((500_000 / (8_336 * 1.00015)).rounded(.down)), "수량: \(sel.picks[0].qty)")
+check(sel.picks.allSatisfy { $0.budget <= 500_000 && $0.short == nil }, "예산 안 · 현금 넉넉")
+check(sel.picks.reduce(0) { $0 + $1.budget } <= 0.10 * 10_000_000, "한 번 합계 ≤ 평가액 10%")
+// 한 번 몫을 넓히면 그만큼 (종목당 20%까지)
+var wide = rule; wide.roundMax = 1.0
+let selWide = MockCalc.select(scan, ledger: L, rule: wide, fees: fees, prices: [:], excluded: [:])
+check(selWide.picks[0].qty == Int((2_000_000 / (8_336 * 1.00015)).rounded(.down)), "한 번 몫 100%: \(selWide.picks[0].qty)")
 // 현금 부족
 var poor = L; poor.cash = 9_000
+// 오늘 장부처럼: 보유 종목으로 평가액은 크고 현금만 적다
+poor.positions["Z"] = MockPosition(code: "Z", name: "Z", qty: 1_000, cost: 10_001_500, gross: 10_000_000, opened: t0, openedDay: "2026-10-20", who: .rule, test: false)
 let selPoor = MockCalc.select(scan, ledger: poor, rule: rule, fees: fees, prices: [:], excluded: [:])
-check(selPoor.picks.isEmpty && selPoor.skips.contains { $0.short }, "현금 부족: \(selPoor.skips)")
+// 고르기는 현금을 보지 않는다: 현금이 없어도 고르고 현금 부족으로 표시한다
+check(selPoor.picks.count == 2 && selPoor.picks.allSatisfy { $0.short == true && $0.why.hasSuffix("현금 부족") }, "현금 부족도 고름: \(selPoor.picks)")
+// 오늘 장부 그대로: 평가액 1,010만 · 현금 206만 · 남길 현금 20% → 쓸 수 있는 돈 ≈ 4만. 1만원 종목 하나만 걸리면 한 번 몫 101만을 다 받고 현금 부족 표시
+var today = L; today.cash = 2_060_000
+today.positions["Z"] = MockPosition(code: "Z", name: "Z", qty: 804, cost: 8_041_206, gross: 8_040_000, opened: t0, openedDay: "2026-10-20", who: .rule, test: false)
+let tenK = MockScan(at: t0, bundleId: bundle.id, bundleName: "A", pieceTexts: [], barDay: "", total: 1,
+                    hits: [MockHit(code: "8", name: "만원", price: 10_000, change: nil, score: 1, why: "")], dropped: [:])
+let selToday = MockCalc.select(tenK, ledger: today, rule: rule, fees: fees, prices: [:], excluded: [:])
+check(selToday.picks.count == 1 && selToday.picks[0].qty == Int((1_010_000 / (10_000 * (1 + fees.commission))).rounded(.down))
+      && selToday.picks[0].short == true, "오늘 장부 1만원 종목: \(selToday.picks) \(selToday.skips)")
 // 0주
 let pricey = MockScan(at: t0, bundleId: bundle.id, bundleName: "A", pieceTexts: [], barDay: "", total: 1,
                       hits: [MockHit(code: "9", name: "비싼", price: 3_000_000, change: nil, score: 1, why: "")], dropped: [:])
 let sel0 = MockCalc.select(pricey, ledger: L, rule: rule, fees: fees, prices: [:], excluded: [:])
 check(sel0.picks.isEmpty && sel0.skips.first?.why.hasPrefix("0주") == true, "0주 정상: \(sel0.skips)")
+// 한 종목만 걸리면 한 번 몫을 다 받는다 (종목당 한도 안)
+let selOne = MockCalc.select(tenK, ledger: L, rule: rule, fees: fees, prices: [:], excluded: [:])
+check(selOne.picks.first?.qty == Int((1_000_000 / (10_000 * (1 + fees.commission))).rounded(.down)), "한 종목은 한 번 몫 전부: \(selOne.picks)")
+// 0주로 빠진 종목 몫은 나머지에 간다
+let mixed = MockScan(at: t0, bundleId: bundle.id, bundleName: "A", pieceTexts: [], barDay: "", total: 2,
+                     hits: [MockHit(code: "7", name: "비쌈", price: 600_000, change: nil, score: 2, why: ""),
+                            MockHit(code: "8", name: "만원", price: 10_000, change: nil, score: 1, why: "")], dropped: [:])
+let selMix = MockCalc.select(mixed, ledger: L, rule: rule, fees: fees, prices: [:], excluded: [:])
+check(selMix.picks.map(\.code) == ["8"] && selMix.picks[0].qty == Int((1_000_000 / (10_000 * (1 + fees.commission))).rounded(.down))
+      && selMix.skips.contains { $0.code == "7" && $0.why.hasPrefix("0주") }, "0주 몫 넘김: \(selMix.picks) \(selMix.skips)")
+// 종목당 한도에 걸리면 못 쓴 몫을 나머지에 준다 (합계는 한 번 몫을 넘지 않음)
+var tight = rule; tight.roundMax = 0.30; tight.maxPer = 0.05
+let selTight = MockCalc.select(mixed, ledger: L, rule: tight, fees: fees, prices: [:], excluded: [:])
+check(selTight.picks.reduce(0) { $0 + $1.budget } <= 0.30 * 10_000_000 && selTight.picks.allSatisfy { $0.budget <= 0.05 * 10_000_000 }, "한도 걸린 몫: \(selTight.picks)")
+// 주문 때 남길 현금: 오늘 장부 현금 206만 − 평가액 1,010만 × 20% = 4만, 현금이 남길 돈보다 적으면 0
+check(abs(MockCalc.usable(cash: 2_060_000, keep: 0.20 * 10_100_000) - 40_000) < 1 && MockCalc.usable(cash: 1_000_000, keep: 2_000_000) == 0, "남길 현금")
 // 예외
 let selEx = MockCalc.select(scan, ledger: L, rule: rule, fees: fees, prices: [:], excluded: ["000001": "직접"])
 check(selEx.picks.map(\.code) == ["000002"], "선정에서 예외 막음")
 // 오늘 판 종목은 다시 고르지 않음
 let selSold = MockCalc.select(scan, ledger: L, rule: rule, fees: fees, prices: [:], excluded: [:], soldToday: ["000001"])
 check(selSold.picks.map(\.code) == ["000002"] && selSold.skips.contains { $0.code == "000001" && $0.why.hasPrefix("오늘 판") }, "오늘 판 종목 막음: \(selSold.skips)")
+// 보유가 상위 N만큼 있어도 그날 훑은 종목에서 고른다 (보유 종목은 건너뜀)
+var full = L
+for c in ["H1", "H2", "H3", "H4", "000001"] {
+    full.positions[c] = MockPosition(code: c, name: c, qty: 1, cost: 1_000, gross: 1_000, opened: t0, openedDay: "2026-10-26", who: .rule, test: false)
+}
+let selFull = MockCalc.select(scan, ledger: full, rule: rule, fees: fees, prices: [:], excluded: [:])
+// 보유 종목도 조건에 맞으면 추가로 고른다. 쓸 돈 = 최대 비중 − 보유 평가액
+let eqFull = MockCalc.equity(full, prices: [:])
+let add1 = selFull.picks.first { $0.code == "000001" }
+let one1 = (scan.hits.first { $0.code == "000001" }?.price ?? 0) * (1 + fees.commission)
+check(selFull.picks.map(\.code).sorted() == ["000001", "000002"] && add1?.why.contains("추가 · 보유 1주") == true
+      && add1?.qty == Int((min(rule.maxPer * eqFull - (scan.hits.first { $0.code == "000001" }?.price ?? 0), 0.10 * eqFull / 2) / one1).rounded(.down)),
+      "보유도 추가로 고름: \(selFull.picks) \(selFull.skips)")
+// 보유가 이미 종목당 한도를 채웠으면 건너뜀
+var capped = L
+capped.positions["000001"] = MockPosition(code: "000001", name: "000001", qty: 1_000, cost: 10_000_000, gross: 10_000_000, opened: t0, openedDay: "2026-10-26", who: .rule, test: false)
+let selCap = MockCalc.select(scan, ledger: capped, rule: rule, fees: fees, prices: [:], excluded: [:])
+check(!selCap.picks.contains { $0.code == "000001" } && selCap.skips.contains { $0.code == "000001" && $0.why.hasPrefix("종목당 한도 참") }, "한도 찬 보유 건너뜀: \(selCap.skips)")
 
 // 호가 채우기
 let book = MockCalc.Book(asks: [.init(p: 8_440, v: 100), .init(p: 8_420, v: 50), .init(p: 8_460, v: 1000)],
