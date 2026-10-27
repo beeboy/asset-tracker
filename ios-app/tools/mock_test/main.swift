@@ -95,7 +95,18 @@ for c in ["H1", "H2", "H3", "H4", "000001"] {
     full.positions[c] = MockPosition(code: c, name: c, qty: 1, cost: 1_000, gross: 1_000, opened: t0, openedDay: "2026-10-26", who: .rule, test: false)
 }
 let selFull = MockCalc.select(scan, ledger: full, rule: rule, fees: fees, prices: [:], excluded: [:])
-check(selFull.picks.map(\.code) == ["000002"] && selFull.skips.contains { $0.code == "000001" && $0.why == "이미 보유" }, "보유가 차도 고름: \(selFull.picks.map(\.code)) \(selFull.skips)")
+// 보유 종목도 조건에 맞으면 추가로 고른다. 쓸 돈 = 최대 비중 − 보유 평가액
+let eqFull = MockCalc.equity(full, prices: [:])
+let add1 = selFull.picks.first { $0.code == "000001" }
+let one1 = (scan.hits.first { $0.code == "000001" }?.price ?? 0) * (1 + fees.commission)
+check(selFull.picks.map(\.code).sorted() == ["000001", "000002"] && add1?.why.contains("추가 · 보유 1주") == true
+      && add1?.qty == Int(((rule.maxPer * eqFull - (scan.hits.first { $0.code == "000001" }?.price ?? 0)) / one1).rounded(.down)),
+      "보유도 추가로 고름: \(selFull.picks) \(selFull.skips)")
+// 보유가 이미 종목당 한도를 채웠으면 건너뜀
+var capped = L
+capped.positions["000001"] = MockPosition(code: "000001", name: "000001", qty: 1_000, cost: 10_000_000, gross: 10_000_000, opened: t0, openedDay: "2026-10-26", who: .rule, test: false)
+let selCap = MockCalc.select(scan, ledger: capped, rule: rule, fees: fees, prices: [:], excluded: [:])
+check(!selCap.picks.contains { $0.code == "000001" } && selCap.skips.contains { $0.code == "000001" && $0.why.hasPrefix("종목당 한도 참") }, "한도 찬 보유 건너뜀: \(selCap.skips)")
 
 // 호가 채우기
 let book = MockCalc.Book(asks: [.init(p: 8_440, v: 100), .init(p: 8_420, v: 50), .init(p: 8_460, v: 1000)],

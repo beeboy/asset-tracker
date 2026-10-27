@@ -650,7 +650,6 @@ final class MockDesk {
         // 주문 직전에 예외를 또 한 번 막는다 (손 주문은 막지 않는다)
         if who != .hand, let why = excluded()[code] { log(.exclude, book: b, who: who, code: code, name: name, text: "주문 직전 예외 · " + why, ref: ref); return false }
         if ledger(b).pending.contains(where: { $0.code == code }) { log(.order, book: b, who: who, code: code, name: name, text: "같은 종목 주문 대기 중 · 안 냄", ref: ref); return false }
-        if who != .hand && ledger(b).positions[code] != nil { log(.order, book: b, who: who, code: code, name: name, text: "이미 보유 · 안 냄", ref: ref); return false }
         var book: MockCalc.Book
         do { book = try await broker(b).book(code) }
         catch is CancellationError { return false }

@@ -196,7 +196,6 @@ enum MockCalc {
         var picks: [Pick] = [], skips: [Skip] = []
         for (i, h) in scan.hits.enumerated() {
             if let why = excluded[h.code] { skips.append(Skip(code: h.code, name: h.name, why: "예외 · " + why)); continue }
-            if l.positions[h.code] != nil { skips.append(Skip(code: h.code, name: h.name, why: "이미 보유")); continue }
             if pendingBuy.contains(h.code) { skips.append(Skip(code: h.code, name: h.name, why: "같은 종목 주문 대기 중")); continue }
             // 판 날은 다시 사지 않는다 (같은 날 사고팔기 되풀이로 수수료·세금만 내는 일 막음)
             if soldToday.contains(h.code) { skips.append(Skip(code: h.code, name: h.name, why: "오늘 판 종목 · 내일부터 다시 고름")); continue }
@@ -205,8 +204,15 @@ enum MockCalc {
             let one = px * (1 + fees.commission)
             guard px > 0 else { skips.append(Skip(code: h.code, name: h.name, why: "가격 확인 못 함")); continue }
             // 고르기는 현금을 보지 않는다. 쓸 돈은 종목당 최대 비중만큼, 현금은 주문할 때 본다 (모자라면 그때 줄이거나 거부)
-            let budget = rule.maxPer * eq
+            // 보유 종목도 조건에 맞으면 고른다 (추가 주문). 종목당 한도는 보유까지 합쳐서 본다
+            let held = l.positions[h.code]
+            let heldVal = Double(held?.qty ?? 0) * px
+            let budget = rule.maxPer * eq - heldVal
             let qty = Int((budget / one).rounded(.down))
+            if let held, qty < 1 {
+                skips.append(Skip(code: h.code, name: h.name, why: "종목당 한도 참 · 보유 " + String(format: "%.0f%%", eq > 0 ? heldVal / eq * 100 : 0) + " · \(held.qty)주"))
+                continue
+            }
             if qty < 1 {
                 // 한 주가 쓸 돈보다 비싸면 0주. 오류가 아니라 정상 결과로 남긴다
                 skips.append(Skip(code: h.code, name: h.name, why: "0주 · 한 주 " + MockFmt.won(px) + " > 쓸 돈 " + MockFmt.won(budget)))
@@ -216,7 +222,7 @@ enum MockCalc {
             planned += spend
             let short = planned > avail     // 지금까지 고른 몫이 쓸 수 있는 현금을 넘으면 현금 부족 표시
             picks.append(Pick(code: h.code, name: h.name, price: px, budget: spend, qty: qty, rank: i + 1,
-                              why: "\(i + 1)위 · " + h.why + (short ? " · 현금 부족" : ""), weight: eq > 0 ? spend / eq : 0,
+                              why: "\(i + 1)위 · " + h.why + (held.map { " · 추가 · 보유 \($0.qty)주" } ?? "") + (short ? " · 현금 부족" : ""), weight: eq > 0 ? spend / eq : 0,
                               short: short ? true : nil))
             slots -= 1
         }

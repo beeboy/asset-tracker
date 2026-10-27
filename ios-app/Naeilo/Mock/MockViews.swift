@@ -1131,6 +1131,7 @@ struct MockPickRow: Identifiable {
     var pct: Double              // 체결 = 산 값 대비, 나머지 = 오늘 등락
     var side: MockSide = .buy
     var orderId: UUID? = nil
+    var add = false              // 보유 종목 추가 매수
     var id: String { code + kind.rawValue + side.rawValue }
 }
 
@@ -1211,10 +1212,12 @@ struct MockSelectView: View {
         var out: [MockPickRow] = []
         for o in l.pending {
             let now = px(o.code, o.limit ?? 0)
-            out.append(MockPickRow(code: o.code, name: o.name, qty: o.qty, kind: .wait, price: now, pct: change[o.code] ?? 0, side: o.side, orderId: o.id))
+            out.append(MockPickRow(code: o.code, name: o.name, qty: o.qty, kind: .wait, price: now, pct: change[o.code] ?? 0, side: o.side, orderId: o.id,
+                                   add: o.side == .buy && l.positions[o.code] != nil))
         }
         for p in d.picks {
-            out.append(MockPickRow(code: p.code, name: p.name, qty: p.qty, kind: .pick, price: px(p.code, p.price), pct: change[p.code] ?? 0))
+            out.append(MockPickRow(code: p.code, name: p.name, qty: p.qty, kind: .pick, price: px(p.code, p.price), pct: change[p.code] ?? 0,
+                                   add: l.positions[p.code] != nil))
         }
         for p in d.dropped {
             out.append(MockPickRow(code: p.code, name: p.name, qty: p.qty, kind: .dropped, price: px(p.code, p.price), pct: change[p.code] ?? 0))
@@ -1260,7 +1263,7 @@ struct MockSelectView: View {
         case .filled:
             Color.clear.frame(width: 1, height: 1)
         case .wait, .pick:
-            MockQtyPill(text: (r.side == .sell ? "팔기 " : "") + "\(r.qty)주 대기", done: false)
+            MockQtyPill(text: (r.side == .sell ? "팔기 " : r.add ? "추가 " : "") + "\(r.qty)주 대기", done: false)
         case .dropped:
             mt("뺌").appFont(12, .bold).foregroundStyle(Theme.muted).lineLimit(1)
                 .padding(.horizontal, 6).padding(.vertical, 3)
