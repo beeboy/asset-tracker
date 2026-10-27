@@ -507,7 +507,7 @@ internal fun DoryScene(s: BoxScene) {
             }
         } }
         // 도리: 하락장엔 문어 쪽(왼쪽), 상승장엔 오페라하우스 쪽(오른쪽)
-        withTransform({ translate(dx, 130f); scale(flip, 1f, Offset.Zero) })   // ios: Views/ThemeScenes.swift:470 {
+        withTransform({ translate(dx, 130f); scale(flip, 1f, Offset.Zero) }) {   // ios: Views/ThemeScenes.swift:470
             for ((i, b) in bubs.withIndex()) {
                 val t = b(); if (t <= 0f) continue
                 val (bx0, by0, r) = listOf(Triple(14f, -8f, 1.6f), Triple(16f, -10f, 1.1f), Triple(13f, -7f, 1.3f))[i]
