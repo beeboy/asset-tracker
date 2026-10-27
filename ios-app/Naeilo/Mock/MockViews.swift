@@ -1207,11 +1207,8 @@ struct MockSelectView: View {
         let l = d.ledger(d.shown)
         let change = Dictionary((d.s.scan?.hits ?? []).map { ($0.code, $0.change ?? 0) }, uniquingKeysWith: { a, _ in a })
         func px(_ c: String, _ fallback: Double) -> Double { d.s.prices[c] ?? fallback }
+        // 보유 종목은 일지에서 본다 (여기는 대기 주문 · 오늘 고른 것 · 뺀 것만)
         var out: [MockPickRow] = []
-        for p in l.positions.values.sorted(by: { $0.opened < $1.opened }) {
-            let now = px(p.code, p.avg)
-            out.append(MockPickRow(code: p.code, name: p.name, qty: p.qty, kind: .filled, price: now, pct: p.avg > 0 ? now / p.avg - 1 : 0))
-        }
         for o in l.pending {
             let now = px(o.code, o.limit ?? 0)
             out.append(MockPickRow(code: o.code, name: o.name, qty: o.qty, kind: .wait, price: now, pct: change[o.code] ?? 0, side: o.side, orderId: o.id))
