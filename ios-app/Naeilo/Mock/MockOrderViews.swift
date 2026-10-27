@@ -615,7 +615,7 @@ struct MockAccountView: View {
         TimelineView(.everyMinute) { ctx in lightsBody(d, seg: d.seg(ctx.date)) }
     }
 
-    private func lightsBody(_ d: MockDesk, seg: MockDay.Seg) -> some View {
+    private func lightsBody(_ d: MockDesk, seg: MockClock.Seg) -> some View {
         let stop = !seg.buys, stopText = "자동 정지 · " + seg.name
         return VStack(spacing: 8) {
             HStack(spacing: 12) {

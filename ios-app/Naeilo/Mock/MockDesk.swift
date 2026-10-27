@@ -332,8 +332,8 @@ final class MockDesk {
     }
 
     /// 지금 하루 구간. 장 일정이 닫힘인데 시각이 장중이면 휴장
-    func seg(_ now: Date = Date()) -> MockDay.Seg {
-        let g = MockDay.seg(now)
+    func seg(_ now: Date = Date()) -> MockClock.Seg {
+        let g = MockClock.seg(now)
         if phase == .closed && (g == .watch || g == .pick || g == .tidy) { return .holiday }
         return g
     }
@@ -347,8 +347,8 @@ final class MockDesk {
     func fullDue(_ b: MockBundle, now: Date = Date()) -> Bool {
         guard let at = s.fullAt, MockFmt.day(at) == MockFmt.day(now), s.nearKey == nearKey(b), !(s.near ?? []).isEmpty else { return true }
         // 장 전에 한 전체 훑기는 지난 봉 기준이라, 9:00이 지나면 한 번 더 전체
-        if MockDay.minute(now) >= MockDay.watchFrom && MockDay.minute(at) < MockDay.watchFrom { return true }
-        return now.timeIntervalSince(at) >= MockDay.fullEvery
+        if MockClock.minute(now) >= MockClock.watchFrom && MockClock.minute(at) < MockClock.watchFrom { return true }
+        return now.timeIntervalSince(at) >= MockClock.fullEvery
     }
 
     /// 관찰 탭 한 줄: 다음 훑기가 전체인지 가까운 종목만인지, 몇 종목인지, 다음 전체 시각
@@ -358,7 +358,7 @@ final class MockDesk {
             let first = s.fullAt.map { MockFmt.day($0) != MockFmt.day(Date()) } ?? true
             return "다음 훑기 · 전체 \(Self.universe.count.formatted())종목" + (first ? " · 오늘 첫 바퀴" : "")
         }
-        let next = (s.fullAt ?? Date()).addingTimeInterval(MockDay.fullEvery)
+        let next = (s.fullAt ?? Date()).addingTimeInterval(MockClock.fullEvery)
         return "다음 훑기 · 가까운 \((s.near ?? []).count.formatted())종목만 · 전체 \(MockFmt.time(next))"
     }
 
@@ -400,7 +400,7 @@ final class MockDesk {
             return
         }
         defer { progress = nil }
-        // 오늘 첫 훑기·간격마다는 전체, 그 사이는 조건 문턱에 가까운 종목만 (MockDay.fullEvery · nearMin)
+        // 오늘 첫 훑기·간격마다는 전체, 그 사이는 조건 문턱에 가까운 종목만 (MockClock.fullEvery · nearMin)
         let t0 = Date(), full = fullDue(b, now: t0), nearSet = Set(s.near ?? [])
         let stocks = full ? Self.universe : Self.universe.filter { nearSet.contains($0.code) }, codes = stocks.map(\.code)
         let need = max(61, ([b] + s.exceptions.bundles).map(\.need).max() ?? 0), count = min(200, need)
@@ -492,9 +492,9 @@ final class MockDesk {
     static let bigDefault = ["005930", "000660", "373220", "207940", "005380", "000270", "068270", "105560", "035420", "055550",
                              "005490", "012450", "035720", "006400", "051910", "028260", "329180", "086790", "032830", "011200"]
     func curveIfNeeded(now: Date = Date()) async {
-        let m = MockDay.minute(now)
+        let m = MockClock.minute(now)
         let key = MockFmt.day(now) + (m < 720 ? "a" : "p")
-        guard !curving, m < MockDay.curveUntil || m >= MockDay.curveFrom, s.curveTried != key,
+        guard !curving, m < MockClock.curveUntil || m >= MockClock.curveFrom, s.curveTried != key,
               now.timeIntervalSince(curveLast ?? .distantPast) >= 600 else { return }
         let codes = (s.bigCodes ?? []).isEmpty ? Self.bigDefault : s.bigCodes!
         curving = true; defer { curving = false }
@@ -591,8 +591,8 @@ final class MockDesk {
             return false
         }
         let today = MockFmt.day(Date())
-        // 거래대금 바닥 (MockDay.amountFloor 억) · 장중이면 15분 재확인 (처음 걸린 뒤 recheck 지난 훑기에서 다시 걸린 종목만)
-        let floor = MockDay.amountFloor, first = s.firstHitDay == today ? (s.firstHit ?? [:]) : [:]
+        // 거래대금 바닥 (MockClock.amountFloor 억) · 장중이면 15분 재확인 (처음 걸린 뒤 recheck 지난 훑기에서 다시 걸린 종목만)
+        let floor = MockClock.amountFloor, first = s.firstHitDay == today ? (s.firstHit ?? [:]) : [:]
         sc.hits = sc.hits.filter { h in
             let amt = h.amount ?? 0
             if amt < floor {
@@ -600,8 +600,8 @@ final class MockDesk {
                 return false
             }
             guard phase == .open else { return true }
-            guard let t = first[h.code], scan.at.timeIntervalSince(t) >= MockDay.recheck else {
-                let from = first[h.code].map { " · \(MockFmt.time($0.addingTimeInterval(MockDay.recheck)))부터" } ?? ""
+            guard let t = first[h.code], scan.at.timeIntervalSince(t) >= MockClock.recheck else {
+                let from = first[h.code].map { " · \(MockFmt.time($0.addingTimeInterval(MockClock.recheck)))부터" } ?? ""
                 capped.append(MockCalc.Skip(code: h.code, name: h.name, why: "재확인 대기" + from))
                 return false
             }

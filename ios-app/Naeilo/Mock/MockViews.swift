@@ -1104,8 +1104,8 @@ struct MockCurveCard: View {
 
     /// 다음 받을 때: 장중이면 15:45, 장 밖이면 곧
     private static func next() -> String {
-        let m = MockDay.minute(Date())
-        return m >= MockDay.curveUntil && m < MockDay.curveFrom ? "다음 \(MockDay.hm(MockDay.curveFrom))" : "곧 받아요"
+        let m = MockClock.minute(Date())
+        return m >= MockClock.curveUntil && m < MockClock.curveFrom ? "다음 \(MockClock.hm(MockClock.curveFrom))" : "곧 받아요"
     }
 
     private static func time(_ k: Int) -> String {

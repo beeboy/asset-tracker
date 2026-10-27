@@ -5,7 +5,7 @@ import Foundation
 // 상태를 바꾸는 곳은 MockDesk 하나뿐이고, 여기 함수는 장부 사본을 받아 새 장부와 기록 줄을 돌려준다.
 
 /// 하루 구간·훑기 박자 상수 (한국 시각, 하루 분). 경계는 여기 한곳에서만 바꾼다
-enum MockDay {
+enum MockClock {
     static let watchFrom = 9 * 60            // 9:00 지켜보기 (훑기만, 고르지 않음)
     static let pickFrom = 9 * 60 + 15        // 9:15 고르고 주문
     static let tidyFrom = 15 * 60            // 15:00 정리 (새로 사지 않음, 팔기·손절은 계속)
@@ -148,7 +148,7 @@ enum MockCalc {
     }
 
     /// 가까운 종목: 모든 조각 중 가장 먼 조각의 거리가 nearMin 이상인 종목을 가까운 순으로 (걸린 종목 포함, 예외 뺌)
-    static func near(_ b: MockBundle, stocks: [MockStock], bars: [String: [MockBar]], excluded: Set<String>, min: Double = MockDay.nearMin) -> [String] {
+    static func near(_ b: MockBundle, stocks: [MockStock], bars: [String: [MockBar]], excluded: Set<String>, min: Double = MockClock.nearMin) -> [String] {
         let list = stocks.filter { b.scope == .all || (b.scope == .kospi) == $0.kospi }
         var out: [(String, Double)] = []
         for s in list where !excluded.contains(s.code) {
