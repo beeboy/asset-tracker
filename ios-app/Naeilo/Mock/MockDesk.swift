@@ -668,7 +668,10 @@ final class MockDesk {
         // 미수 안 씀: 주수를 정한 주문(손 주문)이 현금보다 크면 줄이지 않고 거부한다. 결제 대기 돈은 쓰지 못한다
         // 실전 장부는 토스 주문가능 현금도 넘지 않는다 (모르면 한 번 읽는다. 그래도 모르면 사지 않는다)
         if b == .real && account == nil { await refreshAccount() }
-        let room = b == .real ? min(l.cash, account?.cash ?? 0) : l.cash
+        let cash = b == .real ? min(l.cash, account?.cash ?? 0) : l.cash
+        // 규칙·AI 주문은 남길 현금(평가액 대비, 고르기 규칙)을 지킨다. 손 주문은 막지 않는다
+        let keep = who == .hand ? 0 : s.select.keepCash * equity(b)
+        let room = MockCalc.usable(cash: cash, keep: keep)
         let can = Int((room / unit).rounded(.down))
         if qty != nil && q > can {
             let need = Double(q) * unit
@@ -683,8 +686,9 @@ final class MockDesk {
         q = min(q, can)
         guard q >= 1 else {
             let wait = l.settling > 0 ? " · 결제 대기 " + MockFmt.won(l.settling) : ""
-            log(l.cash < px ? .short : .order, book: b, who: who, code: code, name: name,
-                text: l.cash < px ? "현금 부족 · 남은 " + MockFmt.won(l.cash) + wait : "0주 · 주문 안 냄 (정상)", test: test, ref: ref)
+            let why = keep > 0 ? "현금 부족 · 남길 현금 " + MockFmt.won(keep) + " · 쓸 수 있는 " + MockFmt.won(room) : "현금 부족 · 남은 " + MockFmt.won(l.cash)
+            log(room < unit ? .short : .order, book: b, who: who, code: code, name: name,
+                text: room < unit ? why + wait : "0주 · 주문 안 냄 (정상)", test: test, ref: ref)
             return false
         }
         // 미끄러짐 한도: 다 채우면 평균 단가가 1호가 + 한도를 넘을 때, 한도 값까지만 지금 채우고 남은 몫은 지정가로 30분 기다린다

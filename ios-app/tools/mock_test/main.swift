@@ -102,6 +102,8 @@ check(selMix.picks.map(\.code) == ["8"] && selMix.picks[0].qty == Int((1_000_000
 var tight = rule; tight.roundMax = 0.30; tight.maxPer = 0.05
 let selTight = MockCalc.select(mixed, ledger: L, rule: tight, fees: fees, prices: [:], excluded: [:])
 check(selTight.picks.reduce(0) { $0 + $1.budget } <= 0.30 * 10_000_000 && selTight.picks.allSatisfy { $0.budget <= 0.05 * 10_000_000 }, "한도 걸린 몫: \(selTight.picks)")
+// 주문 때 남길 현금: 오늘 장부 현금 206만 − 평가액 1,010만 × 20% = 4만, 현금이 남길 돈보다 적으면 0
+check(abs(MockCalc.usable(cash: 2_060_000, keep: 0.20 * 10_100_000) - 40_000) < 1 && MockCalc.usable(cash: 1_000_000, keep: 2_000_000) == 0, "남길 현금")
 // 예외
 let selEx = MockCalc.select(scan, ledger: L, rule: rule, fees: fees, prices: [:], excluded: ["000001": "직접"])
 check(selEx.picks.map(\.code) == ["000002"], "선정에서 예외 막음")

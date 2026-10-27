@@ -162,6 +162,9 @@ enum MockCalc {
         l.cash + l.reserved + l.settling + l.positions.values.reduce(0) { $0 + Double($1.qty) * (prices[$1.code] ?? $1.avg) }
     }
 
+    /// 주문에 쓸 수 있는 현금: 현금 − 남길 현금 (0 아래로 내려가지 않는다)
+    static func usable(cash: Double, keep: Double) -> Double { max(0, cash - keep) }
+
     // MARK: 선정
 
     struct Pick: Codable, Equatable, Identifiable {
