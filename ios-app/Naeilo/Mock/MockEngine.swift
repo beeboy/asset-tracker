@@ -189,48 +189,66 @@ enum MockCalc {
                        prices: [String: Double], excluded: [String: String], soldToday: Set<String> = []) -> (picks: [Pick], skips: [Skip]) {
         let eq = equity(l, prices: prices)
         let pendingBuy = Set(l.pending.filter { $0.side == .buy }.map(\.code))
-        // 그날 훑은 종목에서 새로 rule.count 종목을 고른다 (어제 산 보유가 자리를 막지 않는다. 보유·대기 종목은 건너뛰고 다음 순위로)
-        var slots = rule.count
+        // 그날 훑은 종목에서 새로 rule.count 종목을 고른다 (어제 산 보유가 자리를 막지 않는다. 대기·오늘 판 종목은 건너뛰고 다음 순위로)
         let avail = l.cash - rule.keepCash * eq
-        var planned = 0.0
-        // 한 번 고를 때 모두 합쳐 평가액의 roundMax 까지 (처음부터 다 사지 않는다). 종목마다 그 몫을 고를 수로 나눈다
+        // 한 번 고를 때 모두 합쳐 평가액의 roundMax 까지 (처음부터 다 사지 않는다). 그 몫을 실제로 고른 종목 수로 나눈다
         let round = (rule.roundMax ?? 0.10) * eq
-        let perRound = round / Double(max(1, rule.count))
-        var picks: [Pick] = [], skips: [Skip] = []
-        for (i, h) in scan.hits.enumerated() {
-            if let why = excluded[h.code] { skips.append(Skip(code: h.code, name: h.name, why: "예외 · " + why)); continue }
-            if pendingBuy.contains(h.code) { skips.append(Skip(code: h.code, name: h.name, why: "같은 종목 주문 대기 중")); continue }
-            // 판 날은 다시 사지 않는다 (같은 날 사고팔기 되풀이로 수수료·세금만 내는 일 막음)
-            if soldToday.contains(h.code) { skips.append(Skip(code: h.code, name: h.name, why: "오늘 판 종목 · 내일부터 다시 고름")); continue }
-            guard slots > 0 else { break }
-            let px = prices[h.code] ?? h.price
-            let one = px * (1 + fees.commission)
-            guard px > 0 else { skips.append(Skip(code: h.code, name: h.name, why: "가격 확인 못 함")); continue }
-            // 고르기는 현금을 보지 않는다. 쓸 돈은 종목당 최대 비중만큼, 현금은 주문할 때 본다 (모자라면 그때 줄이거나 거부)
-            // 보유 종목도 조건에 맞으면 고른다 (추가 주문). 종목당 한도는 보유까지 합쳐서 본다
-            let held = l.positions[h.code]
-            let heldVal = Double(held?.qty ?? 0) * px
-            let room = rule.maxPer * eq - heldVal
-            let budget = min(room, perRound, round - planned)
-            let qty = Int((budget / one).rounded(.down))
-            if let held, room < one {
-                skips.append(Skip(code: h.code, name: h.name, why: "종목당 한도 참 · 보유 " + String(format: "%.0f%%", eq > 0 ? heldVal / eq * 100 : 0) + " · \(held.qty)주"))
+        // 0주로 빠진 종목 (빠지면 고른 수가 줄어 남은 종목 몫이 커지므로 다시 나눈다)
+        var zero: [String: Double] = [:]
+        while true {
+            var skips: [Skip] = []
+            var cands: [(rank: Int, h: MockHit, px: Double, one: Double, held: MockPosition?, room: Double)] = []
+            for (i, h) in scan.hits.enumerated() {
+                if let why = excluded[h.code] { skips.append(Skip(code: h.code, name: h.name, why: "예외 · " + why)); continue }
+                if pendingBuy.contains(h.code) { skips.append(Skip(code: h.code, name: h.name, why: "같은 종목 주문 대기 중")); continue }
+                // 판 날은 다시 사지 않는다 (같은 날 사고팔기 되풀이로 수수료·세금만 내는 일 막음)
+                if soldToday.contains(h.code) { skips.append(Skip(code: h.code, name: h.name, why: "오늘 판 종목 · 내일부터 다시 고름")); continue }
+                guard cands.count < rule.count else { break }
+                let px = prices[h.code] ?? h.price
+                let one = px * (1 + fees.commission)
+                guard px > 0 else { skips.append(Skip(code: h.code, name: h.name, why: "가격 확인 못 함")); continue }
+                // 보유 종목도 조건에 맞으면 고른다 (추가 주문). 종목당 한도는 보유까지 합쳐서 본다
+                let held = l.positions[h.code]
+                let heldVal = Double(held?.qty ?? 0) * px
+                let room = rule.maxPer * eq - heldVal
+                if let held, room < one {
+                    skips.append(Skip(code: h.code, name: h.name, why: "종목당 한도 참 · 보유 " + String(format: "%.0f%%", eq > 0 ? heldVal / eq * 100 : 0) + " · \(held.qty)주"))
+                    continue
+                }
+                if let budget = zero[h.code] {
+                    // 한 주가 쓸 돈보다 비싸면 0주. 오류가 아니라 정상 결과로 남긴다
+                    skips.append(Skip(code: h.code, name: h.name, why: "0주 · 한 주 " + MockFmt.won(px) + " > 쓸 돈 " + MockFmt.won(budget)))
+                    continue
+                }
+                cands.append((i + 1, h, px, one, held, room))
+            }
+            // 고르기는 현금을 보지 않는다. 한 번 몫을 고른 종목끼리 나눈다: 종목당 한도에 걸린 종목이 못 쓴 몫은 나머지에 준다
+            // (종목당 한도가 작은 종목부터 남은 몫 ÷ 남은 수, 한도를 넘지 않게). 현금은 주문할 때 본다 (모자라면 그때 줄이거나 거부)
+            var budget: [String: Double] = [:]
+            var left = round, k = cands.count
+            for c in cands.sorted(by: { $0.room < $1.room }) {
+                let b = min(c.room, left / Double(k))
+                budget[c.h.code] = b
+                left -= b; k -= 1
+            }
+            let small = cands.filter { (budget[$0.h.code] ?? 0) < $0.one }
+            if !small.isEmpty {
+                for c in small { zero[c.h.code] = budget[c.h.code] ?? 0 }
                 continue
             }
-            if qty < 1 {
-                // 한 주가 쓸 돈보다 비싸면 0주. 오류가 아니라 정상 결과로 남긴다
-                skips.append(Skip(code: h.code, name: h.name, why: "0주 · 한 주 " + MockFmt.won(px) + " > 쓸 돈 " + MockFmt.won(budget)))
-                continue
+            var picks: [Pick] = []
+            var planned = 0.0
+            for c in cands {
+                let qty = Int(((budget[c.h.code] ?? 0) / c.one).rounded(.down))
+                let spend = Double(qty) * c.one
+                planned += spend
+                let short = planned > avail     // 지금까지 고른 몫이 쓸 수 있는 현금을 넘으면 현금 부족 표시
+                picks.append(Pick(code: c.h.code, name: c.h.name, price: c.px, budget: spend, qty: qty, rank: c.rank,
+                                  why: "\(c.rank)위 · " + c.h.why + (c.held.map { " · 추가 · 보유 \($0.qty)주" } ?? "") + (short ? " · 현금 부족" : ""),
+                                  weight: eq > 0 ? spend / eq : 0, short: short ? true : nil))
             }
-            let spend = Double(qty) * one
-            planned += spend
-            let short = planned > avail     // 지금까지 고른 몫이 쓸 수 있는 현금을 넘으면 현금 부족 표시
-            picks.append(Pick(code: h.code, name: h.name, price: px, budget: spend, qty: qty, rank: i + 1,
-                              why: "\(i + 1)위 · " + h.why + (held.map { " · 추가 · 보유 \($0.qty)주" } ?? "") + (short ? " · 현금 부족" : ""), weight: eq > 0 ? spend / eq : 0,
-                              short: short ? true : nil))
-            slots -= 1
+            return (picks, skips)
         }
-        return (picks, skips)
     }
 
     // MARK: 호가와 체결
