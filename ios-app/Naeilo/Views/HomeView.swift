@@ -556,7 +556,8 @@ struct SceneBox: View {
                     subLine(13).position(x: 150 * k, y: (155 - cut) * k)
                     head.padding(.horizontal, 18).padding(.top, 12)
                 } else {
-                    VStack(alignment: .leading, spacing: 2) {
+                    // 피노키오: 글은 오른쪽 정렬 (왼쪽 아래 피노키오와 새를 가리지 않게, 2026-10-27)
+                    VStack(alignment: look == .pino ? .trailing : .leading, spacing: 2) {
                         head
                         amountView(30, color: BoxInk.ink)
                         subLine(13)
@@ -570,7 +571,10 @@ struct SceneBox: View {
     }
 
     private var head: some View {
-        HStack { Text(s.label); Spacer(); FreshLabel() }.appFont(13).foregroundStyle(Self.dim)
+        HStack {
+            if look == .pino { FreshLabel(); Spacer(); Text(s.label) } else { Text(s.label); Spacer(); FreshLabel() }
+        }
+        .appFont(13).foregroundStyle(Self.dim)
     }
     private func amountView(_ size: CGFloat, color: Color) -> some View {
         Text(amountText).font(.system(size: size, weight: .heavy)).tracking(-0.5).foregroundStyle(color).roll(s.amount)

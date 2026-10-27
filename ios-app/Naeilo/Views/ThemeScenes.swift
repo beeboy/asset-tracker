@@ -591,9 +591,7 @@ struct PinoScene: View {
                 ctx.stroke(Sk.line(pt(290, 146), pt(290, 158)), with: hex(mark), lineWidth: 1.5)
                 Sk.text(ctx, s.target, 290, 164, label, size: 8.5, bold: true, anchor: .trailing)
             }
-            // 판 위쪽 30을 잘라 내므로 몸·코·새를 발끝 기준 0.64배로 (코끝은 눈금 자리에 맞춰 늘린다, 2026-10-27)
-            PinoRig(up: up, tip: 42 + (tip - 42) / 0.64)
-                .scaleEffect(0.64, anchor: UnitPoint(x: 42.0 / 300, y: 152.0 / 170))
+            PinoRig(up: up, tip: tip)
         }
     }
 }
