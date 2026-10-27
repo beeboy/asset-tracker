@@ -144,8 +144,8 @@ struct GoalCellsCard: View {
                 gameTile(.wave, String(localized: "내 흐름을 타자"), String(localized: "파도타기")) { showWave = true }
             }
         }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
+        // 바탕 카드는 뺀다. 100칸 카드와 같은 색이 이어져 어색하다 (2026-10-27)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
     private func gameTile(_ k: GameThumb.Kind, _ say: String, _ name: String, _ go: @escaping () -> Void) -> some View {
         VStack(spacing: 0) {
