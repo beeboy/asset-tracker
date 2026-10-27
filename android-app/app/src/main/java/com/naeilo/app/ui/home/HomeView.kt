@@ -137,6 +137,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.ui.draw.clip
@@ -771,6 +772,8 @@ private fun fx(size: Float): androidx.compose.ui.unit.TextUnit = (size / LocalDe
 
 // ios: Views/HomeView.swift:603 (struct SceneBox 의 static)
 private object SceneBox {
+    /** 판 위쪽 30을 잘라 박스 높이를 진행 막대 정도로 (2026-10-27). 글 아래 그림은 장면마다 내리거나 줄였다 */
+    const val cut = 30f   // ios: Views/HomeView.swift:533
     val dim @Composable get() = boxInk().dim   // ios: Views/HomeView.swift:570
     val upC @Composable get() = boxInk().up; val downC @Composable get() = boxInk().down   // ios: Views/HomeView.swift:571
 }
@@ -779,25 +782,21 @@ private object SceneBox {
 @Composable
 fun SceneBox(look: BoxLook, s: BoxScene, hide: Boolean, toggleHide: () -> Unit) {
     val amountText = if (hide) "••••••" else AppModel.man(s.amount)   // ios: Views/HomeView.swift:608
-    // 욕조: 아래 수익률 줄까지 타일 벽이 이어지게 (장면 타일과 같은 칸 크기)
-    val dk = boxDark()
-    val wall = if (look == BoxLook.tub) Modifier.drawBehind { tileWall(22 * size.width / 300, dk) } else Modifier   // ios: Views/HomeView.swift:619
     // ios: Views/HomeView.swift:612,613,620,621
-    Column(Modifier.fillMaxWidth().then(wall).semantics(mergeDescendants = true) { contentDescription = tr("${s.label} $amountText, ${s.target}까지 ${AppModel.pct(s.f)}, ${s.status}") },
+    Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = tr("${s.label} $amountText, ${s.target}까지 ${AppModel.pct(s.f)}, ${s.status}") },
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(0.dp)) {
         Scene(look, s, amountText, toggleHide)   // ios: Views/HomeView.swift:614
-        // 욕조: 수익률·계획 줄은 장면 아래 따로 (박스 끝에 붙지 않게)
-        if (look == BoxLook.tub) SubLine(s, 13f, Modifier.padding(top = 2.dp, bottom = 12.dp))   // ios: Views/HomeView.swift:616
     }
 }
 
 // ios: Views/HomeView.swift:624,625,653
 @Composable
 private fun Scene(look: BoxLook, s: BoxScene, amountText: String, toggleHide: () -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(300f / 170f)) {
+    val cut = SceneBox.cut
+    BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(300f / (170f - cut)).clipToBounds()) {   // ios: Views/HomeView.swift:664,665
         val k = maxWidth.value / 300   // ios: Views/HomeView.swift:626
-        // ios: Views/HomeView.swift:627,628,629,637 (판을 k 배로 늘린 층들. 누름은 받지 않는다)
-        Box(Modifier.matchParentSize()) {
+        // ios: Views/HomeView.swift:627,628,629,637 (판을 k 배로 늘린 층들. 누름은 받지 않는다). 위쪽 cut 만큼 올려 잘라 낸다
+        Box(Modifier.fillMaxWidth().wrapContentHeight(Alignment.Top, unbounded = true).height((170 * k).dp).offset(y = (-cut * k).dp)) {   // ios: Views/HomeView.swift:546
             when (look) {
                 BoxLook.jump -> JumpScene(s)   // ios: Views/HomeView.swift:630
                 BoxLook.tub -> TubScene(s)   // ios: Views/HomeView.swift:631
@@ -812,15 +811,19 @@ private fun Scene(look: BoxLook, s: BoxScene, amountText: String, toggleHide: ()
             // 욕조: 금액은 욕조 앞면 (바닥 테두리 위)
             // ios: Views/HomeView.swift:640,641
             Box(Modifier.matchParentSize()) {
-                Box(Modifier.centerAt(150 * k, 130 * k).width((200 * k).dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.centerAt(150 * k, (122 - cut) * k).width((200 * k).dp), contentAlignment = Alignment.Center) {   // ios: Views/HomeView.swift:551
                     AmountView(amountText, s.amount, 20 * k, hex(0x16203A), toggleHide)
                 }
+                // 수익률·계획 줄은 욕조 아래 타일 벽
+                Box(Modifier.centerAt(150 * k, (155 - cut) * k)) { SubLine(s, 13f) }   // ios: Views/HomeView.swift:552
             }
             Head(s, Modifier.padding(horizontal = 18.dp).padding(top = 12.dp))   // ios: Views/HomeView.swift:642
         } else {   // ios: Views/HomeView.swift:643
             // ios: Views/HomeView.swift:644,649
-            Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Head(s)   // ios: Views/HomeView.swift:645
+            // 피노키오: 글은 오른쪽 정렬 (왼쪽 아래 피노키오와 새를 가리지 않게)
+            Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp),
+                horizontalAlignment = if (look == BoxLook.pino) Alignment.End else Alignment.Start) {   // ios: Views/HomeView.swift:556
+                Head(s, right = look == BoxLook.pino)   // ios: Views/HomeView.swift:645
                 AmountView(amountText, s.amount, 30f, boxInk().ink, toggleHide)   // ios: Views/HomeView.swift:646
                 SubLine(s, 13f)   // ios: Views/HomeView.swift:647
             }
@@ -836,8 +839,12 @@ private fun Modifier.centerAt(x: Float, y: Float): Modifier = this.layout { m, c
 
 // ios: Views/HomeView.swift:656,657
 @Composable
-private fun Head(s: BoxScene, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T(s.label, Modifier.weight(1f), style = appFont(13f), color = SceneBox.dim); FreshLabel() }
+private fun Head(s: BoxScene, modifier: Modifier = Modifier, right: Boolean = false) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        // ios: Views/HomeView.swift:574
+        if (right) { FreshLabel(); Spacer(Modifier.weight(1f)); T(s.label, style = appFont(13f), color = SceneBox.dim) }
+        else { T(s.label, Modifier.weight(1f), style = appFont(13f), color = SceneBox.dim); FreshLabel() }
+    }
 }
 
 // ios: Views/HomeView.swift:659,660,661,662
@@ -983,13 +990,14 @@ private fun HorizonScene(s: BoxScene) {
 // ios: Views/HomeView.swift:790,791
 internal object TubScene {
     /** 물높이: 바닥 150, 목표 70 (넘치면 54까지) */
-    fun level(f: Double): Float = 150 - 80 * min(1.2, max(0.0, f)).toFloat()   // ios: Views/HomeView.swift:793
+    // 판 위쪽 30을 잘라 내므로 욕조를 내리고 줄였다: 바닥 140, 목표 76 (2026-10-27)
+    fun level(f: Double): Float = 140 - 64 * min(1.2, max(0.0, f)).toFloat()   // ios: Views/HomeView.swift:793
     // ios: Views/HomeView.swift:794,795
     val tub: Path = Path().apply {
-        moveTo(40f, 52f); lineTo(260f, 52f); lineTo(260f, 120f)   // ios: Views/HomeView.swift:796
-        quadraticTo(260f, 150f, 230f, 150f)   // ios: Views/HomeView.swift:797
-        lineTo(70f, 150f)   // ios: Views/HomeView.swift:798
-        quadraticTo(40f, 150f, 40f, 120f)   // ios: Views/HomeView.swift:799
+        moveTo(40f, 62f); lineTo(260f, 62f); lineTo(260f, 110f)   // ios: Views/HomeView.swift:796
+        quadraticTo(260f, 140f, 230f, 140f)   // ios: Views/HomeView.swift:797
+        lineTo(70f, 140f)   // ios: Views/HomeView.swift:798
+        quadraticTo(40f, 140f, 40f, 110f)   // ios: Views/HomeView.swift:799
         close()   // ios: Views/HomeView.swift:800,801,802
     }
 }
@@ -1033,8 +1041,8 @@ listOf(hex(if (dk) 0x7CC8F0 else 0x8CCFF2).copy(alpha = if (dk) 0.85f else 0.9f)
         // ios: Views/HomeView.swift:829,830
         clipPath(tub) {
             val mark = { y: Float, dry: Color -> if (y > w) Color.White.copy(alpha = 0.9f) else dry }   // ios: Views/HomeView.swift:831
-            drawPath(Sk.line(Offset(240f, 70f), Offset(254f, 70f)), mark(70f, hex(if (dk) 0x7D889E else 0x6B7690)), style = Stroke(1.6f))   // ios: Views/HomeView.swift:832
-            Sk.text(this, tm, s.target, 237f, 70f, mark(70f, hex(if (dk) 0x7D889E else 0x5A6580)), size = 8.5f, bold = true, anchor = Anchor.trailing)   // ios: Views/HomeView.swift:833
+            drawPath(Sk.line(Offset(240f, 76f), Offset(254f, 76f)), mark(76f, hex(if (dk) 0x7D889E else 0x6B7690)), style = Stroke(1.6f))   // ios: Views/HomeView.swift:832
+            Sk.text(this, tm, s.target, 237f, 76f, mark(76f, hex(if (dk) 0x7D889E else 0x5A6580)), size = 8.5f, bold = true, anchor = Anchor.trailing)   // ios: Views/HomeView.swift:833
             // ios: Views/HomeView.swift:834
             for ((t, f) in Sk.pctTicks) {
                 val y = TubScene.level(f)   // ios: Views/HomeView.swift:776
@@ -1044,8 +1052,8 @@ listOf(hex(if (dk) 0x7CC8F0 else 0x8CCFF2).copy(alpha = if (dk) 0.85f else 0.9f)
             // ios: Views/HomeView.swift:838
         }
         drawPath(tub, if (dk) Color.White else hex(0xB7CAE3), style = Stroke(3f))   // ios: Views/HomeView.swift:843
-        drawRoundRect(Color.White, Offset(32f, 46f), Size(236f, 8f), CornerRadius(4f, 4f))   // ios: Views/HomeView.swift:844
-        if (!dk) drawRoundRect(hex(0xB7CAE3), Offset(32f, 46f), Size(236f, 8f), CornerRadius(4f, 4f), style = Stroke(1f))   // ios: Views/HomeView.swift:827
+        drawRoundRect(Color.White, Offset(32f, 56f), Size(236f, 8f), CornerRadius(4f, 4f))   // ios: Views/HomeView.swift:844
+        if (!dk) drawRoundRect(hex(0xB7CAE3), Offset(32f, 56f), Size(236f, 8f), CornerRadius(4f, 4f), style = Stroke(1f))   // ios: Views/HomeView.swift:827
     }
     // 오리 = 나
     val bob = Loop(1.3)   // ios: Views/HomeView.swift:847

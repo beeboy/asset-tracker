@@ -138,7 +138,6 @@ import com.naeilo.app.ui.Sheet
 import com.naeilo.app.ui.home.BoxLook
 import com.naeilo.app.ui.home.BoxSchemeScope
 import com.naeilo.app.ui.home.ThemeTrack
-import com.naeilo.app.ui.home.TrackBuddy
 import com.naeilo.app.ui.home.boxInk
 import com.naeilo.app.ui.home.bx
 import com.naeilo.app.ui.home.FreshLabel
@@ -712,7 +711,7 @@ fun ChanceBox(look: BoxLook, d: ChanceBox.Data) {
     val label = "${d.head}, ${d.verdict?.let { "가능성 $it ${d.pct}" } ?: d.status}, ${d.foot}, ${d.nowText}"   // ios: Views/AnalysisView.swift:560
     // ios: Views/AnalysisView.swift:538,555,556,557,558,559
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).moodBackdrop(look).clearAndSetSemantics { contentDescription = tr(label) }
-        .padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 12.dp)) {
+        .padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 16.dp)) {   // ios: Views/AnalysisView.swift:570
         // ios: Views/AnalysisView.swift:539,540,541,542,544
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f).padding(end = 8.dp)) { FitText(d.head, TextStyle(fontSize = fx(14f)), 0.8f, color = dim) }
@@ -726,12 +725,8 @@ fun ChanceBox(look: BoxLook, d: ChanceBox.Data) {
             if (v != null) FitAnnotated(buildAnnotatedString { append(tr("가능성 $v · ")); withStyle(SpanStyle(color = ink.gold)) { append(d.pct) } }, st, 0.6f, ink.ink)
             else FitText(d.status, st, 0.6f, color = ink.ink)
         }
-        ChanceBar(look, d, Modifier.padding(top = 10.dp).fillMaxWidth().height(62.dp))   // ios: Views/AnalysisView.swift:546
-        // ios: Views/AnalysisView.swift:547,548,549,550,552,553
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.weight(1f).padding(end = 8.dp)) { FitText(d.foot, TextStyle(fontSize = fx(15f)), 0.8f, color = dim) }
-            FitText(d.nowText, TextStyle(fontSize = fx(15f)), 0.8f, color = dim)
-        }
+        ChanceBar(look, d, Modifier.padding(top = 10.dp).fillMaxWidth().height(50.dp))   // ios: Views/AnalysisView.swift:567
+        // 맨 아래 '셋 중 … 선을 넘음 · 지금 …' 줄은 뺀다. 박스 높이를 종목 탭 박스에 맞춘다 (2026-10-27)
     }
 }
 
@@ -742,29 +737,33 @@ private fun ChanceBar(look: BoxLook, d: ChanceBox.Data, modifier: Modifier) {
     BoxWithConstraints(modifier) {
         val w = maxWidth
         val X = { v: Double -> w * min(1.0, max(0.0, v)).toFloat() }   // ios: Views/AnalysisView.swift:578
-        val xs = d.dots.map(X); val lx = ChanceBox.spread(xs.map { it.value }, gap = 38f, w = w.value).map { it.dp }   // ios: Views/AnalysisView.swift:579
-        val names = listOf("나쁠 때", "보통", "좋을 때")   // ios: Views/AnalysisView.swift:580
-        ProgressTrack(look, d.now, Modifier.offset(y = 30.dp).width(w).height(14.dp))   // ios: Views/AnalysisView.swift:582
-        // ios: Views/AnalysisView.swift:583
+        val xs = d.dots.map(X)
+        // 이름표: 세 점과 목표 이름을 한 줄에 놓고 서로 밀어 낸다 (0~2 = 점, 3 = 목표)   // ios: Views/AnalysisView.swift:598,599
+        val tags = ChanceBox.tags(xs.map { it.value }, d.goal?.let { X(it).value })
+        val lx = ChanceBox.spread(tags.map { it.first }, gap = 38f, w = w.value).map { it.dp }
+        val names = listOf("나쁠 때", "보통", "좋을 때")   // ios: Views/AnalysisView.swift:600
+        // 막대 위에 세 점을 겹치고 이름표는 그 아래. 인물·목표 옆 그림은 이 탭에서 뺀다 (2026-10-27)
+        ProgressTrack(look, d.now, Modifier.offset(y = 10.dp).width(w).height(14.dp))   // ios: Views/AnalysisView.swift:603
         val ink = boxInk(); val dk = ink.dk
         d.goal?.let { gx ->
             // 목표선 (점프 직전 라이트는 어두운 도로 위라 흰 선 + 옅은 그림자)
             val line = if (look == BoxLook.jump) Color.White else ink.ink
-            if (look == BoxLook.jump && !dk) Box(Modifier.offset(x = X(gx) - 1.5.dp, y = 3.5.dp).size(3.dp, 45.dp).background(hex(0x16181D, 0.45f)))
-            Box(Modifier.offset(x = X(gx) - 1.dp, y = 4.dp).size(2.dp, 44.dp).background(line))   // ios: Views/AnalysisView.swift:586,587,588
-            At(minOf(w - 16.dp, X(gx).coerceAtLeast(16.dp)), 56.dp) { T(d.goalLabel, style = TextStyle(fontSize = fx(10f), fontWeight = if (dk) FontWeight.Normal else FontWeight.Bold), color = ink.ink, maxLines = 1) }   // ios: Views/AnalysisView.swift:589,590
-            // 목표선 옆에 서는 것 (오페라하우스·출구·일렁임·해·거품)   // ios: Views/AnalysisView.swift:591,592,593,594
-            Box(Modifier.offset(x = X(gx) - 3.dp - 60.dp, y = 4.dp).size(60.dp, 40.dp), contentAlignment = Alignment.BottomEnd) { TrackBuddy(look, goal = true) }
+            if (look == BoxLook.jump && !dk) Box(Modifier.offset(x = X(gx) - 1.5.dp, y = 5.5.dp).size(3.dp, 23.dp).background(hex(0x16181D, 0.45f)))
+            Box(Modifier.offset(x = X(gx) - 1.dp, y = 6.dp).size(2.dp, 22.dp).background(line))   // ios: Views/AnalysisView.swift:606,607,608
         }
-        // ios: Views/AnalysisView.swift:596
         xs.indices.forEach { i ->
-            val r = if (i == 2) 8.dp else 7.dp   // ios: Views/AnalysisView.swift:597
-            // ios: Views/AnalysisView.swift:598,599,600
-            At(xs[i], 19.dp) { Box(Modifier.size(r * 2).background(ChanceBox.dotC(dk)[i], CircleShape).then(if (i == 1 && !dk) Modifier.border(1.5.dp, Color.White, CircleShape) else Modifier)) }
-            At(lx[i], 0.dp) { T(names[i], style = TextStyle(fontSize = fx(10f)), color = ChanceBox.labC(dk)[i], maxLines = 1) }   // ios: Views/AnalysisView.swift:601
+            val r = if (i == 2) 8.dp else 7.dp   // ios: Views/AnalysisView.swift:611
+            // ios: Views/AnalysisView.swift:612,613,614
+            At(xs[i], 17.dp) { Box(Modifier.size(r * 2).background(ChanceBox.dotC(dk)[i], CircleShape).then(if (i == 1 && !dk) Modifier.border(1.5.dp, Color.White, CircleShape) else Modifier)) }
         }
-        // 지금 자리에 서는 작은 인물   // ios: Views/AnalysisView.swift:603,604,605,606
-        Box(Modifier.offset(x = X(d.now).coerceIn(14.dp, maxOf(14.dp, w - 14.dp)) - 30.dp, y = (-10).dp).size(60.dp, 40.dp), contentAlignment = Alignment.BottomCenter) { TrackBuddy(look) }
+        tags.indices.forEach { j ->
+            val k = tags[j].second
+            // ios: Views/AnalysisView.swift:617,618,619,620,621
+            At(lx[j], 42.dp) {
+                if (k == 3) T(d.goalLabel, style = TextStyle(fontSize = fx(10f), fontWeight = if (dk) FontWeight.Normal else FontWeight.Bold), color = ink.ink, maxLines = 1)
+                else T(names[k], style = TextStyle(fontSize = fx(10f)), color = ChanceBox.labC(dk)[k], maxLines = 1)
+            }
+        }
     }
 }
 
@@ -790,6 +789,10 @@ object ChanceBox {
 
     /** 이름표 자리: 점 바로 위, 서로 gap 보다 가까우면 밀어 낸다 (박스 밖으로 나가지 않게) */
     // ios: Views/AnalysisView.swift:598
+    /** 이름표 순서: 세 점(0~2)과 목표(3)를 가로 자리 순으로 */
+    fun tags(xs: List<Float>, goal: Float?): List<Pair<Float, Int>> =   // ios: Views/AnalysisView.swift:648
+        (xs.mapIndexed { i, x -> x to i } + listOfNotNull(goal?.let { it to 3 })).sortedBy { it.first }
+
     fun spread(xs: List<Float>, gap: Float, w: Float): List<Float> {
         if (xs.isEmpty()) return emptyList()   // ios: Views/AnalysisView.swift:599
         val l = xs.map { min(w - gap / 2, max(gap / 2, it)) }.toMutableList()   // ios: Views/AnalysisView.swift:600

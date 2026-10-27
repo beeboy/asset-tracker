@@ -266,7 +266,7 @@ private fun MoodBox(md: Mood, look: BoxLook, cur: String?, name: (String) -> Str
         }, TextStyle(fontSize = fx(30f), fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp), 0.6f, boxInk().ink, Modifier.padding(top = 6.dp))
         Box(Modifier.padding(top = 14.dp)) { MoodBand(look, md.shares, road = 10.dp, up = md.side >= 0) }   // ios: Views/FlowView.swift:115
         // ios: Views/FlowView.swift:116,117,118,119,120,121 (오른쪽 끝 16% 를 흐리게)
-        Box(Modifier.outset(18.dp).padding(top = 14.dp).fadeEnd(0.84f)) {
+        Box(Modifier.outset(18.dp).padding(top = 10.dp).fadeEnd(0.84f)) {   // ios: Views/FlowView.swift:122
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { md.box.forEach { BoxChip(it, c, cur, name, onPick) } }
         }
     }
@@ -279,14 +279,14 @@ private fun BoxChip(id: String, dot: Color, cur: String?, name: (String) -> Stri
     val ink = boxInk()
     // ios: Views/FlowView.swift:131,132,136,137,138,140,141
     Row(
-        Modifier.heightIn(min = 34.dp).clip(RoundedCornerShape(50)).background(bx(ink.dk, 0xFFFFFF, 0xFFFFFF, 0.55f, 0f))
+        Modifier.heightIn(min = 24.dp).clip(RoundedCornerShape(50)).background(bx(ink.dk, 0xFFFFFF, 0xFFFFFF, 0.55f, 0f))
             .border(1.dp, if (on) ink.ink else bx(ink.dk, 0x16181D, 0xFFFFFF, 0.16f, 0.22f), RoundedCornerShape(50))   // ios: Views/FlowView.swift:139,140
-            .semantics { if (on) selected = true }.plainClickable { onPick(id) }.padding(horizontal = 14.dp),
+            .semantics { if (on) selected = true }.plainClickable { onPick(id) }.padding(horizontal = 10.dp),   // 알약은 작게: 박스 높이를 종목 탭 박스에 맞춘다 (2026-10-27)
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(Modifier.size(8.dp).background(dot, androidx.compose.foundation.shape.CircleShape))   // ios: Views/FlowView.swift:133
+        Box(Modifier.size(6.dp).background(dot, androidx.compose.foundation.shape.CircleShape))   // ios: Views/FlowView.swift:133
         // ios: Views/FlowView.swift:134,136
-        T(if (id == "DRNK") "DRNK" else name(id), style = appFont(15f, if (on) FontWeight.Bold else FontWeight.Normal), color = if (on) ink.ink else ink.sub, maxLines = 1)
+        T(if (id == "DRNK") "DRNK" else name(id), style = appFont(13f, if (on) FontWeight.Bold else FontWeight.Normal), color = if (on) ink.ink else ink.sub, maxLines = 1)
     }
 }
 

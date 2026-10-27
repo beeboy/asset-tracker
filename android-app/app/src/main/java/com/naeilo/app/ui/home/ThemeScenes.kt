@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
@@ -475,12 +476,14 @@ internal fun DoryScene(s: BoxScene) {
         }
         Sk.text(this, tm, "출발", 62f, 165.5f, c(dk, 0x8A5A00, 0xFFD98A), size = 8f, bold = !dk, anchor = Anchor.center)
         Sk.text(this, tm, s.target, 268f, 165.5f, c(dk, 0x8A5A00, 0xFFD98A), size = 8.5f, bold = true, anchor = Anchor.center)
-        // 수족관
-        drawRoundRect(if (dk) c(0x9FD6EE, 0.18f) else c(0xFFFFFF, 0.28f), Offset(6f, 90f), Size(44f, 66f), CornerRadius(3f))
-        drawRoundRect(c(dk, 0xFFFFFF, 0xCFEFFF), Offset(6f, 90f), Size(44f, 66f), CornerRadius(3f), style = Stroke(1.5f))
-        drawRect(if (dk) c(0xCFEFFF, 0.35f) else c(0xFFFFFF, 0.5f), Offset(6f, 90f), Size(44f, 6f))
-        for ((x, y, r) in listOf(Triple(14f, 153f, 2.5f), Triple(20f, 154f, 2f), Triple(40f, 153f, 3f))) drawPath(oval(x, y, r), c(dk, 0x8A94A8, 0x7F8AA3))
-        drawPath(Path().apply { moveTo(44f, 153f); q(42f, 139f, 46f, 129f); q(48f, 139f, 44f, 153f); close() }, c(dk, 0x3A9A6A, 0x3FAE7A))
+        // 수족관: 판 위쪽 30을 잘라 내므로 0.7배로 줄여 글 아래로 내린다 (바닥 왼쪽 모서리 기준, 2026-10-27)
+        scale(DoryScene.tankK, DoryScene.tankK, DoryScene.tankPivot) {   // ios: Views/ThemeScenes.swift:453,466,467
+            drawRoundRect(if (dk) c(0x9FD6EE, 0.18f) else c(0xFFFFFF, 0.28f), Offset(6f, 90f), Size(44f, 66f), CornerRadius(3f))
+            drawRoundRect(c(dk, 0xFFFFFF, 0xCFEFFF), Offset(6f, 90f), Size(44f, 66f), CornerRadius(3f), style = Stroke(1.5f))
+            drawRect(if (dk) c(0xCFEFFF, 0.35f) else c(0xFFFFFF, 0.5f), Offset(6f, 90f), Size(44f, 6f))
+            for ((x, y, r) in listOf(Triple(14f, 153f, 2.5f), Triple(20f, 154f, 2f), Triple(40f, 153f, 3f))) drawPath(oval(x, y, r), c(dk, 0x8A94A8, 0x7F8AA3))
+            drawPath(Path().apply { moveTo(44f, 153f); q(42f, 139f, 46f, 129f); q(48f, 139f, 44f, 153f); close() }, c(dk, 0x3A9A6A, 0x3FAE7A))
+        }
     }
     // 움직임: 문어 다리(오른 날 배웅)·눈·느낌표, 도리 헤엄·꼬리·눈·거품
     val arms = every(3.2, 0.6, 1800, down)   // ios: Views/ThemeScenes.swift:468
@@ -490,8 +493,8 @@ internal fun DoryScene(s: BoxScene) {
     val dEye = every(4.2, 0.0, blinkMs)       // ios: Views/ThemeScenes.swift:518
     val bubs = listOf(every(2.4, 0.0, 2400), every(2.4, 0.8, 2400), every(2.4, 1.6, 2400))   // ios: Views/ThemeScenes.swift:504,505,506
     Plate(Modifier.graphicsLayer()) {
-        // 문어 (25, 132)
-        translate(25f, 132f) {
+        // 문어 (25, 132): 수족관과 같이 0.7배
+        scale(DoryScene.tankK, DoryScene.tankK, DoryScene.tankPivot) { translate(25f, 132f) {
             with(ThemeArt) {
                 rotate(if (down) 0f else pw(arms(), 0f to 0f, 0.25f to 8f, 0.5f to -2f, 0.75f to 8f, 1f to 0f), Offset(0f, 2f)) { octoArms(down, dk) }
                 octoBody(down, dk); octoMouth(down)
@@ -502,9 +505,9 @@ internal fun DoryScene(s: BoxScene) {
                 val lay = tm.measure("!", TextStyle(fontSize = (12f / (density * fontScale)).sp, fontWeight = FontWeight.ExtraBold, color = c(dk, 0xE09A00, 0xFFD23F)), softWrap = false)
                 drawText(lay, topLeft = Offset(15.5f - lay.size.width / 2f, -20.5f - lay.size.height / 2f), alpha = a)
             }
-        }
+        } }
         // 도리: 하락장엔 문어 쪽(왼쪽), 상승장엔 오페라하우스 쪽(오른쪽)
-        withTransform({ translate(dx, 124f); scale(flip, 1f, Offset.Zero) }) {
+        withTransform({ translate(dx, 130f); scale(flip, 1f, Offset.Zero) })   // ios: Views/ThemeScenes.swift:470 {
             for ((i, b) in bubs.withIndex()) {
                 val t = b(); if (t <= 0f) continue
                 val (bx0, by0, r) = listOf(Triple(14f, -8f, 1.6f), Triple(16f, -10f, 1.1f), Triple(13f, -7f, 1.3f))[i]
@@ -520,6 +523,10 @@ internal fun DoryScene(s: BoxScene) {
             }
         }
     }
+}
+
+private object DoryScene {
+    const val tankK = 0.7f; val tankPivot = Offset(6f, 156f)   // ios: Views/ThemeScenes.swift:467
 }
 
 // 홈 장면 2 피노키오와 새: 제페토 공방 벽. 코가 오른쪽으로 자라고(길이 = 진행), 새는 늘 코끝
@@ -539,8 +546,7 @@ internal fun PinoScene(s: BoxScene) {
         drawCircle(tool, 6f, Offset(198f, 48f), style = Stroke(2f))
         val lamp = c(if (dk) 0xFFD58A else 0xFFCE78)
         drawRect(Brush.radialGradient(listOf(lamp.copy(alpha = if (dk) 0.34f else 0.45f), lamp.copy(alpha = 0f)), Offset(42f, 119f), 150f), Offset.Zero, Size(300f, 170f))
-        drawRect(c(dk, 0xD2AE7E, 0x2C1D10), Offset(0f, 152f), Size(300f, 18f))
-        drawRect(c(dk, 0xB58D5C, 0x5A3E22), Offset(0f, 152f), Size(300f, 1.5f))
+        // 바닥 띠는 뺀다 (2026-10-27)   // ios: Views/ThemeScenes.swift:588
         // 25·50·75% 눈금 (코끝 자리와 같은 축) · 끝 = 목표
         val mark = c(dk, 0x8A5A00, 0xFFD98A); val label = c(dk, 0x6E4600, 0xFFD98A)
         for ((t, f) in Sk.pctTicks) {
@@ -559,7 +565,8 @@ internal fun PinoScene(s: BoxScene) {
     val slow = every(9.0, 4.0, noteMs)
     val still = stillNow()
     val note = c(dk, 0xB07A00, 0xFFD98A)
-    Plate(Modifier.graphicsLayer()) {
+    // 바닥 띠를 뺀 만큼 내려 발끝을 판 아래 끝에 둔다 (2026-10-27)
+    Plate(Modifier.graphicsLayer()) { translate(0f, 16f) {   // ios: Views/ThemeScenes.swift:600
         val t = sway()
         val th = if (up) pw(t, 0f to 0f, 1 / 6f to 0.2f, 2 / 6f to 0.4f, 3 / 6f to 0.45f, 4 / 6f to 0.32f, 5 / 6f to 0.12f, 1f to 0f)
                  else pw(t, 0f to 0f, 1 / 6f to 0.4f, 2 / 6f to -0.4f, 3 / 6f to 0.35f, 4 / 6f to -0.3f, 5 / 6f to 0.2f, 1f to 0f)
@@ -585,7 +592,7 @@ internal fun PinoScene(s: BoxScene) {
             else for (i in 0..2) flyNote(tm, listOf("♪", "♫", "♬")[i], tip - 5 + listOf(9f, 13f, 6f)[i], 102.6f - listOf(17f, 20f, 20f)[i],
                 if (dk) c(0xFFE6A8) else note, 8.5f, notesP[i](), still)
         }
-    }
+    } }
 }
 
 // 홈 장면 3 철수와 영희 (비튼 무궁화): 왼쪽 영희 눈을 피해 오른쪽 EXIT 로 간다

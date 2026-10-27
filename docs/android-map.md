@@ -42,19 +42,19 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Data/WidgetBridge.swift` | `com/naeilo/app/data/WidgetBridge.kt` (82) |
 | `Theme.swift` | `com/naeilo/app/ui/Theme.kt` (157), `com/naeilo/app/ui/Controls.kt` (4) |
 | `Views/AnalysisDetail.swift` | `com/naeilo/app/ui/analysis/ExternalViews.kt` (369), `com/naeilo/app/ui/analysis/RateViews.kt` (327), `com/naeilo/app/ui/analysis/FxGlanceViews.kt` (293), `com/naeilo/app/ui/analysis/DividendViews.kt` (215), `com/naeilo/app/ui/analysis/MyPathViews.kt` (177), `com/naeilo/app/ui/analysis/AnalysisCommon.kt` (90), `com/naeilo/app/core/calc/GoalRoute.kt` (8) |
-| `Views/AnalysisView.swift` | `com/naeilo/app/ui/analysis/AnalysisView.kt` (392), `com/naeilo/app/ui/analysis/AnalysisCommon.kt` (3), `com/naeilo/app/App.kt` (1) |
-| `Views/BoardView.swift` | `com/naeilo/app/ui/board/BoardView.kt` (290) |
+| `Views/AnalysisView.swift` | `com/naeilo/app/ui/analysis/AnalysisView.kt` (388), `com/naeilo/app/ui/analysis/AnalysisCommon.kt` (3), `com/naeilo/app/App.kt` (1) |
+| `Views/BoardView.swift` | `com/naeilo/app/ui/board/BoardView.kt` (282) |
 | `Views/BrickGameView.swift` | `com/naeilo/app/ui/game/BrickGameView.kt` (432) |
 | `Views/CalmView.swift` | `com/naeilo/app/ui/calm/CalmView.kt` (133) |
 | `Views/CharMotion.swift` | `com/naeilo/app/ui/CharMotion.kt` (416) |
 | `Views/Charts.swift` | `com/naeilo/app/ui/Charts.kt` (71) |
 | `Views/EarningsRiver.swift` | `com/naeilo/app/ui/hold/EarningsRiver.kt` (242), `com/naeilo/app/data/Earnings.kt` (8) |
-| `Views/FlowView.swift` | `com/naeilo/app/ui/flow/FlowView.kt` (437) |
+| `Views/FlowView.swift` | `com/naeilo/app/ui/flow/FlowView.kt` (438) |
 | `Views/ForecastParts.swift` | `com/naeilo/app/ui/analysis/ForecastParts.kt` (72) |
-| `Views/GoalViews.swift` | `com/naeilo/app/ui/goal/GoalViews.kt` (513), `com/naeilo/app/ui/Controls.kt` (1) |
+| `Views/GoalViews.swift` | `com/naeilo/app/ui/goal/GoalViews.kt` (517), `com/naeilo/app/ui/Controls.kt` (1) |
 | `Views/Guide.swift` | `com/naeilo/app/ui/Guide.kt` (78) |
-| `Views/HoldingsView.swift` | `com/naeilo/app/ui/town/TownViews.kt` (871), `com/naeilo/app/ui/hold/HoldingsView.kt` (354), `com/naeilo/app/ui/hold/HoldingDetail.kt` (267), `com/naeilo/app/ui/home/ThemeScenes.kt` (2) |
-| `Views/HomeView.swift` | `com/naeilo/app/ui/home/HomeView.kt` (411), `com/naeilo/app/App.kt` (1) |
+| `Views/HoldingsView.swift` | `com/naeilo/app/ui/town/TownViews.kt` (871), `com/naeilo/app/ui/hold/HoldingsView.kt` (355), `com/naeilo/app/ui/hold/HoldingDetail.kt` (266), `com/naeilo/app/ui/home/ThemeScenes.kt` (2) |
+| `Views/HomeView.swift` | `com/naeilo/app/ui/home/HomeView.kt` (416), `com/naeilo/app/App.kt` (1) |
 | `Views/InvestViews.swift` | `com/naeilo/app/ui/analysis/InvestViews.kt` (95) |
 | `Views/MeViews.swift` | `com/naeilo/app/ui/me/MeViews.kt` (480) |
 | `Views/MissionViews.swift` | `com/naeilo/app/ui/board/MissionViews.kt` (477) |
@@ -67,7 +67,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Views/ShelterView.swift` | `com/naeilo/app/ui/shelter/ShelterView.kt` (464) |
 | `Views/StartView.swift` | `com/naeilo/app/ui/start/StartView.kt` (88) |
 | `Views/SupportView.swift` | `com/naeilo/app/ui/support/SupportView.kt` (60) |
-| `Views/ThemeScenes.swift` | `com/naeilo/app/ui/home/ThemeScenes.kt` (61) |
+| `Views/ThemeScenes.swift` | `com/naeilo/app/ui/home/ThemeScenes.kt` (66) |
 | `Views/TownPanel.swift` | `com/naeilo/app/ui/town/TownPanel.kt` (287) |
 | `Views/Wave/SurfCloset.swift` | `com/naeilo/app/ui/wave/SurfCloset.kt` (162) |
 | `Views/Wave/WaveFeedback.swift` | `com/naeilo/app/ui/wave/WaveFeedback.kt` (83), `com/naeilo/app/ui/WaveFeedbackToggles.kt` (9) |

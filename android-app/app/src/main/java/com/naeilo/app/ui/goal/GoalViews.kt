@@ -417,7 +417,8 @@ fun GoalCellsCard(m: AppModel, minHeight: Dp = 0.dp) {   // minHeight: 미션 �
         }
         // 내 자산 게임 (2026-10-25 시안 A안): 100칸 바로 아래, 벽돌깨기·파도타기 두 칸 나란히
         // ios: Views/GoalViews.swift:150
-        Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(20.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // 바탕 카드는 뺀다. 100칸 카드와 같은 색이 이어져 어색하다 (2026-10-27)
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/GoalViews.swift:147
             T("내 자산 게임", style = appFont(18f, FontWeight.Bold))   // ios: Views/GoalViews.swift:152
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/GoalViews.swift:153
                 GameTile(GameThumbKind.brick, "채운 칸을 부시자", "벽돌깨기", Modifier.weight(1f)) { showGame = true }   // ios: Views/GoalViews.swift:154
@@ -466,11 +467,11 @@ enum class GameThumbKind { brick, wave }
 // ios: Views/GoalViews.swift:723
 @Composable
 private fun GameThumb(kind: GameThumbKind, modifier: Modifier) {
-    val bg = Theme.mintBg; val ink = Theme.ink; val teal = Theme.teal; val mint = GoalCellsCard.mintC; val gold = Theme.gold; val muted = Theme.muted
+    val ink = Theme.ink; val gold = Theme.gold; val muted = Theme.muted
     Canvas(modifier.clearAndSetSemantics {}) {   // ios: Views/GoalViews.swift:727,732
         val d = density; val W = size.width / d; val H = size.height / d   // 아이폰과 같은 pt 좌표로 그린다
         scale(d, d, pivot = Offset.Zero) {
-            drawRect(bg, size = Size(W, H))
+            // 바탕·벽돌·파도는 외곽선만. 채우는 것은 졸라맨·패들·공 / 졸라맨·보드·별 (2026-10-27)   // ios: Views/GoalViews.swift:181
             fun line(ls: List<FloatArray>) = ls.forEach { drawLine(ink, Offset(it[0], it[1]), Offset(it[2], it[3]), strokeWidth = 2f, cap = StrokeCap.Round) }   // ios: Views/GoalViews.swift:734
             fun head(x: Float, y: Float) = drawCircle(ink, 4f, Offset(x, y))   // ios: Views/GoalViews.swift:739
             if (kind == GameThumbKind.brick) {
@@ -481,7 +482,7 @@ private fun GameThumb(kind: GameThumbKind, modifier: Modifier) {
                     // 깨진 자리: 공은 위에서 오니 위 칸이 깨진 곳만 아래도 깨진다. 공 밑 칸과 그 오른쪽 칸도 비운다
                     if ((r == 0 && (k % 5 == 2 || k == kb || k == kb + 1)) || (r == 1 && k == 2)) continue
                     val y = H - 8 - (rows - r) * (ch + gap)
-                    drawRoundRect(if (r < 2) teal else mint, Offset(8 + k * (cw + gap), y), Size(cw, ch), CornerRadius(2f))
+                    drawRoundRect(muted, Offset(8 + k * (cw + gap), y), Size(cw, ch), CornerRadius(2f), style = Stroke(1f))   // ios: Views/GoalViews.swift:196
                 }
                 val px = W * 0.38f; val pw = W * 0.24f; val py = 30f
                 drawRoundRect(ink, Offset(px, py), Size(pw, 6f), CornerRadius(3f))
@@ -497,9 +498,7 @@ private fun GameThumb(kind: GameThumbKind, modifier: Modifier) {
                 // ios: Views/GoalViews.swift:775
                 val pts = (0..40).map { i -> val t = i / 40f; Offset(t * W, H * 0.62f - sin(t * 6.5f) * H * 0.14f - t * H * 0.22f + sin(t * 19f) * 3f) }
                 val top = Path().apply { moveTo(pts[0].x, pts[0].y); pts.drop(1).forEach { lineTo(it.x, it.y) } }
-                val fill = Path().apply { addPath(top); lineTo(W, H); lineTo(0f, H); close() }
-                drawPath(fill, mint)
-                drawPath(top, teal, style = Stroke(2.5f, cap = StrokeCap.Round))
+                drawPath(top, muted, style = Stroke(2f, cap = StrokeCap.Round))   // ios: Views/GoalViews.swift:221
                 // 졸라맨: 무릎 굽혀 보드 위에, 두 팔을 넓게
                 translate(pts[17].x, pts[17].y - 3) { rotate(-0.35f * 180f / PI.toFloat(), pivot = Offset.Zero) {
                     drawOval(gold, Offset(-14f, -3f), Size(28f, 6f))
