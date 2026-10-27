@@ -872,7 +872,7 @@ fun TagChart(
 // ios: Views/HoldingsView.swift:515 (struct TagChart 의 static·Tag)
 object TagChart {
     data class Tag(val at: Double, val dy: Dp = 0.dp, val text: String, val bg: Color, val fg: Color = Color.Black)   // ios: Views/HoldingsView.swift:516
-    val gray = hex(0x8A949E)   // ios: Views/HoldingsView.swift:517
+    val gray: Color @Composable get() = if (LocalPal.current.isDark) hex(0x8A949E) else hex(0xD3D9DF)   // ios: Views/HoldingsView.swift:576 (라이트 옅은 회색)
 
     /** 꼬리표 높이(px): 값 자리에서 시작해 가까우면 20씩 벌리고, 위·아래로 넘치면 안으로 민다 */
     // ios: Views/HoldingsView.swift:561
