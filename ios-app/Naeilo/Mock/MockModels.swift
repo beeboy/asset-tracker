@@ -84,23 +84,26 @@ struct MockPiece: Codable, Identifiable, Equatable, Hashable {
 
     /// 화면·기록 글: "거래량 ≥ 20일 평균 × 2"
     var text: String {
-        func n(_ x: Double) -> String { MockFmt.num(x) }
         switch kind {
-        case .price: return "가격 " + range(lo.map { n($0) + "원" }, hi.map { n($0) + "원" })
-        case .change: return "등락률 " + range(lo.map { MockFmt.signed($0) + "%" }, hi.map { MockFmt.signed($0) + "%" })
+        case .price: return "가격 " + range("원")
+        case .change: return "등락률 " + range("%", signed: true)
         case .volume:
             let d = days == 20 ? "" : " (\(days)일)"
-            return "거래량 " + range(lo.map { n($0) + "배" }, hi.map { n($0) + "배" }) + d
-        case .rise: return "최근 \(days)일 " + range(lo.map { MockFmt.signed($0) + "%" }, hi.map { MockFmt.signed($0) + "%" })
+            return "거래량 " + range("배") + d
+        case .rise: return "최근 \(days)일 " + range("%", signed: true)
         case .ma: return "가격 " + (above ? ">" : "<") + " \(days)일선"
-        case .amount: return "거래대금 " + range(lo.map { n($0) + "억" }, hi.map { n($0) + "억" })
+        case .amount: return "거래대금 " + range("억")
         }
     }
-    private func range(_ a: String?, _ b: String?) -> String {
-        switch (a, b) {
-        case let (a?, b?): return a + " ~ " + b
-        case let (a?, nil): return "≥ " + a
-        case let (nil, b?): return "≤ " + b
+    /// 둘 다 있으면 단위는 끝에 한 번: "+2~8%", "−3~+2%", "2~5배"
+    private func range(_ unit: String, signed: Bool = false) -> String {
+        func f(_ x: Double) -> String { signed ? MockFmt.signed(x) : MockFmt.num(x) }
+        switch (lo, hi) {
+        case let (a?, b?):
+            let bs = signed && a >= 0 && b > 0 ? MockFmt.num(b) : f(b)
+            return f(a) + "~" + bs + unit
+        case let (a?, nil): return "≥ " + f(a) + unit
+        case let (nil, b?): return "≤ " + f(b) + unit
         default: return "아무거나"
         }
     }
