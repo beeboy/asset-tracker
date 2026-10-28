@@ -199,6 +199,7 @@ import kotlinx.coroutines.launch
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
+import kotlin.math.roundToLong
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.hypot
@@ -303,12 +304,12 @@ private fun legend(c: Color, t: String) = Row(horizontalArrangement = Arrangemen
 
 // ios: Views/GoalViews.swift:43
 @Composable
-fun inputField(label: String, text: String, onText: (String) -> Unit) {
+fun inputField(label: String, text: String, commas: Boolean = false, onText: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {   // ios: Views/GoalViews.swift:44
         T(label, style = appFont(13f, FontWeight.SemiBold), color = Theme.sub)   // ios: Views/GoalViews.swift:45
         // ios: Views/GoalViews.swift:47,48,49,50
         Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).background(Theme.card, RoundedCornerShape(10.dp)).strokeR(Theme.border, 10f, 2f).padding(horizontal = 12.dp).semantics { contentDescription = tr(label) }, contentAlignment = Alignment.CenterStart) {
-            InputField(text, onText, placeholder = "", number = true, style = appFont(18f, FontWeight.SemiBold))   // ios: Views/GoalViews.swift:46
+            InputField(text, onText, placeholder = "", number = true, style = appFont(18f, FontWeight.SemiBold), commas = commas)   // ios: Views/GoalViews.swift:46
         }
     }
 }
@@ -1077,7 +1078,7 @@ fun GoalTaxView(m: AppModel) {
     MissionPage(kicker = "미션 ${gNo} / ${m.goalTotal}", title = "비중 맞추려 팔면 세금은?") {
         GuideBubble(m, Pose.point, "비중을 매도로 맞추면 이익에 세금이 붙어요. 공제는 해마다 있어서, 나누는 방식에 따라 세금이 달라져요. 계산 예시예요.")   // ios: Views/GoalViews.swift:666
         T("한국 거주자 · 미국 주식만", style = appFont(13f, FontWeight.SemiBold), color = Theme.teal)   // ios: Views/GoalViews.swift:667
-        inputField("올해 해외주식 이익 (만원)", gain) { gain = it }; OnChange(gain) { v -> m.taxGain = max(0.0, v.toDoubleOrNull() ?: 0.0) }   // ios: Views/GoalViews.swift:668
+        inputField("올해 해외주식 이익 (원)", gain, commas = true) { gain = it }; OnChange(gain) { v -> m.taxGain = max(0.0, v.toDoubleOrNull() ?: 0.0) / 1e4 }   // ios: Views/GoalViews.swift:668
         if (sh.sell > 0 && gainSale > 0) {   // ios: Views/GoalViews.swift:669
             val box = Modifier.fillMaxWidth().background(Theme.night, RoundedCornerShape(20.dp))   // ios: Views/GoalViews.swift:680
             Fg(Color.White) {
@@ -1105,7 +1106,7 @@ fun GoalTaxView(m: AppModel) {
         T("결제일 기준 · 계산 예시 · 세무 상담·매매 권유 아님", style = appFont(12f), color = Theme.muted)   // ios: Views/GoalViews.swift:692
         PrimaryButton(title = "확인") { m.gDone = m.gDone + "tax"; m.boardPath = emptyList() }   // ios: Views/GoalViews.swift:693
     }
-    LaunchedEffect(Unit) { gain = m.taxGain.toInt().toString() }   // ios: Views/GoalViews.swift:695
+    LaunchedEffect(Unit) { gain = (m.taxGain * 1e4).roundToLong().toString() }   // ios: Views/GoalViews.swift:695
 }
 
 // ── 3개월 인터미션 ──

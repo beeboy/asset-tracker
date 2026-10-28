@@ -24,10 +24,22 @@ final class SiteCalc {
     private static func decode(_ d: Data?) -> File? { d.flatMap { try? JSONDecoder().decode(File.self, from: $0) } }
     /// 공개 베타·출시는 받아 둔 사이트 값을 읽지 않고 번들 값(가상 샘플)만
     static func load() -> File? {
-        (Config.usesCollectedData ? decode(Store.readData(name)) : nil) ?? decode(Bundle.main.url(forResource: "calc", withExtension: "json").flatMap { try? Data(contentsOf: $0) })
+        (Config.usesCollectedData ? decode(Store.readData(name)) : nil) ?? (Config.yahooOff ? nil : decode(Bundle.main.url(forResource: "calc", withExtension: "json").flatMap { try? Data(contentsOf: $0) }))   // 번들(내부 베타 Yahoo 자료)도 내 키가 있으면 안 쓴다
     }
     /// 사이트는 하루 한 번 만든다. 6시간 안에 받았으면 다시 받지 않는다
     func refresh() async {
+        // 내 키가 있으면 사이트 대신 키로 받은 값으로 (원/달러는 주 값으로 채운 날짜별 값. 배당은 토스에 없다)
+        if Config.yahooOff {
+            let p = Market.shared.prices
+            var f = Self.local(p)
+            if AlpacaKeys.on {
+                let us = (p?.h.keys).map { Array($0) }?.filter { !$0.contains(".K") && !$0.contains("=") && !$0.hasPrefix("^") && !$0.hasPrefix("KR~") } ?? []
+                let d = await Self.alpacaDivs(us, prices: p)
+                if !d.isEmpty { if f == nil { f = File(date: Day.today, divs: d, fx: nil) } else { f?.divs = d } }
+            }
+            file = f
+            return
+        }
         guard Config.usesCollectedData else { return }
         let key = "calcGot", now = Date().timeIntervalSince1970
         if now - Store.defaults.double(forKey: key) < 6 * 3600 { return }
@@ -40,6 +52,49 @@ final class SiteCalc {
         Store.writeData(data, Self.name)
         Store.defaults.set(now, forKey: key)
         file = f
+    }
+
+    /// 키로 받은 날짜별 원/달러(TossHistory.fxDaily)로 환율 칸을 만든다. 화면이 쓰는 칸(지난 값·1년 변화·1년 고저)만 채운다
+    static func local(_ p: SitePrices.File?) -> File? {
+        guard let o = p?.h["KRW=X"], let last = o.closes.last, o.closes.count > 2 else { return nil }
+        let n = o.closes.count, k0 = max(0, n - 780), i0 = max(0, n - 253)
+        let y1 = Array(o.closes[i0...])
+        let fx = FX(date: o.dates.last ?? Day.today, close: last, kalman_level: last, dev_from_kalman: nil, ret_1m: last / o.closes[max(0, n - 22)] - 1,
+                    ret_3m: last / o.closes[max(0, n - 64)] - 1, ret_1y: n > 253 ? last / o.closes[n - 253] - 1 : nil, vol_ewma: nil, vol_hist: nil, slope_ann: nil,
+                    trend: nil, hi1: y1.max(), lo1: y1.min(), dates: Array(o.dates[k0...]), closes: Array(o.closes[k0...]), level: Array(o.closes[k0...]))
+        return File(date: Day.today, divs: [:], fx: fx)
+    }
+
+    /// 내 Alpaca 키로 받은 현금 배당 (배당락일·주당 금액, 지난 3년). 미국 종목만, 하루 한 번 (alpaca_divs.json). 토스에는 배당 자료가 없다
+    static func alpacaDivs(_ keys: [String], prices: SitePrices.File?) async -> [String: Div] {
+        struct Disk: Codable { var got: Double; var keys: [String]; var divs: [String: Div] }
+        let name = "alpaca_divs.json", now = Date().timeIntervalSince1970
+        let want = Set(keys), old = Store.read(Disk.self, name)
+        if let o = old, now - o.got < 86400, want.isSubset(of: Set(o.keys)) { return o.divs }
+        let code = Dictionary(want.compactMap { k in AlpacaFeed.code(k).map { ($0, k) } }, uniquingKeysWith: { a, _ in a })
+        guard let k = AlpacaKeys.load(), !code.isEmpty else { return old?.divs ?? [:] }
+        var ev: [String: [Ev]] = [:], token: String? = nil
+        for _ in 0..<10 {
+            var c = URLComponents(string: "https://data.alpaca.markets/v1/corporate-actions")!
+            c.queryItems = [.init(name: "symbols", value: code.keys.sorted().joined(separator: ",")), .init(name: "types", value: "cash_dividend"),
+                            .init(name: "start", value: Day.str(Date().addingTimeInterval(-3 * 365.25 * 86400))), .init(name: "end", value: Day.today),
+                            .init(name: "limit", value: "1000")] + (token.map { [URLQueryItem(name: "page_token", value: $0)] } ?? [])
+            var r = URLRequest(url: c.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+            r.setValue(k.id, forHTTPHeaderField: "APCA-API-KEY-ID")
+            r.setValue(k.secret, forHTTPHeaderField: "APCA-API-SECRET-KEY")
+            guard let (d, resp) = try? await URLSession.shared.data(for: r), (resp as? HTTPURLResponse)?.statusCode == 200,
+                  let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any] else { return old?.divs ?? [:] }
+            for v in ((o["corporate_actions"] as? [String: Any])?["cash_dividends"] as? [[String: Any]]) ?? [] {
+                guard let s = (v["symbol"] as? String).flatMap({ code[$0] }), let dd = v["ex_date"] as? String, let a = num(v["rate"]), a > 0 else { continue }
+                ev[s, default: []].append(Ev(d: dd, a: a))
+            }
+            token = (o["next_page_token"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            if token == nil { break }
+        }
+        var out: [String: Div] = [:]
+        for s in want where code.values.contains(s) { out[s] = Div(ccy: "USD", price: prices?.h[s]?.closes.last, events: (ev[s] ?? []).sorted { $0.d < $1.d }) }
+        Store.write(Disk(got: now, keys: Array(want), divs: out), name)
+        return out
     }
 
     static func key(_ id: String) -> String {

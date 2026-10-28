@@ -4,6 +4,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import com.naeilo.app.core.cformat
 import com.naeilo.app.core.tr
+import com.naeilo.app.core.AlpacaKeys
+import com.naeilo.app.core.Config
 import com.naeilo.app.ui.home.FlowRow
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -67,6 +69,7 @@ import com.naeilo.app.ui.Theme
 import com.naeilo.app.ui.appFont
 import com.naeilo.app.ui.ls
 import com.naeilo.app.ui.plainClickable
+import com.naeilo.app.ui.settings.SettingsRoute
 import java.util.Locale
 import kotlin.math.floor
 import kotlin.math.max
@@ -158,9 +161,9 @@ fun DividendView(
     val inner: @Composable () -> Unit = {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if ((only ?: tab) == "div") {
-                Income(dd.months, dd.byMonth, dd.paid, dd.net, dd.gross, dd.zero, dd.unknown)
+                Income(m, dd.months, dd.byMonth, dd.paid, dd.net, dd.gross, dd.zero, dd.unknown)
             } else {
-                CapTax(G = G, usU = dd.usU, usIds = dd.usIds, extra = extra) { extra = it }
+                CapTax(m, G = G, usU = dd.usU, usIds = dd.usIds, extra = extra) { extra = it }
             }
         }
     }
@@ -185,7 +188,7 @@ fun DividendView(
 // ① 받는 배당
 // ios: Views/AnalysisDetail.swift:1781,1782
 @Composable
-private fun Income(months: List<String>, byMonth: List<Double>, paid: List<DividendView.Paid>, net: Double, gross: Double, zero: List<String>, unknown: List<String>) {
+private fun Income(m: AppModel, months: List<String>, byMonth: List<Double>, paid: List<DividendView.Paid>, net: Double, gross: Double, zero: List<String>, unknown: List<String>) {
     // ios: Views/AnalysisDetail.swift:1783
     Card {
 
@@ -216,6 +219,11 @@ private fun Income(months: List<String>, byMonth: List<Double>, paid: List<Divid
     if (none.isNotEmpty()) {
         // ios: Views/AnalysisDetail.swift:1803,1804
         T(none, Modifier.fillMaxWidth().background(Theme.line, RoundedCornerShape(12.dp)).padding(12.dp), style = appFont(13f), color = Theme.sub)
+    }
+    // 내 키로만 받는 기기: 토스에는 배당 자료가 없다 (SiteCalc.alpacaDivs)
+    if (Config.yahooOff && !AlpacaKeys.on) Row(Modifier.plainClickable { m.openSettings(SettingsRoute.alpaca) }, horizontalArrangement = Arrangement.spacedBy(4.dp)) {   // ios: Views/AnalysisDetail.swift:income
+        T("배당 자료는 Alpaca 키로 받아요", style = appFont(12f), color = Theme.sub)
+        T("키 넣기 ›", style = appFont(12f, FontWeight.Bold), color = Theme.teal)
     }
     // ios: Views/AnalysisDetail.swift:1806
     if (paid.isNotEmpty()) {
@@ -351,7 +359,7 @@ private fun MonthChart(months: List<String>, byMonth: List<Double>, paid: List<D
 // ② 낼 양도세
 // ios: Views/AnalysisDetail.swift:1736
 @Composable
-private fun CapTax(G: Double, usU: Double, usIds: List<String>, extra: Double, setExtra: (Double) -> Unit) {
+private fun CapTax(m: AppModel, G: Double, usU: Double, usIds: List<String>, extra: Double, setExtra: (Double) -> Unit) {
     val tax = SiteCalc.capGainTax(G); val ded = SiteCalc.cgtDed
     val year = (SiteCalc.today().take(4).toIntOrNull() ?: 2026) + 1
     Card {
@@ -409,7 +417,15 @@ private fun CapTax(G: Double, usU: Double, usIds: List<String>, extra: Double, s
             T(it, Modifier.background(Theme.teal.copy(alpha = 0.12f), RoundedCornerShape(8.dp)).padding(horizontal = 10.dp, vertical = 6.dp), style = appFont(12f), color = Theme.teal)
         }
     }
+    // 이익을 넣고 고치는 곳: 설정의 세금 규칙
+    Row(Modifier.padding(horizontal = 4.dp).plainClickable { m.analysisPath = m.analysisPath + TaxRulesRoute }, horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        T("세금 규칙", style = appFont(13f, FontWeight.SemiBold), color = Theme.sub)
+        Sym("chevron.right", 11f, Theme.sub)
+    }
 }
+
+/** 세금 화면에서 설정의 세금 규칙으로 쌓는 경로 (NavigationLink { TaxRulesView() } 자리) */
+object TaxRulesRoute
 
 // 작은 조각
 // ios: Views/AnalysisDetail.swift:1804

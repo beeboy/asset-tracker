@@ -260,12 +260,15 @@ fun InputField(
     style: TextStyle = appFont(17f),
     onSubmit: (() -> Unit)? = null,
     selectAll: Boolean = false,
+    /** 원 단위 금액: 숫자만 받고 세 자리마다 쉼표를 보여 준다 (값에는 쉼표 없음) */
+    commas: Boolean = false,
 ) {
+    val change: (String) -> Unit = if (commas) { v -> onChange(v.filter(Char::isDigit)) } else onChange
     val dark = LocalPal.current.isDark
     val ink = Theme.ink
     val textStyle = style.copy(color = ink)
     val cursor = SolidColor(Theme.teal)
-    val visual = if (secure) PasswordVisualTransformation('•') else VisualTransformation.None
+    val visual = if (secure) PasswordVisualTransformation('•') else if (commas) CommaTransform else VisualTransformation.None
     val keys = KeyboardOptions(
         autoCorrectEnabled = false,
         keyboardType = if (secure) KeyboardType.Password else if (number) KeyboardType.Number else KeyboardType.Text,
@@ -279,7 +282,7 @@ fun InputField(
         }
     }
     if (!selectAll) {
-        BasicTextField(value, onChange, modifier.fillMaxWidth(), textStyle = textStyle, singleLine = true, cursorBrush = cursor,
+        BasicTextField(value, change, modifier.fillMaxWidth(), textStyle = textStyle, singleLine = true, cursorBrush = cursor,
             visualTransformation = visual, keyboardOptions = keys, keyboardActions = actions, decorationBox = deco)
         return
     }
@@ -289,11 +292,28 @@ fun InputField(
     val all = { t: String -> androidx.compose.ui.text.TextRange(0, t.length) }
     BasicTextField(tf, { n ->
             if (fresh && n.text == tf.text) { fresh = false; tf = n.copy(selection = all(n.text)) }
-            else { fresh = false; tf = n; if (n.text != value) onChange(n.text) }
+            else { fresh = false; tf = n; if (n.text != value) change(n.text) }
         },
         modifier.fillMaxWidth().onFocusChanged { if (it.isFocused) { if (!fresh) { fresh = true; tf = tf.copy(selection = all(tf.text)) } } else fresh = false },
         textStyle = textStyle, singleLine = true, cursorBrush = cursor,
         visualTransformation = visual, keyboardOptions = keys, keyboardActions = actions, decorationBox = deco)
+}
+
+/** 숫자 사이에 세 자리마다 쉼표를 그려 넣는다. 커서 자리도 쉼표만큼 옮긴다 */
+private object CommaTransform : VisualTransformation {
+    override fun filter(text: androidx.compose.ui.text.AnnotatedString): androidx.compose.ui.text.input.TransformedText {
+        val s = text.text; val n = s.length
+        if (n == 0 || !s.all(Char::isDigit)) return androidx.compose.ui.text.input.TransformedText(text, androidx.compose.ui.text.input.OffsetMapping.Identity)
+        val out = StringBuilder()
+        s.forEachIndexed { i, c -> if (i > 0 && (n - i) % 3 == 0) out.append(','); out.append(c) }
+        // 원래 자리 o 앞에 들어간 쉼표 수
+        fun before(o: Int) = (1..minOf(o, n - 1)).count { (n - it) % 3 == 0 }
+        val map = object : androidx.compose.ui.text.input.OffsetMapping {
+            override fun originalToTransformed(offset: Int) = offset + before(offset)
+            override fun transformedToOriginal(offset: Int) = (0..n).last { it + before(it) <= offset }
+        }
+        return androidx.compose.ui.text.input.TransformedText(androidx.compose.ui.text.AnnotatedString(out.toString()), map)
+    }
 }
 
 // ── 고르기 창 (confirmationDialog) ──

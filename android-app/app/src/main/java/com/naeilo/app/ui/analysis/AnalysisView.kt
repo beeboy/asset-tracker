@@ -264,6 +264,7 @@ private fun analysisSheetPage(m: AppModel, r: Any): NavPage = when (r) {
     is AnalysisRoute -> NavPage(r.title(m)) { AnalysisPage(m, r) }   // ios: Views/AnalysisView.swift:117 (detailInPager false)
     is FactorDetailRoute -> NavPage(FactorDetailView.navTitle(r.factor)) { FactorDetailView(m, r.factor, r.start) }
     is RateWhyRoute -> NavPage("근거") { RateWhyView(r.r, r.`when`, r.epsLast) }
+    TaxRulesRoute -> NavPage { com.naeilo.app.ui.settings.TaxRulesView(m) }
     is com.naeilo.app.ui.calm.CalmFriendRoute -> com.naeilo.app.ui.shelter.characterPage(m, r.friend, invest = true)
     else -> NavPage { GoalSetPage(m) }   // 전망의 '목표 고치기'
 }

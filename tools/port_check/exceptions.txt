@@ -231,7 +231,7 @@ Data/FlowData.swift:260 검사기 한계: 부호 없는 64비트 상수 uL (옮�
 Data/FlowData.swift:262 검사기 한계: 부호 없는 64비트 상수 uL (옮김, FlowData.kt DrnkSample.RNG)
 Data/FlowData.swift:263 검사기 한계: 부호 없는 64비트 상수 uL (옮김, FlowData.kt DrnkSample.RNG)
 # 내 몫 실적: Data/Earnings.swift · Views/EarningsRiver.swift → data/Earnings.kt · ui/hold/EarningsRiver.kt
-Data/Earnings.swift:161-170 검사기 한계: 여러 줄 raw 문자열(""" 따옴표 짝이 줄마다 어긋남). 옮김, Earnings.kt drnkJSON 은 글자 그대로 같고 EarnParityTest 가 data/earnings/DRNK.json 과 같은지 본다
+Data/Earnings.swift:163-172 검사기 한계: 여러 줄 raw 문자열(""" 따옴표 짝이 줄마다 어긋남). 옮김, Earnings.kt drnkJSON 은 글자 그대로 같고 EarnParityTest 가 data/earnings/DRNK.json 과 같은지 본다
 Views/EarningsRiver.swift:70 플랫폼: 오늘 날짜 글은 안드로이드 Day.today (같은 yyyy-MM-dd, 기기 시간대) 를 쓴다 (Earnings.kt Summary.fresh)
 Views/EarningsRiver.swift:290 검사기 한계: 보간 속 따옴표 "이" : "가" (옮김, EarningsRiver.kt EarningsRiver title)
 Views/EarningsRiver.swift:180-184 플랫폼: 보이스오버 위·아래 쓸기(accessibilityAdjustableAction)는 Compose HorizontalPager 가 TalkBack 넘기기 동작을 기본으로 준다 (EarningsRiver.kt EarningsRiverSheet)

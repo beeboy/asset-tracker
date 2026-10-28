@@ -44,14 +44,17 @@ final class Market {
         return u.0 > 0 && Day.dday(u.1) >= -5 ? (u.0, u.1) : nil
     }
     /// 종목별 전망 입력값 (사이트가 매일 만든다). 없으면 빌드 때 넣은 파일
-    var stats: SiteStats.File? = SiteStats.load()
+    var stats: SiteStats.File? = Config.yahooOff ? SiteStats.local(AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached()))) : SiteStats.load()
     /// 내 토스 키로 받은 지난 종가(일봉)·원/달러. 키를 넣은 기기만
     var tossHist: TossHistory.File? = TossHistory.cached()
     /// 토스 원/달러 (하루 안에 받은 값만)
     var tossFx: TossHistory.FX? { tossHist?.fx.flatMap { Date().timeIntervalSince1970 - $0.got < 86400 ? $0 : nil } }
     /// 사이트 지난 종가 (웹 자산 추이·목표 진행과 같은 data/prices 파일). 내 종목과 원/달러만.
     /// 내 토스 키로 받은 종목은 토스 일봉으로 바꿔 둔다 (TossHistory.merged)
-    var prices: SitePrices.File? = AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached()))
+    var prices: SitePrices.File? = AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached())) {
+        // 내 키가 있으면 전망 입력값도 키로 받은 일봉으로 다시 센다
+        didSet { if Config.yahooOff { stats = SiteStats.local(prices) } }
+    }
     /// 공개 베타·출시 번들의 자료는 가상 샘플이라 '예시 값'
     var source: String { site != nil ? String(localized: "naeilo 사이트") : YahooSample.quotes.isEmpty || !Config.usesCollectedData ? String(localized: "예시 값") : String(localized: "Yahoo 중계 (테스트)") }
 
@@ -278,6 +281,8 @@ final class Market {
             // 지난 종가·원/달러도 내 키로 (종목마다 하루 한 번, 환율은 10분에 한 번). '다른 방식' 바구니 종목(SPY·SGOV 등)도 같이
             var hk = Dictionary(ty.map { (SiteStats.key($0.key), $0.value) }, uniquingKeysWith: { a, _ in a })
             for k in Parallel.wantKeys where hk[k] == nil { hk[k] = k }
+            // 내 키가 있으면 외부 요인 기준 ETF 일봉도 (SiteStats.factorSym)
+            if Config.yahooOff { for k in SiteStats.factorSym.values where hk[k] == nil { hk[k] = k } }
             if let h = await TossHistory.fetch(hk, force: force) {
                 self.tossHist = h
                 self.prices = AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), h))
@@ -308,6 +313,7 @@ final class Market {
         }
         // '다른 방식' 바구니 종목(SPY·SGOV 등)도: 예전엔 사이트(Yahoo) 값만 써서 내 키만 켜면 화면이 비었다
         for k in Parallel.wantKeys where keys[k] == nil && site?.h[k] == nil && tossH?.h[k] == nil { if let c = AlpacaFeed.code(k) { keys[k] = c } }
+        if Config.yahooOff { for k in SiteStats.factorSym.values where keys[k] == nil && tossH?.h[k] == nil { if let c = AlpacaFeed.code(k) { keys[k] = c } } }
         if !keys.isEmpty, await FlowAlpaca.fetch(keys) {
             prices = AlpacaHistory.merged(TossHistory.merged(site, tossH))
             FlowStore.shared.reload()
@@ -369,7 +375,9 @@ enum YahooSample {
         : Dictionary(uniqueKeysWithValues: Sample.virtualSymbols.map { ($0.id, $0.id) } + [("FX", "KRW=X")])
     private static func file(_ k: String) -> String { k.replacingOccurrences(of: "=", with: "_").replacingOccurrences(of: "^", with: "_") }
 
-    static let quotes: [String: Q] = {
+    /// 빌드 때 넣은 Yahoo 자료(내부 베타 번들)도 내 키가 있으면 쓰지 않는다 (Config.yahooOff 한 규칙)
+    static var quotes: [String: Q] { Config.yahooOff ? [:] : rawQuotes }
+    private static let rawQuotes: [String: Q] = {
         guard let url = Bundle.main.url(forResource: "quotes", withExtension: "json"),
               let d = try? Data(contentsOf: url),
               let o = try? JSONSerialization.jsonObject(with: d) as? [String: [String: Any]] else { return [:] }
@@ -381,7 +389,8 @@ enum YahooSample {
         return out
     }()
 
-    static let history: [String: Hist] = {
+    static var history: [String: Hist] { Config.yahooOff ? [:] : rawHistory }
+    private static let rawHistory: [String: Hist] = {
         var out: [String: Hist] = [:]
         for (id, k) in keyFor {
             guard let url = Bundle.main.url(forResource: file(k), withExtension: "json", subdirectory: "prices"),
@@ -401,7 +410,8 @@ enum YahooSample {
     static var asOf: Date? { quotes.values.map(\.time).max() }
 
     /// 빌드 때 넣은 지난 종가 전부 (사이트 티커 → 종가). 사이트에서 아직 못 받았을 때만 쓴다
-    static let bundled: [String: Hist] = {
+    static var bundled: [String: Hist] { Config.yahooOff ? [:] : rawBundled }
+    private static let rawBundled: [String: Hist] = {
         var out: [String: Hist] = [:]
         for url in Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: "prices") ?? [] {
             guard let d = try? Data(contentsOf: url), let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
@@ -501,12 +511,12 @@ enum SitePrices {
 /// 내 토스 키로 받는 지난 종가(일봉)와 원/달러. 키를 넣은 기기만 (공개 버전은 사용자 키로만 시세를 보여 준다).
 /// 일봉은 수정주가(adjusted=true): 분할·병합을 토스가 지난 값에 반영한다(미국은 5% 넘는 차이만, 배당은 거의 안 바뀜). 사이트 data/prices 의 close(분할 반영)와 같은 기준.
 /// 받은 종목은 사이트 값 대신 쓰고, 못 받은 종목은 사이트 값 그대로.
-/// 원/달러 지난 흐름(KRW=X)은 토스에 일봉이 없어 아직 사이트 값이다.
+/// 원/달러 지난 흐름(KRW=X)은 토스에 환율 일봉이 없어 날을 찍어 받고(fxw: 1개월 날마다·3개월 주마다·3년 달마다), 거래일마다 그 앞 마지막 값으로 채운다.
 enum TossHistory {
     struct FX: Codable { var rate: Double; var prev: Double; var got: Double }   // 지금, 24시간 전, 받은 시각(초)
     /// h 키 = 사이트 티커, day = 그 종목을 마지막으로 받은 날
     /// krx = 국내 종목의 날짜별 KRX 종가 (15:31 1분봉), krxTry = 그 날짜를 마지막으로 물은 시각
-    struct File: Codable { var h: [String: YahooSample.Hist]; var day: [String: String]; var fx: FX?; var krx: [String: [String: Double]]? = nil; var krxTry: [String: Double]? = nil }
+    struct File: Codable { var h: [String: YahooSample.Hist]; var day: [String: String]; var fx: FX?; var krx: [String: [String: Double]]? = nil; var krxTry: [String: Double]? = nil; var fxw: [String: Double]? = nil }
     static let name = "toss_history.json"
     static func cached() -> File? { TossKeys.on ? Store.read(File.self, name) : nil }
 
@@ -514,7 +524,39 @@ enum TossHistory {
         guard let t, TossKeys.on, !t.h.isEmpty else { return p }
         var out = p ?? SitePrices.File(got: 0, updated: "", asked: [], h: [:])
         for (k, v) in t.h { out.h[k] = v }
+        if out.h["KRW=X"] == nil, let fx = fxDaily(t) { out.h["KRW=X"] = fx }
         return out
+    }
+    /// 원/달러 날짜별 값: 받은 일봉의 거래일마다 그 날 앞 마지막 찍은 값(fxw), 오늘은 지금 환율. 찍은 값이 8개가 안 되면 nil
+    static func fxDaily(_ t: File) -> YahooSample.Hist? {
+        guard let w = t.fxw, w.count >= 8 else { return nil }
+        let wk = w.keys.sorted(), first = wk[0]
+        var days = Set(t.h.values.flatMap(\.dates).filter { $0 >= first })
+        let today = Day.today, now = t.fx?.rate ?? 0
+        if now > 0 { days.insert(today) }
+        var out: [Double] = [], ds: [String] = [], j = 0
+        for d in days.sorted() {
+            while j + 1 < wk.count, wk[j + 1] <= d { j += 1 }
+            ds.append(d); out.append(d == today && now > 0 ? now : w[wk[j]] ?? 0)
+        }
+        return .init(dates: ds, closes: out)
+    }
+    /// 원/달러를 찍어 받을 날 (한국 날짜, 오늘은 뺀다): 최근 1개월은 날마다, 3개월까지는 목요일마다, 그 앞 3년까지는 달마다 1일. 오래된 날부터
+    private static func fxDays() -> [String] {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        let today = cal.startOfDay(for: Date())
+        var out = Set<String>()
+        for i in 1...91 {
+            guard let d = cal.date(byAdding: .day, value: -i, to: today) else { continue }
+            if i <= 30 || cal.component(.weekday, from: d) == 5 { out.insert(Day.str(d)) }   // 5 = 목요일
+        }
+        for i in 0...36 {
+            guard let m = cal.date(byAdding: .month, value: -i, to: today), let d = cal.date(from: cal.dateComponents([.year, .month], from: m)),
+                  let lim = cal.date(byAdding: .day, value: -91, to: today), d < lim else { continue }
+            out.insert(Day.str(d))
+        }
+        return out.sorted()
     }
 
     private static func enc(_ v: String) -> String {
@@ -535,7 +577,7 @@ enum TossHistory {
     static func fetch(_ keys: [String: String], force: Bool) async -> File? {
         guard TossKeys.on else { return nil }
         var f = Store.read(File.self, name) ?? File(h: [:], day: [:], fx: nil)
-        let now = Date().timeIntervalSince1970, today = Day.today
+        let now = Date().timeIntervalSince1970
         let from = Day.str(Date().addingTimeInterval(-(3 * 365 + 15) * 86400))   // 사이트 파일과 같은 3년 남짓
         var miss = TossFeed.histMiss
         // 한 번만: 중계에 일봉 경로가 없던 때(404) 모든 종목에 하루 막음이 걸린 기기가 있다. 이 판에서 한 번 푼다
@@ -550,7 +592,8 @@ enum TossHistory {
         for (k, y) in keys.sorted(by: { $0.key < $1.key }) where !stop {
             // 하루 한 번, 장이 끝난 뒤 한 번 더 (그날 종가가 정규장 종가·다음 날 전일 종가가 된다)
             let (md, closed) = marketDay(kr: y.hasSuffix(".KS") || y.hasSuffix(".KQ"))
-            let stamp = closed ? today + "c" : today
+            // 표시는 그 장의 날짜로 (한국 날짜로 두면 미국 장이 끝난 뒤 앱을 안 열고 한국 날이 그대로면 그날 종가를 다시 안 받는다)
+            let stamp = closed ? md + "c" : md
             // 캔들이 30일이 안 되면 그날 한 번(장 끝난 뒤 한 번 더) 다시 3년치를 묻는다 (한 번 비면 영영 비는 일이 없게)
             let short = (ohlc.b[k]?.d.count ?? 0) < 30
             guard let c = TossFeed.code(y), (miss[c] ?? 0) < now, f.day[k] != stamp || f.h[k] == nil || (short && ohlc.day[k] != stamp) else { continue }
@@ -631,6 +674,18 @@ enum TossHistory {
                 f.fx = .init(rate: rate, prev: (prev ?? 0) > 0 ? prev! : (f.fx?.prev ?? rate), got: now)
             }
         }
+        // 원/달러 지난 흐름 3년치(70개 남짓, fxDays). 처음엔 갱신마다 최근 날부터 6개씩 나눠 받고(중계 1분 한도), 다 쌓이면 하루 1번만
+        var w = (f.fxw ?? [:])
+        let weeks = fxDays(), want = Set(weeks)
+        w = w.filter { want.contains($0.key) }
+        var asked = 0
+        for d in weeks.reversed() where !stop && w[d] == nil && asked < 6 {
+            asked += 1
+            let (code, o, e) = await TossFeed.userGet("/api/toss/v1/exchange-rate?dateTime=" + enc(d + "T15:00:00+09:00"))
+            if e != nil || code == 429 || code == 401 || code == 403 { break }
+            if code == 200, let r = num((o?["result"] as? [String: Any])?["rate"]), r > 0 { w[d] = r }
+        }
+        f.fxw = w
         Store.write(f, name)
         return f
     }

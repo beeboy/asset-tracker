@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.naeilo.app.core.Config
+import com.naeilo.app.core.Day
 import com.naeilo.app.core.FeedReq
 import com.naeilo.app.core.NJson
 import com.naeilo.app.core.Store
@@ -42,7 +43,7 @@ object SiteStats {   // ios: Data/SiteStats.swift:6
     private fun decode(d: ByteArray?): MC.Stats? = d?.let { runCatching { NJson.decodeFromString(MC.Stats.serializer(), it.decodeToString()) }.getOrNull() }   // ios: Data/SiteStats.swift:13
     /** 공개 베타·출시는 받아 둔 사이트 값을 읽지 않고 번들 값(가상 샘플)만 */
     fun load(): MC.Stats? =   // ios: Data/SiteStats.swift:15
-        (if (Config.usesCollectedData) decode(Store.readData(name)) else null) ?: decode(Defaults.asset("stats", "json")?.encodeToByteArray())   // ios: Data/SiteStats.swift:15
+        (if (Config.usesCollectedData) decode(Store.readData(name)) else null) ?: (if (Config.yahooOff) null else decode(Defaults.asset("stats", "json")?.encodeToByteArray()))   // ios: Data/SiteStats.swift:15
 
     /** 받은 지 minAge 초가 안 됐으면 받지 않는다 (사이트는 하루 한 번 만든다). 실패하면 null */
     suspend fun fetch(minAge: Double = 6 * 3600.0): MC.Stats? = withContext(Dispatchers.IO) {   // ios: Data/SiteStats.swift:19
@@ -75,11 +76,106 @@ object SiteStats {   // ios: Data/SiteStats.swift:6
      *  tools/site_stats.mjs 가 만들고, 웹 synthKR 의 종목 시세와 같은 수익률이다 (KoreaEstimate) */
     fun mcKey(id: String): String {   // ios: Data/SiteStats.swift:41
         val c = CustomSymbols.shared.saved(id)   // ios: Data/SiteStats.swift:42
-        if (c != null && !c.usd) {
+        // 내 키가 있으면(Yahoo 끔) 한국 종목도 키로 받은 제 일봉으로 센다 (KR~ 묶음은 사이트가 Yahoo 로 만든다)
+        if (!Config.yahooOff && c != null && !c.usd) {
             val i = KoreaEstimate.info(id = id, name = c.name)   // ios: Data/SiteStats.swift:43
             return "KR~" + i.base + (if (i.hedged) "~H" else "")   // ios: Data/SiteStats.swift:44
         }
         return key(id)   // ios: Data/SiteStats.swift:46
+    }
+
+    /** 내 키가 있으면(Yahoo 끔) 사이트 표 대신 키로 받은 일봉(토스·Alpaca·Longbridge, Market.prices)으로 앱에서 계산한다.
+     *  웹 buildModel 과 같은 계산(사전값 수축·추세·상관)이고 기본값도 웹과 같다 */
+    fun local(p: SitePrices.File?): MC.Stats? {   // ios: Data/SiteStats.swift:52
+        val h = p?.h ?: return null
+        val ks = h.keys.filter { !it.contains("=") && !it.startsWith("^") }.sorted()
+        if (ks.isEmpty()) return null
+        val base = MC.Stats(date = Day.today, defaults = MC.Stats.Defaults(mu = 0.10, vol = 0.40, corr = 0.3), tickers = emptyMap(), corr = MC.Stats.Corr(keys = emptyList(), m = emptyList()))
+        val st = ExtraStats.shared.augment(base, ks, h)
+        // 원/달러: 찍은 값으로 채운 날짜별 값(TossHistory.fxDaily). 기대 0, 변동성은 그 하루 변화로 (상관은 corr 기본값 0)
+        val fx = h["KRW=X"]
+        if (fx != null && fx.closes.size > 20) {
+            val r = fx.closes.zipWithNext().mapNotNull { (a, b) -> if (a > 0 && b > 0) ln(b / a) else null }
+            val m = r.average(); val v = sqrt(r.sumOf { (it - m) * (it - m) } / max(1, r.size - 1))
+            st.tickers = st.tickers + ("KRW=X" to MC.Stats.Ticker(mu = 0.0, vol = v * sqrt(MC.TD), n = r.size, fx = true))
+        }
+        addFactors(st, h)
+        return st
+    }
+
+    /** 외부 요인 기준 (내 키로 받는 ETF 일봉). 금리는 미국 7~10년 국채 ETF(IEF) 값 변화를 듀레이션으로 나눠 10년 금리(%) 변화로 바꾼다 */
+    val factorSym = mapOf("mkt" to "SPY", "rate" to "IEF", "oil" to "USO", "gold" to "GLD", "cmdty" to "DBC")   // ios: Data/SiteStats.swift:factorSym
+    const val iefDuration = 7.4
+    /** web/model.js factorBetas·factorMoves 와 같은 계산을 키 일봉으로. 단위도 같다 (금리 bp, 나머지 로그 변화) */
+    fun addFactors(st: MC.Stats, h: Map<String, YahooSample.Hist>) {   // ios: Data/SiteStats.swift:addFactors
+        val P = h.toMutableMap()
+        val ief = h["IEF"]; val p0 = ief?.closes?.firstOrNull()
+        if (ief != null && p0 != null && p0 > 0) P["~RATE"] = YahooSample.Hist(dates = ief.dates, closes = ief.closes.map { if (it > 0) -ln(it / p0) / iefDuration * 100 else 0.0 })
+        val sym = factorSym.mapValues { if (it.value == "IEF") "~RATE" else it.value }
+        val last = h.values.mapNotNull { it.dates.lastOrNull() }.maxOrNull() ?: return
+        val cut = MC.dayStr(MC.dayNum(last) - 1096)
+        fun mean(x: List<Double>) = if (x.isEmpty()) 0.0 else x.average()
+        fun sd(x: List<Double>): Double { if (x.size < 2) return 0.0; val m = mean(x); return sqrt(x.sumOf { (it - m) * (it - m) } / (x.size - 1)) }
+        fun sgn(x: Double) = if (x > 0) 1 else if (x < 0) -1 else 0
+        // 두 줄의 같은 날 하루 변화 (rateB 면 B 는 bp 차이)
+        fun aligned(a: String, b: String, rateB: Boolean): Triple<List<Double>, List<Double>, List<String>>? {
+            val A = P[a] ?: return null; val B = P[b] ?: return null
+            val mb = B.dates.zip(B.closes).toMap()
+            val xs = mutableListOf<Double>(); val ys = mutableListOf<Double>(); val ds = mutableListOf<String>(); var pa: Double? = null; var pb: Double? = null
+            for ((d, av) in A.dates.zip(A.closes)) {
+                if (d < cut) continue
+                val bv = mb[d] ?: continue
+                val a0 = pa; val b0 = pb
+                if (a0 != null && b0 != null && av > 0 && a0 > 0 && (rateB || (bv > 0 && b0 > 0))) { ys.add(ln(av / a0)); xs.add(if (rateB) (bv - b0) * 100 else ln(bv / b0)); ds.add(d) }
+                pa = av; pb = bv
+            }
+            return Triple(xs, ys, ds)
+        }
+        val tks = st.tickers.keys.filter { it != "KRW=X" }.sorted()
+        val betas = mutableMapOf<String, Map<String, Double>>(); val stat = mutableMapOf<String, Map<String, MC.BetaStat>>()
+        for ((fk, s) in sym) {
+            val bo = mutableMapOf<String, Double>(); val so = mutableMapOf<String, MC.BetaStat>()
+            if (P[s] != null) for (t in tks) {
+                if (t == s) { bo[t] = 1.0; so[t] = MC.BetaStat(corr = 1.0, n = 0.0); continue }
+                val r = aligned(t, s, fk == "rate") ?: continue
+                val (rx, ry, rd) = r; if (ry.size < 30) continue
+                val n = ry.size; val mx = mean(rx); val my = mean(ry)
+                var sxy = 0.0; var sxx = 0.0; var syy = 0.0
+                for (i in 0 until n) { sxy += (rx[i] - mx) * (ry[i] - my); sxx += (rx[i] - mx) * (rx[i] - mx); syy += (ry[i] - my) * (ry[i] - my) }
+                val corr = if (sxx > 0 && syy > 0) sxy / sqrt(sxx * syy) else 0.0
+                var beta = if (sxx > 0) sxy / sxx else 0.0; var ax = rx; var ay = ry
+                // 시장 외 요인은 시장(SPY) 움직임을 뺀 순수 민감도 (두 변수 회귀)
+                val m2 = if (fk != "mkt" && P["SPY"] != null && t != "SPY") aligned(t, "SPY", false) else null
+                if (m2 != null) {
+                    val mm = m2.third.zip(m2.first).toMap()
+                    val X1 = mutableListOf<Double>(); val X2 = mutableListOf<Double>(); val Y = mutableListOf<Double>()
+                    rd.forEachIndexed { i, d -> mm[d]?.let { X1.add(rx[i]); X2.add(it); Y.add(ry[i]) } }
+                    if (Y.size > 30) {
+                        val a1 = mean(X1); val a2 = mean(X2); val a3 = mean(Y)
+                        var s11 = 0.0; var s22 = 0.0; var s12 = 0.0; var s1y = 0.0; var s2y = 0.0
+                        for (i in Y.indices) { val u = X1[i] - a1; val v = X2[i] - a2; val w = Y[i] - a3; s11 += u * u; s22 += v * v; s12 += u * v; s1y += u * w; s2y += v * w }
+                        val det = s11 * s22 - s12 * s12
+                        if (det > 0) { beta = (s1y * s22 - s2y * s12) / det; val b2 = (s2y * s11 - s1y * s12) / det; ax = X1; ay = Y.indices.map { Y[it] - b2 * X2[it] } }
+                    }
+                }
+                val w = n.toDouble() / (n + 60); val prior = if (fk == "mkt") 1.0 else 0.0
+                var hit = 0; var cnt = 0
+                for (i in ax.indices) { if (ax[i] == 0.0 || ay[i] == 0.0) continue; cnt++; if (sgn(ax[i] * beta) == sgn(ay[i])) hit++ }
+                bo[t] = w * beta + (1 - w) * prior
+                so[t] = MC.BetaStat(corr = corr, agree = if (cnt > 0) hit.toDouble() / cnt else 0.5, n = n.toDouble())
+            }
+            betas[fk] = bo; stat[fk] = so
+        }
+        // 요인별 보통 한 달 변화: 21거래일씩 끊은 변화의 표준편차와 가장 큰 변화 (원/달러 포함)
+        val moves = mutableMapOf<String, MC.FactorMove>()
+        for ((fk, s) in sym + ("fx" to "KRW=X")) {
+            val F = P[s] ?: continue
+            val v = F.dates.zip(F.closes).filter { it.first >= cut && (fk == "rate" || it.second > 0) }.map { it.second }
+            val ch = mutableListOf<Double>(); var i = 21
+            while (i < v.size) { ch.add(if (fk == "rate") (v[i] - v[i - 21]) * 100 else ln(v[i] / v[i - 21])); i += 21 }
+            if (ch.size >= 6) moves[fk] = MC.FactorMove(sd = sd(ch), max = ch.maxOf { kotlin.math.abs(it) }, n = ch.size.toDouble())
+        }
+        st.betas = betas; st.betaStat = stat; st.factors = moves
     }
 
     /** (현재 정세 연 기대, 과거 추세 연 기대, 연 변동성). 사이트 값 → 앱에 넣은 예시 표 → 웹이 모르는 종목에 쓰는 기본값 */
@@ -143,7 +239,8 @@ class ExtraStats(initial: Map<String, Item>? = null) {   // ios: Data/SiteStats.
 
     /** st 에 없는 keys 를 받은 종가로 계산해 더한 사본. 계산할 게 없으면 st 그대로 */
     fun augment(st: MC.Stats, keys: List<String>, prices: Map<String, YahooSample.Hist>? = Market.shared.prices?.h): MC.Stats {   // ios: Data/SiteStats.swift:106
-        val add = keys.filter { st.tickers[it] == null && items[it] != null }   // ios: Data/SiteStats.swift:107
+        val hist = { k: String -> prices?.get(k) ?: items[k]?.hist }
+        val add = keys.filter { st.tickers[it] == null && hist(it) != null }   // ios: Data/SiteStats.swift:107
         if (add.isEmpty()) return st   // ios: Data/SiteStats.swift:108
         val TD = MC.TD; val m = st.model   // ios: Data/SiteStats.swift:109
         val prior = (m?.prior_mu ?: 10.0) / 100; val tau = 0.15; val newVol = 0.60; val defCorr = m?.default_corr ?: st.defaults.corr   // ios: Data/SiteStats.swift:110
@@ -166,8 +263,8 @@ class ExtraStats(initial: Map<String, Item>? = null) {   // ios: Data/SiteStats.
         val cash = st.tickers.mapValues { it.value.cash == true || it.value.fx == true }.toMutableMap()   // ios: Data/SiteStats.swift:126
         val site = { k: String -> prices?.get(k)?.let { rets(it) } }   // ios: Data/SiteStats.swift:127
         for (k in add) {   // ios: Data/SiteStats.swift:128
-            val it0 = items[k] ?: continue   // ios: Data/SiteStats.swift:129
-            val rs = rets(it0.hist); val r = rs.values.toList(); val n = r.size   // ios: Data/SiteStats.swift:130
+            val hk = hist(k) ?: continue   // ios: Data/SiteStats.swift:129
+            val rs = rets(hk); val r = rs.values.toList(); val n = r.size   // ios: Data/SiteStats.swift:130
             val volRaw = if (n > 1) sd(r) * sqrt(TD) else null   // ios: Data/SiteStats.swift:131
             val isCash = volRaw?.let { n > 20 && it < 0.03 } ?: false   // ios: Data/SiteStats.swift:132
             var vol = st.defaults.vol   // ios: Data/SiteStats.swift:133
@@ -176,7 +273,7 @@ class ExtraStats(initial: Map<String, Item>? = null) {   // ios: Data/SiteStats.
             }
             var mu = prior   // ios: Data/SiteStats.swift:137
             if (isCash) {   // ios: Data/SiteStats.swift:138
-                val c = it0.hist.closes; val j = max(0, c.size - 253)   // ios: Data/SiteStats.swift:139
+                val c = hk.closes; val j = max(0, c.size - 253)   // ios: Data/SiteStats.swift:139
                 mu = if (c.size > 1) (c[c.size - 1] / c[j]).pow(TD / max(1, c.size - 1 - j).toDouble()) - 1 else 0.04   // ios: Data/SiteStats.swift:140
             } else if (n >= 5 && volRaw != null) {   // ios: Data/SiteStats.swift:141
                 val arith = mean(r) * TD + 0.5 * volRaw * volRaw; val se2 = vol * vol / (n.toDouble() / TD); val kk = tau * tau / (tau * tau + se2)   // ios: Data/SiteStats.swift:142
@@ -185,8 +282,8 @@ class ExtraStats(initial: Map<String, Item>? = null) {   // ios: Data/SiteStats.
             // 과거 추세: 3년 로그 종가 직선 기울기 (연)
             var gs: Double? = null; var trend = mu   // ios: Data/SiteStats.swift:146
             if (!isCash && n >= 5) {   // ios: Data/SiteStats.swift:147
-                val cut = MC.dayStr(MC.dayNum(it0.hist.dates.lastOrNull() ?: "") - 1096)   // ios: Data/SiteStats.swift:148
-                val pts = it0.hist.dates.zip(it0.hist.closes).filter { it.first >= cut && it.second > 0 }.map { Pair(MC.dayNum(it.first).toDouble() / 365.25, ln(it.second)) }   // ios: Data/SiteStats.swift:149
+                val cut = MC.dayStr(MC.dayNum(hk.dates.lastOrNull() ?: "") - 1096)   // ios: Data/SiteStats.swift:148
+                val pts = hk.dates.zip(hk.closes).filter { it.first >= cut && it.second > 0 }.map { Pair(MC.dayNum(it.first).toDouble() / 365.25, ln(it.second)) }   // ios: Data/SiteStats.swift:149
                 if (pts.size >= 20) {   // ios: Data/SiteStats.swift:150
                     val mt = mean(pts.map { it.first }); val my = mean(pts.map { it.second })   // ios: Data/SiteStats.swift:151
                     val sxy = pts.fold(0.0) { a, p -> a + (p.first - mt) * (p.second - my) }; val sxx = pts.fold(0.0) { a, p -> a + (p.first - mt) * (p.first - mt) }   // ios: Data/SiteStats.swift:152
@@ -201,7 +298,7 @@ class ExtraStats(initial: Map<String, Item>? = null) {   // ios: Data/SiteStats.
             for (o in keysAll) {   // ios: Data/SiteStats.swift:161
                 val prior0 = if (isCash || cash[o] == true) 0.0 else defCorr   // ios: Data/SiteStats.swift:162
                 var c = prior0   // ios: Data/SiteStats.swift:163
-                val orr = site(o) ?: items[o]?.let { rets(it.hist) }   // ios: Data/SiteStats.swift:164
+                val orr = site(o) ?: hist(o)?.let { rets(it) }   // ios: Data/SiteStats.swift:164
                 if (orr != null) {
                     val a = ArrayList<Double>(); val b = ArrayList<Double>()   // ios: Data/SiteStats.swift:165
                     for ((d, x) in rs) { orr[d]?.let { y -> a.add(x); b.add(y) } }   // ios: Data/SiteStats.swift:166

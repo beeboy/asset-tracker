@@ -138,8 +138,10 @@ enum Earnings {
     /// 앱 안 견본 (Resources/earnings_seed.json, 맥에서 tools/earnings.py 를 돌린 것). 사이트 자료를 못 받았을 때만 쓴다.
     /// none = 회사 실적이 없는 종목(ETF·원자재 신탁)
     struct Seed: Decodable { var files: [String: File]; var none: [String] }
+    /// 견본의 '숫자 기다리는 중'은 만든 날 기준이라 버린다 (새로 깐 앱 홈에 잠깐 떴다 사라짐)
     static let seed: Seed? = Bundle.main.url(forResource: "earnings_seed", withExtension: "json")
         .flatMap { try? Data(contentsOf: $0) }.flatMap { try? JSONDecoder().decode(Seed.self, from: $0) }
+        .map { s in var s = s; for k in s.files.keys { s.files[k]?.pending = nil }; return s }
 
     enum Got { case file(File), none, failed }
     /// naeilo.com/data/earnings/{종목}.json. 404 는 자료 없음(ETF·국내)

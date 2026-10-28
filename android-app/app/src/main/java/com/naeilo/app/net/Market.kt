@@ -127,14 +127,18 @@ class Market {   // ios: Data/Market.swift:13,14
         return if (u.rate > 0 && Day.dday(u.date) >= -5) MarUse(u.rate, u.date) else null   // ios: Data/Market.swift:44
     }
     /** 종목별 전망 입력값 (사이트가 매일 만든다). 없으면 빌드 때 넣은 파일 */
-    var stats by mutableStateOf(SiteStats.load())   // ios: Data/Market.swift:47
+    var stats by mutableStateOf(if (Config.yahooOff) SiteStats.local(AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached()))) else SiteStats.load())   // ios: Data/Market.swift:47
     /** 내 토스 키로 받은 지난 종가(일봉)·원/달러. 키를 넣은 기기만 */
     var tossHist by mutableStateOf(TossHistory.cached())   // ios: Data/Market.swift:49
     /** 토스 원/달러 (하루 안에 받은 값만) */
     val tossFx: TossHistory.FX? get() = tossHist?.fx?.let { if (nowSec() - it.got < 86400) it else null }   // ios: Data/Market.swift:51
     /** 사이트 지난 종가 (웹 자산 추이·목표 진행과 같은 data/prices 파일). 내 종목과 원/달러만.
      *  내 토스 키로 받은 종목은 토스 일봉으로 바꿔 둔다 (TossHistory.merged) */
-    var prices by mutableStateOf(AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached())))   // ios: Data/Market.swift:54
+    private var pricesState by mutableStateOf(AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached())))
+    var prices: SitePrices.File?   // ios: Data/Market.swift:54
+        get() = pricesState
+        // 내 키가 있으면 전망 입력값도 키로 받은 일봉으로 다시 센다
+        set(v) { pricesState = v; if (Config.yahooOff) stats = SiteStats.local(v) }   // ios: Data/Market.swift:56
     /** 공개 베타·출시 번들의 자료는 가상 샘플이라 '예시 값' */
     val source: String get() = if (site != null) "naeilo 사이트" else if (YahooSample.quotes.isEmpty() || !Config.usesCollectedData) "예시 값" else "Yahoo 중계 (테스트)"   // ios: Data/Market.swift:55
 
@@ -356,6 +360,8 @@ class Market {   // ios: Data/Market.swift:13,14
             // 지난 종가·원/달러도 내 키로 (종목마다 하루 한 번, 환율은 10분에 한 번). '다른 방식' 바구니 종목(SPY·SGOV 등)도 같이
             val hk = ty.entries.groupBy({ SiteStats.key(it.key) }, { it.value }).mapValues { it.value.first() }.toMutableMap()   // ios: Data/Market.swift:252
             for (k in com.naeilo.app.core.calc.Parallel.wantKeys) if (hk[k] == null) hk[k] = k   // ios: Data/Market.swift:253
+            // 내 키가 있으면 외부 요인 기준 ETF 일봉도 (SiteStats.factorSym)
+            if (Config.yahooOff) for (k in SiteStats.factorSym.values) if (hk[k] == null) hk[k] = k
             TossHistory.fetch(hk, force = force)?.let { h ->   // ios: Data/Market.swift:254
                 tossHist = h   // ios: Data/Market.swift:242
                 prices = AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), h))   // ios: Data/Market.swift:254
@@ -385,6 +391,7 @@ class Market {   // ios: Data/Market.swift:13,14
         }
         // '다른 방식' 바구니 종목(SPY·SGOV 등)도: 예전엔 사이트(Yahoo) 값만 써서 내 키만 켜면 화면이 비었다
         for (k in com.naeilo.app.core.calc.Parallel.wantKeys) if (keys[k] == null && site?.h?.get(k) == null && tossH?.h?.get(k) == null) AlpacaFeed.code(k)?.let { keys[k] = it }   // ios: Data/Market.swift:283
+        if (Config.yahooOff) for (k in SiteStats.factorSym.values) if (keys[k] == null && tossH?.h?.get(k) == null) AlpacaFeed.code(k)?.let { keys[k] = it }
         if (keys.isNotEmpty() && com.naeilo.app.data.FlowAlpaca.fetch(keys)) {   // ios: Data/Market.swift:280
             prices = AlpacaHistory.merged(TossHistory.merged(site, tossH))   // ios: Data/Market.swift:281
             com.naeilo.app.data.FlowStore.reload()   // ios: Data/Market.swift:282
@@ -450,7 +457,9 @@ object YahooSample {   // ios: Data/Market.swift:304
     private fun asset(name: String, ext: String, dir: String? = null): ByteArray? =
         runCatching { Defaults.ctx.assets.open((dir?.let { "$it/" } ?: "") + "$name.$ext").use { it.readBytes() } }.getOrNull()
 
-    val quotes: Map<String, Q> by lazy {   // ios: Data/Market.swift:311
+    /** 빌드 때 넣은 Yahoo 자료(내부 베타 번들)도 내 키가 있으면 쓰지 않는다 (Config.yahooOff 한 규칙) */
+    val quotes: Map<String, Q> get() = if (Config.yahooOff) emptyMap() else rawQuotes
+    private val rawQuotes: Map<String, Q> by lazy {   // ios: Data/Market.swift:311
         val d = asset("quotes", "json"); val o = d?.let { feedJson(it) }?.let { jObj(it) }   // ios: Data/Market.swift:312,313
         if (o == null || o.values.any { jObj(it) == null }) return@lazy emptyMap()   // ios: Data/Market.swift:314
         val out = mutableMapOf<String, Q>()   // ios: Data/Market.swift:315
@@ -461,7 +470,8 @@ object YahooSample {   // ios: Data/Market.swift:304
         out   // ios: Data/Market.swift:307
     }   // ios: Data/Market.swift:321
 
-    val history: Map<String, Hist> by lazy {   // ios: Data/Market.swift:323
+    val history: Map<String, Hist> get() = if (Config.yahooOff) emptyMap() else rawHistory
+    private val rawHistory: Map<String, Hist> by lazy {   // ios: Data/Market.swift:323
         val out = mutableMapOf<String, Hist>()   // ios: Data/Market.swift:324
         for ((id, k) in keyFor) {   // ios: Data/Market.swift:325
             val d = asset(file(k), "json", "prices") ?: continue   // ios: Data/Market.swift:326,327
@@ -480,7 +490,8 @@ object YahooSample {   // ios: Data/Market.swift:304
     val asOf: Instant? get() = quotes.values.map { it.time }.maxOrNull()   // ios: Data/Market.swift:340
 
     /** 빌드 때 넣은 지난 종가 전부 (사이트 티커 → 종가). 사이트에서 아직 못 받았을 때만 쓴다 */
-    val bundled: Map<String, Hist> by lazy {   // ios: Data/Market.swift:343
+    val bundled: Map<String, Hist> get() = if (Config.yahooOff) emptyMap() else rawBundled
+    private val rawBundled: Map<String, Hist> by lazy {   // ios: Data/Market.swift:343
         val out = mutableMapOf<String, Hist>()   // ios: Data/Market.swift:344
         for (f in runCatching { Defaults.ctx.assets.list("prices") }.getOrNull()?.filter { it.endsWith("." + "json") } ?: emptyList()) {   // ios: Data/Market.swift:345
             val o = asset(f.removeSuffix(".json"), "json", "prices")?.let { jObj(feedJson(it)) } ?: continue   // ios: Data/Market.swift:346
@@ -589,7 +600,7 @@ object TossHistory {   // ios: Data/Market.swift:439
     /** h 키 = 사이트 티커, day = 그 종목을 마지막으로 받은 날
      *  krx = 국내 종목의 날짜별 KRX 종가 (15:31 1분봉), krxTry = 그 날짜를 마지막으로 물은 시각 */
     @Serializable data class File(var h: Map<String, YahooSample.Hist>, var day: Map<String, String>, var fx: FX? = null,
-        var krx: Map<String, Map<String, Double>>? = null, var krxTry: Map<String, Double>? = null)   // ios: Data/Market.swift:506
+        var krx: Map<String, Map<String, Double>>? = null, var krxTry: Map<String, Double>? = null, var fxw: Map<String, Double>? = null)   // ios: Data/Market.swift:506
     const val name = "toss_history.json"   // ios: Data/Market.swift:443
     fun cached(): File? = if (TossKeys.on) Store.read(File.serializer(), name) else null   // ios: Data/Market.swift:444
 
@@ -597,7 +608,30 @@ object TossHistory {   // ios: Data/Market.swift:439
         if (t == null || !TossKeys.on || t.h.isEmpty()) return p   // ios: Data/Market.swift:447
         val out = p?.copy() ?: SitePrices.File(got = 0.0, updated = "", asked = emptyList(), h = emptyMap())   // ios: Data/Market.swift:448
         out.h = out.h + t.h   // ios: Data/Market.swift:516
+        if (out.h["KRW=X"] == null) fxDaily(t)?.let { out.h = out.h + ("KRW=X" to it) }
         return out   // ios: Data/Market.swift:450
+    }
+    /** 원/달러 날짜별 값: 받은 일봉의 거래일마다 그 날 앞 마지막 찍은 값(fxw), 오늘은 지금 환율. 찍은 값이 8개가 안 되면 null */
+    fun fxDaily(t: File): YahooSample.Hist? {   // ios: Data/Market.swift:fxDaily
+        val w = t.fxw ?: return null; if (w.size < 8) return null
+        val wk = w.keys.sorted(); val first = wk[0]
+        val days = t.h.values.flatMap { it.dates }.filter { it >= first }.toMutableSet()
+        val today = Day.today; val now = t.fx?.rate ?: 0.0
+        if (now > 0) days.add(today)
+        val ds = mutableListOf<String>(); val out = mutableListOf<Double>(); var j = 0
+        for (d in days.sorted()) {
+            while (j + 1 < wk.size && wk[j + 1] <= d) j++
+            ds.add(d); out.add(if (d == today && now > 0) now else w[wk[j]] ?: 0.0)
+        }
+        return YahooSample.Hist(dates = ds, closes = out)
+    }
+    /** 원/달러를 찍어 받을 날 (한국 날짜, 오늘은 뺀다): 최근 1개월은 날마다, 3개월까지는 목요일마다, 그 앞 3년까지는 달마다 1일. 오래된 날부터 */
+    private fun fxDays(): List<String> {   // ios: Data/Market.swift:fxDays
+        val today = LocalDate.now(ZoneId.of("Asia/Seoul")); val out = sortedSetOf<String>()
+        for (i in 1..91) { val d = today.minusDays(i.toLong()); if (i <= 30 || d.dayOfWeek == java.time.DayOfWeek.THURSDAY) out.add(d.toString()) }
+        val lim = today.minusDays(91)
+        for (i in 0..36) { val d = today.minusMonths(i.toLong()).withDayOfMonth(1); if (d < lim) out.add(d.toString()) }
+        return out.toList()
     }
 
     private fun enc(v: String): String =   // ios: Data/Market.swift:453
@@ -616,7 +650,7 @@ object TossHistory {   // ios: Data/Market.swift:439
         if (!TossKeys.on) return@withContext null   // ios: Data/Market.swift:469
         val f = Store.read(File.serializer(), name) ?: File(h = emptyMap(), day = emptyMap(), fx = null)   // ios: Data/Market.swift:470
         val fh = f.h.toMutableMap(); val fday = f.day.toMutableMap()
-        val now = nowSec(); val today = Day.today   // ios: Data/Market.swift:471
+        val now = nowSec()   // ios: Data/Market.swift:471
         val from = Day.str(Instant.now().minusSeconds((3 * 365 + 15) * 86400L))   // 사이트 파일과 같은 3년 남짓   // ios: Data/Market.swift:472
         val miss = TossFeed.histMiss.toMutableMap()   // ios: Data/Market.swift:473
         // 한 번만: 중계에 일봉 경로가 없던 때(404) 모든 종목에 하루 막음이 걸린 기기가 있다. 이 판에서 한 번 푼다
@@ -631,7 +665,8 @@ object TossHistory {   // ios: Data/Market.swift:439
             if (stop) break
             // 하루 한 번, 장이 끝난 뒤 한 번 더 (그날 종가가 정규장 종가·다음 날 전일 종가가 된다)
             val (md, closed) = marketDay(kr = y.endsWith(".KS") || y.endsWith(".KQ"))   // ios: Data/Market.swift:480
-            val stamp = if (closed) today + "c" else today   // ios: Data/Market.swift:481
+            // 표시는 그 장의 날짜로 (한국 날짜로 두면 미국 장이 끝난 뒤 앱을 안 열고 한국 날이 그대로면 그날 종가를 다시 안 받는다)
+            val stamp = if (closed) md + "c" else md   // ios: Data/Market.swift:481
             // 캔들이 30일이 안 되면 그날 한 번(장 끝난 뒤 한 번 더) 다시 3년치를 묻는다 (한 번 비면 영영 비는 일이 없게)
             val short = (ohlc.b[k]?.d?.size ?: 0) < 30   // ios: Data/Market.swift:483
             val c = TossFeed.code(y); if (c == null) { Log.i("naeilo.flow", "토스 일봉 $k: 토스 코드 없음 ($y)"); continue }
@@ -723,6 +758,19 @@ object TossHistory {   // ios: Data/Market.swift:439
                 f.fx = FX(rate = rate, prev = if ((prev ?: 0.0) > 0) prev!! else (f.fx?.prev ?: rate), got = now)   // ios: Data/Market.swift:532
             }
         }
+        // 원/달러 지난 흐름 3년치(70개 남짓, fxDays). 처음엔 갱신마다 최근 날부터 6개씩 나눠 받고(중계 1분 한도), 다 쌓이면 하루 1번만
+        val want = fxDays(); val w = (f.fxw ?: emptyMap()).filterKeys { it in want }.toMutableMap()
+        var asked = 0
+        for (d in want.reversed()) {
+            if (stop || asked >= 6) break
+            if (w[d] != null) continue
+            asked++
+            val (code, o, e) = TossFeed.userGet("/api/toss/v1/exchange-rate?dateTime=" + enc(d + "T15:00:00+09:00"))
+            if (e != null || code == 429 || code == 401 || code == 403) break
+            val r = if (code == 200) num(jObj(o?.get("result"))?.get("rate")) else null
+            if (r != null && r > 0) w[d] = r
+        }
+        f.fxw = w
         Store.write(File.serializer(), f, name)   // ios: Data/Market.swift:535
         f   // ios: Data/Market.swift:536
     }

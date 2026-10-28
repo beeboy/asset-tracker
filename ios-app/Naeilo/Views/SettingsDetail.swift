@@ -580,13 +580,16 @@ struct TaxRulesView: View {
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
             VStack(alignment: .leading, spacing: 4) {
-                Text("올해 해외주식 실현 이익 (만원)").appFont(13, .semibold).foregroundStyle(Theme.sub)
+                Text("올해 해외주식 실현 이익 (원)").appFont(13, .semibold).foregroundStyle(Theme.sub)
                 TextField("", text: $gain).keyboardType(.numberPad).appFont(18, .semibold)
                     .padding(.horizontal, 12).frame(minHeight: 48)
                     .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 2))
-                    .onChange(of: gain) { _, v in m.taxGain = max(0, Double(v) ?? 0) }
-                    .accessibilityLabel("올해 해외주식 실현 이익 (만원)")
+                    .onChange(of: gain) { _, v in
+                        if commaDigits(v) != v { gain = commaDigits(v) }
+                        m.taxGain = commaValue(v) / 1e4
+                    }
+                    .accessibilityLabel("올해 해외주식 실현 이익 (원)")
             }
             Card {
                 ForEach([(String(localized: "해외주식 양도소득세"), String(localized: "한 해 손익 합계에서 250만원 넘는 부분에 22%. 다음 해 5월 신고.")),
@@ -603,7 +606,7 @@ struct TaxRulesView: View {
             note(String(localized: "계산 예시이며 세무 상담이 아닙니다."))
         }
         .doneKey()
-        .onAppear { gain = String(Int(m.taxGain)) }
+        .onAppear { gain = commaDigits(String(Int((m.taxGain * 1e4).rounded()))) }
     }
 }
 

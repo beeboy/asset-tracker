@@ -114,10 +114,11 @@ enum StockSearch {
         return out.filter { mine.contains($0.id) || KoreaEstimate.allowed($0) }
     }
 
-    /// Yahoo 검색 (한글은 못 찾는다)
+    /// Yahoo 검색 (한글은 못 찾는다). 토스 키가 있으면 Yahoo 를 부르지 않고 토스로만 찾는다
     static func remote(_ q: String) async -> [StockHit] {
         let k = q.trimmingCharacters(in: .whitespaces)
         guard k.count >= 1, k.unicodeScalars.allSatisfy({ $0.isASCII }) else { return [] }
+        if TossKeys.on { return await toss(k) }
         let qs = k.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? k
         guard let o = try? await Relay.yahoo("/v1/finance/search?q=\(qs)&quotesCount=12&newsCount=0"),
               let quotes = o["quotes"] as? [[String: Any]] else { return [] }
@@ -136,6 +137,16 @@ enum StockSearch {
             let ko = StockCatalog.all.first { $0.id == sym }
             return StockHit(id: sym, yahoo: sym, name: ko?.name ?? name, en: name, market: type == "ETF" ? "미국 ETF" : "미국 주식", currency: .usd)
         }.filter(KoreaEstimate.allowed)
+    }
+
+    /// 토스 키 검색: 친 티커를 토스 현재가로 확인한다 (토스에 있는 미국 종목만). 이름은 아는 한글 이름, 없으면 티커
+    private static func toss(_ k: String) async -> [StockHit] {
+        guard let c = TossFeed.code(k) else { return [] }
+        let (code, o, _) = await TossFeed.userGet("/api/toss/v1/prices?symbols=" + c, timeout: 3)
+        guard code == 200, ((o?["result"] as? [[String: Any]]) ?? []).contains(where: { ($0["symbol"] as? String)?.uppercased() == c && (num($0["lastPrice"]) ?? 0) > 0 }) else { return [] }
+        let id = c.replacingOccurrences(of: ".", with: "-")
+        if let ko = StockCatalog.all.first(where: { $0.id == id }) { return [ko] }
+        return [StockHit(id: id, yahoo: id, name: id, market: String(localized: "미국 주식"), currency: .usd)]
     }
 }
 
@@ -220,6 +231,23 @@ final class CustomSymbols {
             items = disk.items; hist = disk.hist
             // 한국 종목은 시세를 받지 않는다: 예전에 Yahoo 에서 받아 둔 종가는 버리고, 넣은 가격으로 다시 만든다 (rebuildKR)
             for s in items where !s.usd && !(s.lv == true && KoreaEstimate.liveOK(s.id, name: s.name)) { hist[s.id] = nil }
+            // 국내 종목 이름이 코드뿐이면(사이트에서 불러온 때) 코스피·코스닥 목록의 한글 이름으로
+            items = items.map { s in
+                guard !s.usd, s.name == s.id, let n = KrxList.name(s.id) ?? StockCatalog.all.first(where: { $0.id == s.id })?.name else { return s }
+                var t = Saved(id: s.id, yahoo: s.yahoo, name: n, market: s.market, usd: false, prev: s.prev, last: s.last, at: s.at)
+                t.kp = s.kp; t.kd = s.kd; t.lv = s.lv
+                return t
+            }
+            // 토스 키가 있으면 Yahoo 이름(긴 영문)을 쓰지 않는다: 미국 종목은 아는 한글 이름, 없으면 티커
+            if TossKeys.on {
+                items = items.map { s in
+                    let n = StockCatalog.all.first { $0.id == s.id }?.name ?? s.id
+                    guard s.usd, s.name != n else { return s }
+                    var t = Saved(id: s.id, yahoo: s.yahoo, name: n, market: s.market, usd: true, prev: s.prev, last: s.last, at: s.at)
+                    t.kp = s.kp; t.kd = s.kd; t.lv = s.lv
+                    return t
+                }
+            }
         }
         // 기록 없이 금액 하나만 있던 예전 저장값은 그 금액·날짜를 첫 줄로
         if krLog.isEmpty, let s = items.first(where: { $0.id == KoreaEstimate.sumId }), let p = s.kp, p > 0 { krLog = [.init(d: s.kd ?? Day.today, v: p)] }

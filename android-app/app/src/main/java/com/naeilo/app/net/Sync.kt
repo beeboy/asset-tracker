@@ -509,7 +509,7 @@ class Sync {   // ios: Data/Sync.swift:17,18
             if (kr && num(h["price"]) > 0) krPrice[id] = Pair(num(h["price"]), h["price_date"] as? String)   // ios: Data/Sync.swift:414
             if (CustomSymbols.shared.symbol(id) == null && YahooSample.quotes[id] == null) {   // ios: Data/Sync.swift:415
                 val ko = StockCatalog.all.firstOrNull { it.id == id }   // ios: Data/Sync.swift:416
-                unknown.add(StockHit(id = id, yahoo = if (kr) t.uppercase() else id, name = ko?.name ?: Sample.symbols.firstOrNull { it.id == id }?.name ?: (h["name"] as? String)?.let { if (it.isEmpty()) null else it } ?: id,   // ios: Data/Sync.swift:417
+                unknown.add(StockHit(id = id, yahoo = if (kr) t.uppercase() else id, name = ko?.name ?: Sample.symbols.firstOrNull { it.id == id }?.name ?: (if (kr) KrxList.name(id) else null) ?: (h["name"] as? String)?.let { if (it.isEmpty()) null else it } ?: id,   // ios: Data/Sync.swift:417
                     market = ko?.market ?: (if (kr) (if (t.uppercase().endsWith(".KQ")) "코스닥" else "코스피") else "미국 주식"),   // ios: Data/Sync.swift:418
                     currency = if (kr) Currency.krw else Currency.usd))   // ios: Data/Sync.swift:419
             }

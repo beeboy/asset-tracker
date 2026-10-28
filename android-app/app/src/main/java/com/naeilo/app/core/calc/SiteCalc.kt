@@ -7,6 +7,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.naeilo.app.core.Config
+import com.naeilo.app.core.feedJson
+import com.naeilo.app.core.num
+import com.naeilo.app.core.jObjs
+import com.naeilo.app.core.jObj
+import com.naeilo.app.core.AlpacaFeed
+import com.naeilo.app.core.AlpacaKeys
 import com.naeilo.app.core.FeedReq
 import com.naeilo.app.core.NJson
 import com.naeilo.app.core.Store
@@ -56,7 +62,58 @@ class SiteCalc {
 
     /** 사이트는 하루 한 번 만든다. 6시간 안에 받았으면 다시 받지 않는다 (네트워크는 FeedReq 가 Dispatchers.IO 에서) */
     // ios: Data/SiteCalc.swift:29
+    /** 내 Alpaca 키로 받은 현금 배당 (배당락일·주당 금액, 지난 3년). 미국 종목만, 하루 한 번 (alpaca_divs.json). 토스에는 배당 자료가 없다 */
+    suspend fun alpacaDivs(keys: List<String>, prices: SitePrices.File?): Map<String, Div> {   // ios: Data/SiteCalc.swift:alpacaDivs
+        val name = "alpaca_divs.json"; val now = System.currentTimeMillis() / 1000.0
+        val want = keys.toSet(); val old = Store.read(AlpacaDivDisk.serializer(), name)
+        if (old != null && now - old.got < 86400 && old.keys.toSet().containsAll(want)) return old.divs
+        val code = want.mapNotNull { k -> AlpacaFeed.code(k)?.let { it to k } }.toMap()
+        val k = AlpacaKeys.load(); if (k == null || code.isEmpty()) return old?.divs ?: emptyMap()
+        val ev = mutableMapOf<String, MutableList<Ev>>(); var token: String? = null
+        val start = com.naeilo.app.core.Day.str(Instant.now().minusSeconds((3 * 365.25 * 86400).toLong()))
+        for (page in 0 until 10) {
+            val q = "symbols=" + java.net.URLEncoder.encode(code.keys.sorted().joinToString(","), "UTF-8") + "&types=cash_dividend&start=$start&end=${com.naeilo.app.core.Day.today}&limit=1000" +
+                (token?.let { "&page_token=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: "")
+            val r = FeedReq("https://data.alpaca.markets/v1/corporate-actions?$q", timeout = 10.0)
+            r.setValue(k.id, "APCA-API-KEY-ID"); r.setValue(k.secret, "APCA-API-SECRET-KEY")
+            val o = runCatching { val (c, d) = r.send(); if (c == 200) jObj(feedJson(d)) else null }.getOrNull() ?: return old?.divs ?: emptyMap()
+            for (v in jObjs(jObj(o["corporate_actions"])?.get("cash_dividends")) ?: emptyList()) {
+                val s = (v["symbol"] as? String)?.let { code[it] } ?: continue; val dd = v["ex_date"] as? String ?: continue
+                val a = num(v["rate"])?.takeIf { it > 0 } ?: continue
+                ev.getOrPut(s) { mutableListOf() }.add(Ev(d = dd, a = a))
+            }
+            token = (o["next_page_token"] as? String)?.takeIf { it.isNotEmpty() }
+            if (token == null) break
+        }
+        val out = want.filter { it in code.values }.associateWith { s -> Div(ccy = "USD", price = prices?.h?.get(s)?.closes?.lastOrNull(), events = (ev[s] ?: emptyList()).sortedBy { it.d }) }
+        Store.write(AlpacaDivDisk.serializer(), AlpacaDivDisk(got = now, keys = want.toList(), divs = out), name)
+        return out
+    }
+
+    /** 키로 받은 날짜별 원/달러(TossHistory.fxDaily)로 환율 칸을 만든다. 화면이 쓰는 칸(지난 값·1년 변화·1년 고저)만 채운다 */
+    fun local(p: SitePrices.File?): File? {   // ios: Data/SiteCalc.swift:local
+        val o = p?.h?.get("KRW=X") ?: return null; val last = o.closes.lastOrNull() ?: return null
+        val n = o.closes.size; if (n <= 2) return null
+        val k0 = maxOf(0, n - 780); val i0 = maxOf(0, n - 253); val y1 = o.closes.subList(i0, n)
+        val fx = FX(date = o.dates.lastOrNull() ?: com.naeilo.app.core.Day.today, close = last, kalman_level = last, ret_1m = last / o.closes[maxOf(0, n - 22)] - 1,
+            ret_3m = last / o.closes[maxOf(0, n - 64)] - 1, ret_1y = if (n > 253) last / o.closes[n - 253] - 1 else null, hi1 = y1.maxOrNull(), lo1 = y1.minOrNull(),
+            dates = o.dates.subList(k0, n), closes = o.closes.subList(k0, n), level = o.closes.subList(k0, n))
+        return File(date = com.naeilo.app.core.Day.today, divs = emptyMap(), fx = fx)
+    }
+
     suspend fun refresh() {
+        // 내 키가 있으면 사이트 대신 키로 받은 값으로 (원/달러는 찍은 값으로 채운 날짜별 값. 배당은 토스에 없다)
+        if (Config.yahooOff) {
+            val p = Market.shared.prices
+            var f = local(p)
+            if (AlpacaKeys.on) {
+                val us = p?.h?.keys?.filter { !it.contains(".K") && !it.contains("=") && !it.startsWith("^") && !it.startsWith("KR~") } ?: emptyList()
+                val d = alpacaDivs(us, p)
+                if (d.isNotEmpty()) f = f?.copy(divs = d) ?: File(date = com.naeilo.app.core.Day.today, divs = d)
+            }
+            file = f
+            return
+        }
         // ios: Data/SiteCalc.swift:30
         if (!Config.usesCollectedData) return
         val key = "calcGot"; val now = System.currentTimeMillis() / 1000.0
@@ -112,7 +169,7 @@ class SiteCalc {
         // ios: Data/SiteCalc.swift:25,26
         /** 공개 베타·출시는 받아 둔 사이트 값을 읽지 않고 번들 값(가상 샘플)만 */
         fun load(): File? =
-            (if (Config.usesCollectedData) decode(Store.readData(name)) else null) ?: decode(Defaults.asset("calc", "json")?.encodeToByteArray())
+            (if (Config.usesCollectedData) decode(Store.readData(name)) else null) ?: (if (Config.yahooOff) null else decode(Defaults.asset("calc", "json")?.encodeToByteArray()))
 
         // ios: Data/SiteCalc.swift:43,44,45
         fun key(id: String): String {
@@ -225,3 +282,6 @@ class SiteCalc {
             now * exp((mu - vol * vol / 2) * t + z * vol * sqrt(t))
     }
 }
+
+/** SiteCalc.alpacaDivs 가 기기에 남기는 값 (받은 시각·물은 종목·배당) */
+@Serializable private data class AlpacaDivDisk(var got: Double, var keys: List<String>, var divs: Map<String, SiteCalc.Div>)
