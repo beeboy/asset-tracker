@@ -160,14 +160,14 @@ enum class AnalysisRoute { forecast, rateScen, external, dividend, tax, fx, glan
 
 // ios: Views/AnalysisView.swift:7,8
 fun AnalysisRoute.title(m: AppModel): String = when (this) {
-    AnalysisRoute.calm -> "내 투자 습관"   // ios: Views/AnalysisView.swift:9
+    AnalysisRoute.calm -> "결과에 끌려 사고팔까?"   // ios: Views/AnalysisView.swift:9
     AnalysisRoute.forecast -> m.forecastTitle   // ios: Views/AnalysisView.swift:11
-    AnalysisRoute.rateScen -> "금리 충격 테스트"   // ios: Views/AnalysisView.swift:12
-    AnalysisRoute.external -> "외부 요인"   // ios: Views/AnalysisView.swift:13
+    AnalysisRoute.rateScen -> "금리가 바뀌면 내 목표는?"   // ios: Views/AnalysisView.swift:11
+    AnalysisRoute.external -> "바깥 일, 내 돈은?"   // ios: Views/AnalysisView.swift:13
     AnalysisRoute.dividend -> "배당"   // ios: Views/AnalysisView.swift:14
     AnalysisRoute.tax -> "세금"   // ios: Views/AnalysisView.swift:15
     AnalysisRoute.goal -> "목표 고치기"   // ios: Views/AnalysisView.swift:16
-    AnalysisRoute.fx -> "환율 영향"   // ios: Views/AnalysisView.swift:17
+    AnalysisRoute.fx -> "환율이 바뀌면?"   // ios: Views/AnalysisView.swift:17
     AnalysisRoute.glance -> "종목 한눈에"   // ios: Views/AnalysisView.swift:18
 }
 
@@ -318,7 +318,6 @@ fun AnalysisView(m: AppModel) {
                 // ios: Views/AnalysisView.swift:153
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Box(Modifier.outset(16.dp)) { AppHeader(tab = "분석") }   // ios: Views/AnalysisView.swift:154 (-16)
-                    SampleNote(m)   // ios: Views/AnalysisView.swift:155
                     // ios: Views/AnalysisView.swift:156,157,159
                     Box(Modifier.plainClickable { open(AnalysisRoute.forecast) }) {
                         BoxSchemeScope { ChanceBox(look = BoxLook.entries.firstOrNull { it.name == lookRaw } ?: BoxLook.jump, d = chance(m, p, f, pPlan, pro = pro)) }
@@ -326,6 +325,7 @@ fun AnalysisView(m: AppModel) {
                     Tug(m, pPlan, known = pro && f.exact, open)   // ios: Views/AnalysisView.swift:160
                     Shake(m, p, f, pro = pro, toGoal = toGoal, setToGoal = { toGoal = it }, open)   // ios: Views/AnalysisView.swift:161
                     if (m.isGoal && pro) Raise(m)   // ios: Views/AnalysisView.swift:162
+                    SampleNote(m)   // ios: Views/AnalysisView.swift:162 샘플 안내는 맨 아래 (2026-10-28)
                 }
             }
         }
@@ -474,7 +474,7 @@ private fun HabitChip(m: AppModel, open: (AnalysisRoute) -> Unit) {
 
 // MARK: 언제 흔들릴까? 내 길 계획선 그래프 + 앞으로 올 일정 깃발 (앱 일정표 MarketEvents · 세금은 내년 5월)
 // ios: Views/AnalysisView.swift:312
-private class Flag(val t: Double, val text: String, val warn: Boolean, val route: AnalysisRoute)
+private class Flag(val t: Double, val text: String, val warn: Boolean, val route: AnalysisRoute, val focus: String? = null)
 
 // ios: Views/AnalysisView.swift:314
 private fun flags(m: AppModel, p: MyPath, until: Double): List<Flag> {   // ios: Views/AnalysisView.swift:313
@@ -483,7 +483,7 @@ private fun flags(m: AppModel, p: MyPath, until: Double): List<Flag> {   // ios:
     val dday = { d: String -> val n = Day.dday(d); if (n == 0) "오늘" else "D-$n" }   // ios: Views/AnalysisView.swift:317
     val out = ArrayList<Flag>()   // ios: Views/AnalysisView.swift:318
     // ios: Views/AnalysisView.swift:319,320
-    hits.firstOrNull { it.id == "x_fomc" }?.let { h -> out.add(Flag(p.start + Day.dday(h.day) / 365.25, dday(h.day) + " FOMC", true, AnalysisRoute.external)) }
+    hits.firstOrNull { it.id == "x_fomc" }?.let { h -> out.add(Flag(p.start + Day.dday(h.day) / 365.25, dday(h.day) + " FOMC", true, AnalysisRoute.external, "${h.id}.${h.day}")) }
     // ios: Views/AnalysisView.swift:322,323
     hits.firstOrNull { it.id.startsWith("e_") && it.held }?.let { h -> out.add(Flag(p.start + Day.dday(h.day) / 365.25, dday(h.day) + " " + h.kind.replace(" 실적", ""), false, AnalysisRoute.external)) }
     // ios: Views/AnalysisView.swift:325
@@ -551,7 +551,7 @@ private fun Shake(m: AppModel, p: MyPath, f: AppModel.Forecast, pro: Boolean, to
                 Box(Modifier.offset(x = x, y = y + 18.dp).size(1.dp, (topH + chartH - y - 18.dp).coerceAtLeast(0.dp)).background(c))   // ios: Views/AnalysisView.swift:377
                 // ios: Views/AnalysisView.swift:378,379,380,381,383,384
                 Box(Modifier.offset(x = minOf((x - 4.dp).coerceAtLeast(0.dp), (w - 110.dp).coerceAtLeast(0.dp)), y = y).height(18.dp)
-                    .background(if (g.warn) hex(0xA8521A) else Theme.line, RoundedCornerShape(6.dp)).plainClickable { open(g.route) }.padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
+                    .background(if (g.warn) hex(0xA8521A) else Theme.line, RoundedCornerShape(6.dp)).plainClickable { ExternalView.focus = g.focus; open(g.route) }.padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
                     T(g.text, style = appFont(11f, FontWeight.Bold), color = if (g.warn) Color.White else Theme.ink, maxLines = 1)
                 }
             }
@@ -881,64 +881,64 @@ private fun Wave(f: Float, on: Color, modifier: Modifier, dk: Boolean) {
 @Composable
 fun Modifier.openOnTap(m: AppModel, route: AnalysisRoute): Modifier = this.plainClickable { m.analysisPath = m.analysisPath + route }
 
-// 목표일 전망: 시장이 어떻게 가느냐에 따라 목표일 자산이 얼마나 갈리나. 목표 판정은 내 목표(내 길) 화면 몫
-// ios: Views/AnalysisView.swift:285,286,289,290
+// 목표일 전망: 그래프 먼저, 그 밑 세 가지 미래 표의 줄을 눌러 시나리오를 고른다. 확률·근거 글은 요약 박스에서 이미 봤으니 두지 않는다 (2026-10-28)
+// ios: Views/AnalysisView.swift:761,765
 @Composable
 fun ForecastView(m: AppModel) {
-    var open by remember { mutableStateOf(false) }   // ios: Views/AnalysisView.swift:287
-    val fs = Lens.entries.associateWith { m.forecast(it) }   // ios: Views/AnalysisView.swift:291 (같은 경로를 μ만 바꿔 다시 무게 달기: 엔진이 딴 줄에서 하고 결과를 둔다)
-    val sel = m.lens; val f = fs[sel] ?: m.forecast   // ios: Views/AnalysisView.swift:292
+    var showEv by remember { mutableStateOf(false) }   // ios: Views/AnalysisView.swift:763
+    val fs = Lens.entries.associateWith { m.forecast(it) }   // ios: Views/AnalysisView.swift:766 (같은 경로를 μ만 바꿔 다시 무게 달기: 엔진이 딴 줄에서 하고 결과를 둔다)
+    val sel = m.lens; val f = fs[sel] ?: m.forecast   // ios: Views/AnalysisView.swift:767
     // 몬테카를로 경로는 종목만이라 현금을 더해 지금 평가액과 같은 기준으로 (닫힌 식은 이미 포함)
-    val add = { x: AppModel.Forecast -> if (x.exact) m.cashKrw else 0.0 }   // ios: Views/AnalysisView.swift:294
-    val now = (f.q50.firstOrNull() ?: 0.0) + add(f)   // ios: Views/AnalysisView.swift:295
-    val med = (f.q50.lastOrNull() ?: 0.0) + add(f); val lo = (f.q5.lastOrNull() ?: 0.0) + add(f); val hi = (f.q95.lastOrNull() ?: 0.0) + add(f)   // ios: Views/AnalysisView.swift:296
-    val chg = if (now > 0) med / now - 1 else 0.0   // ios: Views/AnalysisView.swift:297
-    val end = ForecastView.ym(m.forecastHorizon)   // ios: Views/AnalysisView.swift:298
-    val others: List<Pair<String, List<Double>>> = ForecastView.others(fs, sel = sel, add = add)   // ios: Views/AnalysisView.swift:299
+    val add = { x: AppModel.Forecast -> if (x.exact) m.cashKrw else 0.0 }   // ios: Views/AnalysisView.swift:769
+    val now = (f.q50.firstOrNull() ?: 0.0) + add(f)   // ios: Views/AnalysisView.swift:770
+    val med = (f.q50.lastOrNull() ?: 0.0) + add(f); val lo = (f.q5.lastOrNull() ?: 0.0) + add(f); val hi = (f.q95.lastOrNull() ?: 0.0) + add(f)   // ios: Views/AnalysisView.swift:771
+    val chg = if (now > 0) med / now - 1 else 0.0   // ios: Views/AnalysisView.swift:772
+    val end = ForecastView.ym(m.forecastHorizon)   // ios: Views/AnalysisView.swift:773
+    val others: List<Pair<String, List<Double>>> = ForecastView.others(fs, sel = sel, add = add)   // ios: Views/AnalysisView.swift:774
+    val hits = MarketEvents.upcoming(held = m.rows.map { it.id }, days = 60).take(4).sortedBy { it.day }   // ios: Views/AnalysisView.swift:775
 
-    // ios: Views/AnalysisView.swift:300,340,341,343,344
+    // ios: Views/AnalysisView.swift:776,816,817,818,820
     Box(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
-        // ios: Views/AnalysisView.swift:301,339
+        // ios: Views/AnalysisView.swift:777,815
         Column(Modifier.widthIn(max = Theme.maxWidth).fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            DetailHead(title = m.forecastTitle, sub = if (f.exact) "" else "계산 중 (어림값)")   // ios: Views/AnalysisView.swift:302
-            // Views/AnalysisView.swift:309 (검사 예외: 같은 글)
-            T(if (m.isGoal) "${end.second} 내 자산은?" else "3년 뒤 내 자산은?",
-              style = appFont(20f, FontWeight.Bold), color = Theme.ink)   // ios: Views/AnalysisView.swift:304
+            DetailHead(title = m.forecastTitle, sub = if (f.exact) "" else "계산 중 (어림값)")   // ios: Views/AnalysisView.swift:778
 
-            // ios: Views/AnalysisView.swift:306
+            // ios: Views/AnalysisView.swift:785
             Card {
-                Segments(m)   // ios: Views/AnalysisView.swift:307
-                TrustSlider(m)   // ios: Views/AnalysisView.swift:308
-                // ios: Views/AnalysisView.swift:309
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    T("그럴듯한 금액 · 연 ${AppModel.sgn0(f.mu)}", style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisView.swift:310
-                    // ios: Views/AnalysisView.swift:311
+                // Views/AnalysisView.swift:786 (검사 예외: 같은 글)
+                T(if (m.isGoal) "${end.second} 내 자산은?" else "3년 뒤 내 자산은?", style = appFont(15f, FontWeight.Bold), color = Theme.ink)   // ios: Views/AnalysisView.swift:787
+                // ios: Views/AnalysisView.swift:788
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    // ios: Views/AnalysisView.swift:789
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // ios: Views/AnalysisView.swift:312,313 (.font(.system(size: 28)): 큰 글자 설정을 따르지 않는다)
-                        FitText(ForecastView.amt(med), TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Bold), 0.7f, Modifier.weight(1f, fill = false).alignByBaseline(), maxLines = 1, color = Theme.ink, roll = ForecastView.amt(med))
-                        T(AppModel.sgn0(chg), Modifier.alignByBaseline(), style = appFont(13f, FontWeight.Bold), color = if (chg >= 0) Theme.green else Theme.up)   // ios: Views/AnalysisView.swift:314
+                        T("보통", Modifier.alignByBaseline(), style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisView.swift:790
+                        // ios: Views/AnalysisView.swift:791,792 (.font(.system(size: 22)): 큰 글자 설정을 따르지 않는다)
+                        FitText(ForecastView.amt(med), TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold), 0.7f, Modifier.weight(1f, fill = false).alignByBaseline(), maxLines = 1, color = Theme.ink, roll = ForecastView.amt(med))
+                        T(AppModel.sgn0(chg), Modifier.alignByBaseline(), style = appFont(13f, FontWeight.Bold), color = if (chg >= 0) Theme.green else Theme.up)   // ios: Views/AnalysisView.swift:793
                     }
-                    T("10번 중 9번 ${ForecastView.amt(lo)} ~ ${ForecastView.amt(hi)}", style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisView.swift:316
+                    T("10번 중 9번 ${ForecastView.amt(lo)} ~ ${ForecastView.amt(hi)}", style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisView.swift:795
                 }
-                // ios: Views/AnalysisView.swift:318,319,320
-                ScenarioChart(sel = f, selShift = add(f), selLabel = ForecastView.short(sel), others = others,
-                              goal = m.keyValue, goalLabel = m.keyName, endLabel = if (m.isGoal) end.second else "3년 뒤", modifier = Modifier.height(190.dp))
-                Legend()   // ios: Views/AnalysisView.swift:321
-                // ios: Views/AnalysisView.swift:322
+                // ios: Views/AnalysisView.swift:797,798,799,800
+                Box(Modifier.fillMaxWidth().height(190.dp)) {
+                    ScenarioChart(sel = f, selShift = add(f), selLabel = ForecastView.short(sel), others = others,
+                                  goal = m.keyValue, goalLabel = m.keyName, endLabel = if (m.isGoal) end.second else "3년 뒤", modifier = Modifier.height(190.dp))
+                    if (hits.isNotEmpty()) EvFlag(m, hits, span = f.tY.lastOrNull() ?: 1.0, showEv) { showEv = !showEv }
+                }
+                Legend()   // ios: Views/AnalysisView.swift:801
+                if (showEv && hits.isNotEmpty()) EvList(m, hits)   // ios: Views/AnalysisView.swift:802
+                // ios: Views/AnalysisView.swift:803
                 if (f.mu > 0.30) {
-                    // ios: Views/AnalysisView.swift:323,324,325
+                    // ios: Views/AnalysisView.swift:804,805,806
                     T("연 ${AppModel.sgn0(f.mu)}는 드문 속도 · 실제론 더 낮을 수도", Modifier.fillMaxWidth().background(Theme.cream, RoundedCornerShape(10.dp)).padding(10.dp),
                       style = appFont(12f), color = Theme.ink)
                 }
             }
 
-            Table(m, fs, now = now, add = add)   // ios: Views/AnalysisView.swift:329
-            Schedule(m)   // ios: Views/AnalysisView.swift:330
-            Details(m, f, open) { open = it }   // ios: Views/AnalysisView.swift:331
+            Card { Table(m, fs, add = add) }   // ios: Views/AnalysisView.swift:805
 
-            // ios: Views/AnalysisView.swift:333,334
+            // ios: Views/AnalysisView.swift:810,811
             T("지난 3년 기준 3,000가지 경우", style = appFont(12f), color = Theme.muted)
-            // ios: Views/AnalysisView.swift:335,336
+            // ios: Views/AnalysisView.swift:812,813
             T("구성 바꾸기 → 목표 고치기", Modifier.plainClickable { m.analysisPath = m.analysisPath + GoalRoute0 }, style = appFont(14f, FontWeight.Bold), color = Theme.teal)
         }
     }
@@ -949,165 +949,128 @@ object GoalRoute0
 @Composable
 fun GoalSetPage(m: AppModel) = GoalSetView(m, fromSettings = true)
 
-// MARK: 시나리오 버튼 3개 + 추세 슬라이더 (같은 축: 신중하게 = 0%, 지난 3년처럼 = 100%)
-// ios: Views/AnalysisView.swift:348
-@Composable
-private fun Segments(m: AppModel) {
-    // ios: Views/AnalysisView.swift:349,361,362
-    Row(Modifier.fillMaxWidth().background(Theme.bg, RoundedCornerShape(12.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-        // ios: Views/AnalysisView.swift:350
-        Lens.entries.forEach { l ->
-            val on = m.lens == l   // ios: Views/AnalysisView.swift:351
-            // ios: Views/AnalysisView.swift:352,353,354,355,357,358
-            Box(Modifier.weight(1f).plainClickable { m.lens = l }.semantics { selected = on }.background(if (on) Theme.teal else Color.Transparent, RoundedCornerShape(9.dp)).padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center) {
-                T(l.label, style = appFont(13f, if (on) FontWeight.Bold else FontWeight.Normal), color = if (on) Color.White else Theme.sub, maxLines = 1)
-            }
-        }
-    }
-}
+/** 판정 기간: 목표 = 목표일까지, 회복 = 내 길 기간 (3년까지). 분석 탭 확률 박스와 같은 셈 */
+// ios: Views/AnalysisView.swift:855,856,857,858
+private val AppModel.planYears: Double get() = if (isGoal) yrs(Day.today, Day.str(goalToDate)) else myPath.let { p -> min(3.0, p.end - p.start) }
+// ios: Views/AnalysisView.swift:860
+private fun AppModel.plan(f: AppModel.Forecast): Double = if (isGoal) f.pGoal else f.prob(planYears)
 
-/** 슬라이더에 보이는 값. 버튼을 골라도 '내 설정' 값(m.trust)은 그대로 기억한다 */
-// ios: Views/AnalysisView.swift:366
-private val AppModel.shownTrust: Double get() = if (lens == Lens.base) 0.0 else if (lens == Lens.smooth) 100.0 else trust
-
-// ios: Views/AnalysisView.swift:368
+/** 슬라이더 ('내 설정' 줄을 골랐을 때만 그 줄 밑에 펼친다). 끝까지 밀어도 '내 설정'에 머문다 */
+// ios: Views/AnalysisView.swift:887
 @Composable
 private fun TrustSlider(m: AppModel) {
-    // ios: Views/AnalysisView.swift:369,370
-    val set = { v: Double -> if (v <= 0) m.lens = Lens.base else if (v >= 100) m.lens = Lens.smooth else { m.lens = Lens.mine; m.trust = v } }
-    // ios: Views/AnalysisView.swift:372
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        // ios: Views/AnalysisView.swift:373,375
+    // ios: Views/AnalysisView.swift:889,899
+    Column(Modifier.padding(start = 8.dp, end = 8.dp, bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        // ios: Views/AnalysisView.swift:890
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            T("지난 3년 추세 반영", Modifier.weight(1f), style = appFont(13f, FontWeight.Bold))   // ios: Views/AnalysisView.swift:374
-            T("${m.shownTrust.toInt()}%", style = appFont(13f, FontWeight.Bold), color = Theme.teal)   // ios: Views/AnalysisView.swift:376
+            T("지난 3년 추세 반영", Modifier.weight(1f), style = appFont(12f, FontWeight.Bold))   // ios: Views/AnalysisView.swift:891
+            T("${m.trust.toInt()}%", style = appFont(12f, FontWeight.Bold), color = Theme.teal)   // ios: Views/AnalysisView.swift:893
         }
-        // ios: Views/AnalysisView.swift:378 (0~100, 5씩)
-        IosSlider(m.shownTrust, set, 0.0..100.0, step = 5.0, modifier = Modifier.semantics { contentDescription = tr("지난 3년 추세를 얼마나 믿나요") }, tint = Theme.teal)
-        // ios: Views/AnalysisView.swift:379,380
+        // ios: Views/AnalysisView.swift:895 (0~100, 5씩)
+        IosSlider(m.trust, { m.trust = it }, 0.0..100.0, step = 5.0, modifier = Modifier.semantics { contentDescription = tr("지난 3년 추세를 얼마나 믿나요") }, tint = Theme.teal)
+        // ios: Views/AnalysisView.swift:896,897
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             T("신중", style = appFont(11f), color = Theme.muted); Spacer(Modifier.weight(1f)); T("반반", style = appFont(11f), color = Theme.muted); Spacer(Modifier.weight(1f)); T("3년처럼", style = appFont(11f), color = Theme.muted)
         }
     }
 }
 
-// ios: Views/AnalysisView.swift:384
+// ios: Views/AnalysisView.swift:902
 @Composable
 private fun Legend() {
     val muted = Theme.muted
-    // ios: Views/AnalysisView.swift:385
+    // ios: Views/AnalysisView.swift:903
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Sw(Theme.teal.copy(alpha = 0.35f), "10번 중 5번")   // ios: Views/AnalysisView.swift:386
-        Sw(Theme.teal.copy(alpha = 0.14f), "10번 중 9번")   // ios: Views/AnalysisView.swift:387
-        // ios: Views/AnalysisView.swift:388
+        Sw(Theme.teal.copy(alpha = 0.35f), "10번 중 5번")   // ios: Views/AnalysisView.swift:904
+        Sw(Theme.teal.copy(alpha = 0.14f), "10번 중 9번")   // ios: Views/AnalysisView.swift:905
+        // ios: Views/AnalysisView.swift:906
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            // ios: Views/AnalysisView.swift:389,390
+            // ios: Views/AnalysisView.swift:907,908
             Canvas(Modifier.size(14.dp, 10.dp)) { drawLine(muted, Offset(0f, 5.dp.toPx()), Offset(14.dp.toPx(), 5.dp.toPx()), 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx()))) }
-            T("다른 시나리오", style = appFont(11f), color = Theme.sub)   // ios: Views/AnalysisView.swift:391,394
+            T("다른 시나리오", style = appFont(11f), color = Theme.sub)   // ios: Views/AnalysisView.swift:909,912
         }
     }
 }
-// ios: Views/AnalysisView.swift:396,397
+// ios: Views/AnalysisView.swift:914,915
 @Composable
 private fun Sw(c: Color, t: String) = Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
     Box(Modifier.size(14.dp, 10.dp).background(c, RoundedCornerShape(2.dp))); T(t, style = appFont(11f), color = Theme.sub)
 }
 
-// MARK: 세 가지 미래 한눈에
-// ios: Views/AnalysisView.swift:401
+// MARK: 세 가지 미래: 줄을 누르면 시나리오가 바뀌고 그래프가 같이 움직인다
+// ios: Views/AnalysisView.swift:919
 @Composable
-private fun Table(m: AppModel, fs: Map<Lens, AppModel.Forecast>, now: Double, add: (AppModel.Forecast) -> Double) {
-    val lineName = if (m.isGoal) ForecastView.amt(m.keyValue) else "본전"   // ios: Views/AnalysisView.swift:402
-    val bads = Lens.entries.map { l -> fs[l]?.let { (it.q5.lastOrNull() ?: 0.0) + add(it) } ?: now }   // ios: Views/AnalysisView.swift:403
-    val below = bads.count { it < now }   // ios: Views/AnalysisView.swift:404
-    val nowS = ForecastView.amt(now)
-    // Views/AnalysisView.swift:411,412,413 (검사 예외: 같은 글)
-    val msg = if (below == bads.size) "운 나쁘면 지금($nowS)보다 줄 수도"
-        else if (below > 0) "신중하게 보면 지금($nowS)보다 줄 수도"
-        else "운 나빠도 지금($nowS)보다 많을 가능성 큼"
-    // ios: Views/AnalysisView.swift:408
-    Card {
-        T("세 가지 미래", style = appFont(15f, FontWeight.Bold))   // ios: Views/AnalysisView.swift:409
-        // ios: Views/AnalysisView.swift:410,411,412,413,414,416
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            T("", Modifier.weight(1f), style = appFont(11f), color = Theme.muted)
-            T("보통", Modifier.width(70.dp), style = appFont(11f).copy(textAlign = TextAlign.End), color = Theme.muted)
-            T("나쁘면", Modifier.width(58.dp), style = appFont(11f).copy(textAlign = TextAlign.End), color = Theme.muted)
-            T("$lineName↑", Modifier.width(78.dp), style = appFont(11f).copy(textAlign = TextAlign.End), color = Theme.muted)
+private fun Table(m: AppModel, fs: Map<Lens, AppModel.Forecast>, add: (AppModel.Forecast) -> Double) {
+    val lineName = if (m.isGoal) ForecastView.amt(m.keyValue) else "본전"   // ios: Views/AnalysisView.swift:920
+    // ios: Views/AnalysisView.swift:926
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        // ios: Views/AnalysisView.swift:927,932,933
+        Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            T("눌러서 고르기", Modifier.weight(1f), style = appFont(11f), color = Theme.muted)   // ios: Views/AnalysisView.swift:928
+            T("보통", Modifier.width(62.dp), style = appFont(11f).copy(textAlign = TextAlign.End), color = Theme.muted)   // ios: Views/AnalysisView.swift:929
+            T("나쁘면", Modifier.width(56.dp), style = appFont(11f).copy(textAlign = TextAlign.End), color = Theme.muted)   // ios: Views/AnalysisView.swift:930
+            T("$lineName↑", Modifier.width(64.dp), style = appFont(11f).copy(textAlign = TextAlign.End), color = Theme.muted)   // ios: Views/AnalysisView.swift:931
         }
-        // ios: Views/AnalysisView.swift:417
+        // ios: Views/AnalysisView.swift:934
         Lens.entries.forEach { l ->
-            val x = fs[l] ?: return@forEach   // ios: Views/AnalysisView.swift:418
-            val on = m.lens == l   // ios: Views/AnalysisView.swift:419
-            val st = appFont(13f, if (on) FontWeight.Bold else FontWeight.Normal)   // ios: Views/AnalysisView.swift:431
-            // ios: Views/AnalysisView.swift:420,421,431,432,433,434,436,437
-            Row(Modifier.fillMaxWidth().plainClickable { m.lens = l }.semantics { selected = on }.background(if (on) Theme.tealBg else Color.Transparent, RoundedCornerShape(10.dp))
-                .padding(vertical = 8.dp, horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                // ios: Views/AnalysisView.swift:422,426
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    T(ForecastView.short(l), style = appFont(13f, if (on) FontWeight.Bold else FontWeight.Normal), color = Theme.ink)   // ios: Views/AnalysisView.swift:423
-                    T(AppModel.sgn0(x.mu), style = appFont(11f), color = Theme.muted)   // ios: Views/AnalysisView.swift:424
-                }
-                T(ForecastView.amt((x.q50.lastOrNull() ?: 0.0) + add(x)), Modifier.width(70.dp), style = st.copy(textAlign = TextAlign.End), color = Theme.ink)   // ios: Views/AnalysisView.swift:427
-                T(ForecastView.amt((x.q5.lastOrNull() ?: 0.0) + add(x)), Modifier.width(58.dp), style = st.copy(textAlign = TextAlign.End), color = Theme.ink)   // ios: Views/AnalysisView.swift:428
-                T(AppModel.pct(x.pGoal), Modifier.width(78.dp), style = st.copy(textAlign = TextAlign.End), color = Theme.ink)   // ios: Views/AnalysisView.swift:429
-            }
-        }
-        T(msg, style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisView.swift:440
-    }
-}
-
-// MARK: 전망을 흔들 수 있는 일정 (외부 요인 토글 자리)
-// ios: Views/AnalysisView.swift:445,446
-@Composable
-private fun Schedule(m: AppModel) {
-    val hits = MarketEvents.upcoming(held = m.rows.map { it.id }, days = 60).take(4)   // ios: Views/AnalysisView.swift:447
-    // ios: Views/AnalysisView.swift:448
-    Card {
-        ToggleRow(m.shock, { m.shock = it }, tint = Theme.teal) { T("흔들 일정", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/AnalysisView.swift:449
-        T("켜면 계산에 반영", style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisView.swift:450
-        hits.indices.forEach { i -> ScheduleRow(hit = hits[i]) { r -> m.analysisPath = m.analysisPath + r } }   // ios: Views/AnalysisView.swift:451
-    }
-}
-
-// MARK: 자세히 보기 (기본 접힘)
-// ios: Views/AnalysisView.swift:456
-@Composable
-private fun Details(m: AppModel, f: AppModel.Forecast, open: Boolean, setOpen: (Boolean) -> Unit) {
-    val what = if (m.isGoal) ForecastView.amt(m.keyValue) else "본전"   // ios: Views/AnalysisView.swift:457
-    // ios: Views/AnalysisView.swift:458,459,485,486,487 (withAnimation: 기본 스프링으로 펼친다)
-    Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp))
-        .animateContentSize(spring(dampingRatio = 1f, stiffness = stiffness(0.55f))).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        // ios: Views/AnalysisView.swift:459,460,462,465,467
-        Row(Modifier.fillMaxWidth().plainClickable { setOpen(!open) }, verticalAlignment = Alignment.CenterVertically) {
-            T("자세히", Modifier.weight(1f), style = appFont(15f, FontWeight.Bold))   // ios: Views/AnalysisView.swift:461
-            Sym(if (open) "chevron.up" else "chevron.down", 12f, Theme.muted, scaled = false)   // ios: Views/AnalysisView.swift:463
-        }
-        // ios: Views/AnalysisView.swift:468
-        if (open) {
-            // ios: Views/AnalysisView.swift:469
-            Card(dark = true) {
-                T("한 번이라도 $what 넘을 확률", style = appFont(14f, FontWeight.Bold))   // ios: Views/AnalysisView.swift:470
-                T("잠깐 넘는 경우 포함", style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisView.swift:471 (.secondary)
-                // ios: Views/AnalysisView.swift:472
-                (0 until f.byYear.size).forEach { i ->
-                    val y = f.byYear[i].year; val p = f.byYear[i].p   // ios: Views/AnalysisView.swift:473
-                    // ios: Views/AnalysisView.swift:474
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        T("${y}년", Modifier.width(46.dp), style = appFont(13f))   // ios: Views/AnalysisView.swift:475
-                        ProgressBar(value = p, height = 10.dp, fill = Theme.teal, track = Theme.track, modifier = Modifier.weight(1f))   // ios: Views/AnalysisView.swift:476
-                        T(AppModel.pct(p), Modifier.width(40.dp), style = appFont(13f, FontWeight.Bold).copy(textAlign = TextAlign.End))   // ios: Views/AnalysisView.swift:477
+            val x = fs[l] ?: return@forEach   // ios: Views/AnalysisView.swift:935
+            val on = m.lens == l   // ios: Views/AnalysisView.swift:936
+            val st = appFont(13f, if (on) FontWeight.Bold else FontWeight.Normal)   // ios: Views/AnalysisView.swift:949
+            // ios: Views/AnalysisView.swift:937,957 (withAnimation: 슬라이더가 펼쳐지는 높이)
+            Column(Modifier.fillMaxWidth().background(if (on) Theme.tealBg else Color.Transparent, RoundedCornerShape(10.dp)).animateContentSize(tween(200))) {
+                // ios: Views/AnalysisView.swift:938,939,950,951,953,954
+                Row(Modifier.fillMaxWidth().plainClickable { m.lens = l }.semantics { selected = on }
+                    .padding(vertical = 8.dp, horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // ios: Views/AnalysisView.swift:940,944
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                        T(ForecastView.short(l), style = appFont(13f, if (on) FontWeight.Bold else FontWeight.Normal), color = Theme.ink)   // ios: Views/AnalysisView.swift:941
+                        T(AppModel.sgn0(x.mu), style = appFont(11f), color = Theme.muted)   // ios: Views/AnalysisView.swift:942
                     }
+                    T(ForecastView.amt((x.q50.lastOrNull() ?: 0.0) + add(x)), Modifier.width(62.dp), style = st.copy(textAlign = TextAlign.End), color = Theme.ink)   // ios: Views/AnalysisView.swift:945
+                    T(ForecastView.amt((x.q5.lastOrNull() ?: 0.0) + add(x)), Modifier.width(56.dp), style = st.copy(textAlign = TextAlign.End), color = Theme.ink)   // ios: Views/AnalysisView.swift:946
+                    T(AppModel.pct(m.plan(x)), Modifier.width(64.dp), style = st.copy(textAlign = TextAlign.End), color = if (on) Theme.teal else Theme.ink)   // ios: Views/AnalysisView.swift:947
                 }
+                if (on && l == Lens.mine) TrustSlider(m)   // ios: Views/AnalysisView.swift:955
             }
-            // ios: Views/AnalysisView.swift:481,482
-            T("직접 옮긴 슬라이더 값은 '내 설정'에 저장", style = appFont(12f), color = Theme.sub)
         }
     }
 }
 
-// ios: Views/AnalysisView.swift:285
+// MARK: 흔들 일정: 그래프 위 깃발 하나 (일정이 모두 앞쪽 한 달 안이라 하나로 묶는다). 누르면 아래에 목록과 반영 단추
+// ios: Views/AnalysisView.swift:965
+@Composable
+private fun EvFlag(m: AppModel, hits: List<MarketEvents.Hit>, span: Double, open: Boolean, toggle: () -> Unit) {
+    val last = Day.dday(hits.lastOrNull()?.day ?: Day.today) / 365.25   // ios: Views/AnalysisView.swift:966
+    val on = m.shock   // ios: Views/AnalysisView.swift:967
+    val c = if (on) hex(0xA8521A) else Theme.muted   // ios: Views/AnalysisView.swift:968
+    // ios: Views/AnalysisView.swift:969
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val left = 36.dp; val W = maxWidth - left   // ios: Views/AnalysisView.swift:970
+        val x = left + W * min(1.0, max(0.0, last / max(1e-6, span))).toFloat()   // ios: Views/AnalysisView.swift:971
+        // ios: Views/AnalysisView.swift:973
+        Box(Modifier.offset(x = x, y = 18.dp).width(1.dp).height((maxHeight - 20.dp - 18.dp).coerceAtLeast(0.dp)).background(c.copy(alpha = 0.7f)))
+        val px = minOf(maxOf(left, x - 4.dp), maxOf(left, maxWidth - 90.dp))   // ios: Views/AnalysisView.swift:981
+        // Views/AnalysisView.swift:975 (검사 예외: 같은 글)
+        val label = if (on) "일정 ${hits.size} ›" else "일정 ${hits.size} · 뺌 ›"
+        // ios: Views/AnalysisView.swift:974,976,977,978,980,982
+        T(label, Modifier.offset(x = px).height(18.dp).plainClickable { toggle() }
+            .semantics { contentDescription = tr("흔들 일정 ${hits.size}개, ${tr(if (on) "계산에 반영" else "계산에서 뺌")}") }
+            .background(if (on) c else Theme.line, RoundedCornerShape(6.dp)).padding(horizontal = 7.dp),
+          style = appFont(11f, FontWeight.Bold), color = if (on) Color.White else Theme.ink, maxLines = 1)
+    }
+}
+
+// ios: Views/AnalysisView.swift:987
+@Composable
+private fun EvList(m: AppModel, hits: List<MarketEvents.Hit>) {
+    // ios: Views/AnalysisView.swift:989,993,994
+    Column(Modifier.fillMaxWidth().background(Theme.bg, RoundedCornerShape(12.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        ToggleRow(m.shock, { m.shock = it }, tint = Theme.teal) { T("계산에 반영", style = appFont(13f, FontWeight.Bold)) }   // ios: Views/AnalysisView.swift:990
+        hits.indices.forEach { i -> ScheduleRow(hit = hits[i]) { r -> m.analysisPath = m.analysisPath + r } }   // ios: Views/AnalysisView.swift:991
+    }
+}
+
+// ios: Views/AnalysisView.swift:761
 object ForecastView {
     /** 비교선: 고르지 않은 두 시나리오의 중앙값 (현금 더함) */
     // ios: Views/AnalysisView.swift:491

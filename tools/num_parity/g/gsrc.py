@@ -47,6 +47,8 @@ final class CustomSymbols {{ static let shared = CustomSymbols(); var krLog: [MC
 struct PM {{
     var isGoal = false, goalSpan = 1.0, pathStartDate = Date(), gM = 0.0, keyValue = 0.0, trackValue = 0.0
     var route = Route.recover, isSample = false, krSum = 0.0
+    var noviceOwn = false
+    var bare: Bool {{ route == .novice && !noviceOwn }}
     var S: [(d: String, v: Double)] = [], tot: [Double] = []
     func pathSeries(from start: String) -> [(d: String, v: Double)] {{ S }}
     func totalAt(_ x: Double) -> Double {{ tot[max(0, min(tot.count - 1, Int((x * Double(tot.count - 1) + 0.5).rounded(.down))))] }}
@@ -155,9 +157,9 @@ struct DividendView {{
 }}
 extension DividendView {{
     func t_month(months: [String], byMonth: [Double], paid: [Paid]) -> [Any] {{
-{span(A, "        let mMax = max(1, byMonth.max() ?? 1)", "        if !parts.isEmpty { notes.append(parts.joined(separator: \" · \")) }")}
+{span(A, "        let mMax = max(1, byMonth.max() ?? 1)", "        for s in months { let y = String(s.prefix(4)); if years.last?.y == y { years[years.count - 1].n += 1 } else { years.append((y, 1)) } }")}
         let label = {acc}
-        return [mMax, hi.sorted(), years.map {{ [$0.y, $0.n] as [Any] }}, notes, label]
+        return [mMax, hi.sorted(), years.map {{ [$0.y, $0.n] as [Any] }}, label]
     }}
 }}
 {span(A, "/// 깔끔한 y축 눈금: 20·50·100·200원 단위 중 눈금 3~5개가 되는 것", "private func volWord(_ v: Double) -> String { v < 0.07 ? String(localized: \"낮음\") : v <= 0.12 ? String(localized: \"보통\") : String(localized: \"큼\") }")}
@@ -246,7 +248,6 @@ func runD(_ Dv: [String: Any]) -> [Any] {{
 }}
 func runF(_ F: [String: Any]) -> [String: Any] {{
     ["ticks": (F["ticks"] as! [[String]]).map {{ fxTicks(lo: Double($0[0])!, hi: Double($0[1])!) }},
-     "trend": (F["trend"] as! [Any]).map {{ trendWord($0 as? String) }},
      "vol": DS(F["vol"]!).map {{ [volWord($0), GlanceView.swing($0), GlanceView.swingName[GlanceView.swing($0)]] as [Any] }}]
 }}
 '''

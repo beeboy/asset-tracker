@@ -538,6 +538,7 @@ struct ExternalView: View {
         }.sorted { ($0.weak ? 0 : 1, $0.amt) > ($1.weak ? 0 : 1, $1.amt) }
     }
 
+    /// 요인 한 줄 설명 (숫자 맞추기 G 가 부른다. 화면에는 이제 안 쓴다)
     private func desc(_ x: Rank) -> String {
         if x.weak { return "" }
         let tot = max(1, m.total)
@@ -565,38 +566,93 @@ struct ExternalView: View {
         return String(localized: "\(String(describing: name))·\(String(describing: FactorDetailView.names[strong[1].k] ?? "")) 비슷")
     }
 
-    /// 과거 재생: 그때 함께 움직인 요인 변화 × 지금 내 종목 민감도 (웹 xfReplays 와 같은 식)
-    private var replayCard: some View {
-        let total = max(1, m.total)
+    private static let short = ["mkt": String(localized: "시장"), "fx": String(localized: "환율"), "rate": String(localized: "금리"), "oil": String(localized: "유가"), "gold": String(localized: "금값")]
+
+    /// 그래프 깃발로 들어올 때 맨 위에 띄울 일 ("id.day"). 화면이 열리며 읽고 비운다
+    static var focus: String?
+    @State private var focusKey: String? = ExternalView.focus
+
+    /// 무엇이 흔드나: 뚜렷한 요인만 한 막대에 나눠 담는다 (한 달 기준). 이름을 누르면 요인 상세
+    private func shakeCard(_ rs: [Rank]) -> some View {
+        let strong = rs.filter { !$0.weak && $0.amt > 0 }
+        let shade: (Int) -> Double = { [1, 0.6, 0.32, 0.18, 0.1][min($0, 4)] }
+        let sum = max(1, strong.reduce(0) { $0 + $1.amt })
         return Card {
-            Text("그때 그 일이 지금 나면").appFont(16, .bold)
-            ForEach(SiteCalc.replays, id: \.when) { rp in
-                let os = m.rows.map { r in (r.value, SiteCalc.replayMove(rp, usd: r.sym.currency == .usd) { k in k == "mkt" ? Self.mktBeta(r.id) : SiteCalc.shared.beta(k, r.id) }) }
-                let tot = os.reduce(0) { $0 + $1.0 * $1.1.total }, fx = os.reduce(0) { $0 + $1.0 * $1.1.fx }
-                let small = abs(fx) < total * FactorDetailView.tiny
-                let note = small ? String(localized: "달러 적어 환율 영향 작음")
-                    : tot < 0 ? (fx > 0 ? String(localized: "환율 방어 +\(String(describing: AppModel.man(fx)))") : String(localized: "환율도 하락 −\(String(describing: AppModel.man(-fx))) 추가"))
-                    : fx > 0 ? String(localized: "환율이 +\(String(describing: AppModel.man(fx))) 보탬") : String(localized: "환율이 −\(String(describing: AppModel.man(-fx))) 깎음")
-                let chips = ["mkt", "rate", "fx"].filter { $0 != "rate" || abs(rp.mv["rate"] ?? 0) >= 1 }.map { k -> String in
-                    let v = rp.mv[k] ?? 0
-                    return "\(["mkt": String(localized: "시장"), "rate": String(localized: "금리")][k] ?? FactorDetailView.names[k] ?? "") \(v > 0 ? "+" : "−")\(String(format: "%g", abs(v)))\(k == "rate" ? "%p" : "%")"
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("\(rp.when) \(rp.name)").appFont(12).foregroundStyle(Theme.sub)
-                        Spacer()
-                        Text((tot > 0 ? "+" : tot < 0 ? "−" : "") + AppModel.man(abs(tot))).appFont(15, .bold)
-                    }
-                    HStack(spacing: 6) {
-                        ForEach(chips, id: \.self) { c in
-                            Text(c).appFont(11).padding(.horizontal, 8).padding(.vertical, 3).background(Theme.border, in: Capsule())
+            HStack(alignment: .firstTextBaseline) {
+                Text("무엇이 흔드나").appFont(16, .bold)
+                Spacer()
+                Text("한 달").appFont(12).foregroundStyle(Theme.sub)
+            }
+            if strong.isEmpty {
+                Text(SiteCalc.shared.factorMonth("mkt") == nil ? String(localized: "요인 자료 불러오는 중") : String(localized: "뚜렷한 요인 없음"))
+                    .appFont(12).foregroundStyle(Theme.muted)
+            } else {
+                GeometryReader { g in
+                    let w = g.size.width - 2 * CGFloat(strong.count - 1)
+                    HStack(spacing: 2) {
+                        ForEach(Array(strong.enumerated()), id: \.offset) { i, x in
+                            Rectangle().fill(Theme.teal.opacity(shade(i))).frame(width: max(2, w * x.amt / sum))
                         }
                     }
-                    Text(note).appFont(12).foregroundStyle(!small && fx > 0 ? Theme.teal : Color.orange)
                 }
-                .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
+                .frame(height: 12).clipShape(Capsule())
+                HStack(spacing: 12) {
+                    ForEach(Array(strong.enumerated()), id: \.offset) { i, x in
+                        NavigationLink { FactorDetailView(factor: x.k) } label: {
+                            HStack(spacing: 4) {
+                                RoundedRectangle(cornerRadius: 2).fill(Theme.teal.opacity(shade(i))).frame(width: 8, height: 8)
+                                Text(Self.short[x.k] ?? "").appFont(12).foregroundStyle(Theme.sub)
+                                Text(AppModel.man(x.amt)).appFont(13, .bold).foregroundStyle(Theme.ink)
+                            }
+                            .lineLimit(1)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(FactorDetailView.names[x.k] ?? ""), \(String(localized: "보통 한 달 ±") + AppModel.man(x.amt)). 자세히 보기")
+                    }
+                }
+                .minimumScaleFactor(0.8)
             }
+        }
+    }
+
+    /// 과거 재생: 그때 함께 움직인 요인 변화 × 지금 내 종목 민감도 (웹 xfReplays 와 같은 식). 일마다 막대 하나와 금액, 환율 몫은 한 줄로 모은다
+    private var replayCard: some View {
+        let total = max(1, m.total)
+        let rows = SiteCalc.replays.map { rp -> (rp: SiteCalc.Replay, tot: Double, fx: Double) in
+            let os = m.rows.map { r in (r.value, SiteCalc.replayMove(rp, usd: r.sym.currency == .usd) { k in k == "mkt" ? Self.mktBeta(r.id) : SiteCalc.shared.beta(k, r.id) }) }
+            return (rp, os.reduce(0) { $0 + $1.0 * $1.1.total }, os.reduce(0) { $0 + $1.0 * $1.1.fx })
+        }
+        let top = max(1, rows.map { abs($0.tot) }.max() ?? 1)
+        // 환율 한 줄: 같은 몫끼리 묶는다 (막아 줌·더 깎음·보탬·깎음). 작은 건 뺀다
+        var groups: [(String, [String])] = []
+        for x in rows where abs(x.fx) >= total * FactorDetailView.tiny {
+            let g = x.fx > 0 ? (x.tot < 0 ? String(localized: "막아 줌") : String(localized: "보탬")) : (x.tot < 0 ? String(localized: "더 깎음") : String(localized: "깎음"))
+            if let i = groups.firstIndex(where: { $0.0 == g }) { groups[i].1.append(x.rp.name) } else { groups.append((g, [x.rp.name])) }
+        }
+        let note = groups.isEmpty ? String(localized: "달러 적어 환율 영향 작음")
+            : String(localized: "환율이 \(String(describing: groups.map { String(localized: "\(String(describing: $0.1.joined(separator: "·"))) 땐 \(String(describing: $0.0))") }.joined(separator: ", ")))")
+        return Card {
+            Text("그때 그 일이 지금 나면").appFont(16, .bold)
+            ForEach(rows, id: \.rp.when) { x in
+                let c = x.tot < 0 ? Theme.blue : Color.red
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(x.rp.name).appFont(13, .semibold).lineLimit(1)
+                        Text(x.rp.when).appFont(11).foregroundStyle(Theme.muted)
+                    }
+                    .frame(width: 84, alignment: .leading)
+                    GeometryReader { g in
+                        ZStack(alignment: .trailing) {
+                            Capsule().fill(Theme.border)
+                            Capsule().fill(c).frame(width: max(3, g.size.width * abs(x.tot) / top))
+                        }
+                    }
+                    .frame(height: 10)
+                    Text(AppModel.eokS(x.tot)).appFont(14, .bold).monospacedDigit().foregroundStyle(c)
+                        .lineLimit(1).minimumScaleFactor(0.8).frame(width: 76, alignment: .trailing)
+                }
+            }
+            Text(note).appFont(11).foregroundStyle(Theme.sub).lineSpacing(2)
         }
     }
 
@@ -615,36 +671,49 @@ struct ExternalView: View {
             return Ev(hit: h, k: em.factor, sd: em.sd, v: v, amt: amt)
         }.sorted { $0.hit.day < $1.hit.day }
     }
-    private static let evBase = ["mkt": String(localized: "미국 시장"), "fx": String(localized: "원/달러"), "oil": String(localized: "유가")]
 
-    /// 오늘의 이벤트 카드: 가장 가까운 일정 하나 (45일 안에 없으면 숨김)
+    /// 맨 위 칸: 들어온 그 일 (그래프 깃발로 왔으면 그 일, 아니면 가장 가까운 일). 흔들림 폭을 −/+ 막대로 (45일 안에 없으면 숨김)
     @ViewBuilder private func todayCard(_ x: Ev?) -> some View {
         if let x {
-            let tot = max(1, m.total)
-            let b = m.rows.reduce(0) { $0 + $1.value / tot * (Self.mktBeta($1.id) ?? 1) }
+            let tot = max(1, m.total), amt = AppModel.man(x.amt)
+            let key = "\(x.hit.id).\(x.hit.day)", on = asked.contains(key)
             Card(dark: true) {
-                Text("\(MarketEvents.when(x.hit.day)) · \(x.hit.kind)").appFont(12, .semibold).foregroundStyle(Theme.teal)
-                Text("±" + AppModel.man(x.amt)).appFont(26, .bold).roll("±" + AppModel.man(x.amt))
-                Text(String(localized: "\(String(describing: Self.evBase[x.k] ?? "")) ±\(String(describing: String(format: "%g", x.sd)))% 가정") + (x.k == "mkt" ? String(localized: " · 시장의 \(String(describing: String(format: "%.1f", b)))배") : ""))
-                    .appFont(12).foregroundStyle(Theme.sub)
-                HStack(spacing: 8) {
-                    NavigationLink { FactorDetailView(factor: x.k, start: x.v) } label: {
-                        Text("미리 보기").appFont(13, .semibold).foregroundStyle(.white)
-                            .padding(.horizontal, 12).padding(.vertical, 8).background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(MarketEvents.when(x.hit.day)) · \(x.hit.kind)").appFont(12, .semibold).foregroundStyle(Theme.teal)
+                        Text("±" + amt).appFont(30, .bold).roll("±" + amt)
+                        Text(String(localized: "\(String(describing: Self.short[x.k] ?? "")) \(String(describing: String(format: "%g", x.sd)))% 움직이면 내 돈 \(String(describing: String(format: "%.1f", x.amt / tot * 100)))%"))
+                            .appFont(12).foregroundStyle(Theme.sub)
                     }
-                    .buttonStyle(.plain)
-                    let on = asked.contains("\(x.hit.id).\(x.hit.day)")
+                    Spacer()
                     Button {
-                        let k = "\(x.hit.id).\(x.hit.day)"
-                        if on { asked.remove(k) } else { asked.insert(k) }
+                        if on { asked.remove(key) } else { asked.insert(key) }
                         Task { await EventRetro.ask(id: x.hit.id, kind: x.hit.kind, day: x.hit.day, on: !on) }
                     } label: {
-                        Label(on ? String(localized: "알림 켬") : String(localized: "결과 알림"), systemImage: on ? "bell.fill" : "bell")
-                            .appFont(13, .semibold).foregroundStyle(.white)
-                            .padding(.horizontal, 12).padding(.vertical, 8).background(Color.white.opacity(on ? 0.25 : 0.12), in: RoundedRectangle(cornerRadius: 10))
+                        Image(systemName: on ? "bell.fill" : "bell").font(.system(size: 15)).foregroundStyle(.white)
+                            .frame(width: 36, height: 36).background(Color.white.opacity(on ? 0.25 : 0.12), in: RoundedRectangle(cornerRadius: 10))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(on ? String(localized: "알림 켬") : String(localized: "결과 알림"))
                 }
+                // −/+ 막대: 가운데가 지금
+                HStack(spacing: 2) {
+                    Capsule().fill(Theme.blue)
+                    Capsule().fill(Color.red)
+                }
+                .frame(height: 8).padding(.top, 6)
+                HStack {
+                    Text("−" + amt)
+                    Spacer()
+                    Text("지금")
+                    Spacer()
+                    Text("+" + amt)
+                }
+                .appFont(11).foregroundStyle(Theme.sub)
+                NavigationLink { FactorDetailView(factor: x.k, start: x.v) } label: {
+                    Text("미리 보기 ›").appFont(13, .semibold).foregroundStyle(Theme.teal).padding(.top, 4)
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -680,112 +749,81 @@ struct ExternalView: View {
         }
     }
 
+    /// 다가오는 일: 시장 일정과 내 종목 일정을 날짜순 한 목록에. 막대 = 내 돈 흔들림, 내 종목은 이름 뒤 점
+    private func upcomingCard(_ es: [Ev], _ mine: [MarketEvents.Hit]) -> some View {
+        let near = Array(es.prefix(8))
+        let items = (near.map { (hit: $0.hit, ev: Optional($0)) } + mine.map { (hit: $0, ev: Ev?.none) }).sorted { $0.hit.day < $1.hit.day }
+        let top = max(1, near.map(\.amt).max() ?? 1)
+        return Card {
+            HStack(alignment: .firstTextBaseline) {
+                Text("다가오는 일").appFont(16, .bold)
+                Spacer()
+                Text("막대 = 내 돈 흔들림").appFont(12).foregroundStyle(Theme.sub)
+            }
+            ForEach(Array(items.enumerated()), id: \.offset) { i, it in
+                if i > 0 { Divider() }
+                if let x = it.ev {
+                    NavigationLink { FactorDetailView(factor: x.k, start: x.v) } label: { evRow(it.hit, amt: x.amt, top: top) }
+                        .buttonStyle(.plain)
+                } else {
+                    evRow(it.hit, amt: nil, top: top)
+                }
+            }
+            if items.isEmpty { Text("45일 안 일정 없음").appFont(13).foregroundStyle(Theme.sub) }
+        }
+    }
+
+    /// 다가오는 일 한 줄: 날짜 | 이름 | 막대 | 금액 | › (막대와 금액은 칸을 맞춘다). 내 종목 일정은 막대·금액 칸에 비중
+    private func evRow(_ h: MarketEvents.Hit, amt: Double?, top: Double) -> some View {
+        let n = Day.dday(h.day)
+        return HStack(spacing: 8) {
+            Text(n == 0 ? String(localized: "오늘") : n == 1 ? String(localized: "내일") : Day.md(h.day)).appFont(12, .semibold).foregroundStyle(Theme.teal)
+                .lineLimit(1).frame(width: 44, alignment: .leading)
+            HStack(spacing: 6) {
+                Text(h.kind.replacingOccurrences(of: " 결정", with: "")).appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.8)
+                if amt == nil && h.held { Circle().fill(Theme.teal).frame(width: 6, height: 6) }
+            }
+            Spacer(minLength: 4)
+            if let amt {
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Theme.border)
+                        Capsule().fill(Theme.ink).frame(width: max(3, g.size.width * amt / top))
+                    }
+                }
+                .frame(width: 64, height: 6)
+                Text("±" + AppModel.man(amt)).appFont(13, .bold).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8).frame(width: 64, alignment: .trailing)
+                Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.muted).frame(width: 8)
+            } else {
+                Text(h.held ? String(localized: "비중 \(String(describing: AppModel.pct(m.weight(h.target))))") : h.sub)
+                    .appFont(12, .semibold).foregroundStyle(h.held ? Theme.teal : Theme.sub).lineLimit(1).frame(width: 136, alignment: .trailing)
+                Color.clear.frame(width: 8, height: 1)
+            }
+        }
+        .padding(.vertical, 6).contentShape(Rectangle())
+    }
+
     var body: some View {
-        let rs = ranks
-        let scale = max(1, rs.filter { !$0.weak }.map(\.amt).max() ?? 1)
         let es = evs
-        let events = MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).filter { SiteCalc.eventMoves[$0.id] == nil }.sorted { $0.day < $1.day }.prefix(5)
-        let nos: [String: String] = Dictionary(uniqueKeysWithValues: rs.filter { !$0.weak }.enumerated().map { ($1.k, "\($0 + 1)") })
+        let mine = Array(MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).filter { SiteCalc.eventMoves[$0.id] == nil }.sorted { $0.day < $1.day }.prefix(5))
+        let hero = es.first { "\($0.hit.id).\($0.hit.day)" == focusKey } ?? es.first
 
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("바깥 일이 생기면 내 돈은?").appFont(20, .bold)
-                    Text("단기(오늘~한 달) 기준")
-                        .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
-                }
-                .onAppear {
-                    EventRetro.record(es.map { (id: $0.hit.id, kind: $0.hit.kind, day: $0.hit.day, amt: $0.amt) }, total: m.total)
-                    asked = Set(es.filter { EventRetro.isAsked($0.hit.id, $0.hit.day) }.map { "\($0.hit.id).\($0.hit.day)" })
-                    retro = EventRetro.latest
-                }
-                todayCard(es.first)
+                todayCard(hero)
                 retroCard
-                Card {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("흔드는 요인").appFont(16, .bold)
-                        Spacer()
-                        Text("한 달 기준").appFont(12).foregroundStyle(Theme.sub)
-                    }
-                    ForEach(rs, id: \.k) { x in
-                        let no = nos[x.k] ?? "–"
-                        NavigationLink { FactorDetailView(factor: x.k) } label: {
-                            HStack(alignment: .top, spacing: 10) {
-                                Text(no).appFont(12, .bold).frame(width: 24, height: 24)
-                                    .foregroundStyle(no == "1" ? Color.white : Theme.ink)
-                                    .background(no == "1" ? Theme.ink : Theme.border, in: Circle())
-                                VStack(alignment: .leading, spacing: 5) {
-                                    HStack {
-                                        Text(FactorDetailView.names[x.k] ?? x.k).appFont(15, .bold)
-                                        Spacer()
-                                        Text(x.weak ? String(localized: "관계 없음") : "±" + AppModel.man(x.amt)).appFont(14, x.weak ? .regular : .bold)
-                                            .foregroundStyle(x.weak ? Theme.muted : Theme.ink)
-                                    }
-                                    if !x.weak {
-                                        GeometryReader { g in
-                                            ZStack(alignment: .leading) {
-                                                Capsule().fill(Theme.border)
-                                                Capsule().fill(Theme.teal).frame(width: max(3, g.size.width * x.amt / scale))
-                                            }
-                                        }
-                                        .frame(height: 6)
-                                    }
-                                    let d = desc(x)
-                                    if !d.isEmpty { Text(d).appFont(12).foregroundStyle(Theme.sub).lineSpacing(2).multilineTextAlignment(.leading) }
-                                }
-                                Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(Theme.muted).padding(.top, 5)
-                            }
-                            .padding(.vertical, 6).contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(FactorDetailView.names[x.k] ?? ""), \(x.weak ? String(localized: "뚜렷한 관계 없음") : String(localized: "보통 한 달 ±") + AppModel.man(x.amt)). 자세히 보기")
-                    }
-                    if let s = summary(rs) {
-                        Text(s).appFont(13).foregroundStyle(Theme.ink).lineSpacing(2)
-                            .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Theme.teal.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                    } else if SiteCalc.shared.factorMonth("mkt") == nil {
-                        Text("요인 자료 불러오는 중").appFont(12).foregroundStyle(Theme.muted)
-                    }
-                }
+                shakeCard(ranks)
+                upcomingCard(es, mine)
                 replayCard
-                Card {
-                    Text("다가오는 일").appFont(16, .bold)
-                    ForEach(Array(es.prefix(8).enumerated()), id: \.offset) { _, x in
-                        HStack(alignment: .center, spacing: 10) {
-                            Text(MarketEvents.when(x.hit.day)).appFont(12, .semibold).foregroundStyle(Theme.teal).frame(minWidth: 64, alignment: .leading)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(x.hit.kind.replacingOccurrences(of: " 결정", with: "")).appFont(14, .bold)
-                                Text("±\(AppModel.man(x.amt)) · \(["mkt": String(localized: "시장")][x.k] ?? Self.evBase[x.k] ?? "")").appFont(12).foregroundStyle(Theme.sub)
-                            }
-                            Spacer()
-                            NavigationLink { FactorDetailView(factor: x.k, start: x.v) } label: {
-                                Text("미리 보기").appFont(12, .semibold).padding(.horizontal, 10).padding(.vertical, 6)
-                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    if es.isEmpty { Text("45일 안 일정 없음").appFont(13).foregroundStyle(Theme.sub) }
-                    Text("미리 보기는 나쁜 쪽 기준").appFont(11).foregroundStyle(Theme.muted)
-                }
-                if !events.isEmpty { Card(dark: true) {
-                    Text("내 종목 일정").appFont(15, .bold)
-                    ForEach(Array(events.enumerated()), id: \.offset) { _, e in
-                        HStack(alignment: .top, spacing: 10) {
-                            Text(MarketEvents.when(e.day)).appFont(12, .semibold).foregroundStyle(Theme.teal).frame(minWidth: 64, alignment: .leading)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(e.kind).appFont(14, .bold)
-                                Text(e.held ? String(localized: "비중 \(String(describing: AppModel.pct(m.weight(e.target))))") : e.sub)
-                                    .appFont(12).foregroundStyle(Theme.sub)
-                            }
-                        }
-                    }
-                } }
-                Text("'만약에' 화면 · 큰 변화일수록 오차 큼")
-                    .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
+                Text("큰 변화일수록 오차 큼").appFont(12).foregroundStyle(Theme.muted).frame(maxWidth: .infinity)
             }
             .padding(16)
+            .onAppear {
+                EventRetro.record(es.map { (id: $0.hit.id, kind: $0.hit.kind, day: $0.hit.day, amt: $0.amt) }, total: m.total)
+                asked = Set(es.filter { EventRetro.isAsked($0.hit.id, $0.hit.day) }.map { "\($0.hit.id).\($0.hit.day)" })
+                retro = EventRetro.latest
+                Self.focus = nil
+            }
         }
         .background(Theme.bg)
         .toolbarTitleDisplayMode(.inlineLarge)
@@ -1128,9 +1166,7 @@ struct RateScen {
 /// 금리 충격 테스트: 목표일 전망(내 설정)을 기준선으로 두고 금리만 바꿨을 때 달라지는 만큼 (2026-10-14 시안)
 struct RateScenarioView: View {
     @Environment(AppModel.self) private var m
-    @State private var pick = 2              // 프리셋 번호. 기본 "작년만큼 또 오른다". -1 이면 직접 정한 값
-    @State private var custom = 0.0
-    @State private var open = false
+    @State private var pick = 2              // 프리셋 번호. 기본 "작년만큼 또 오른다"
     private var macro: MacroData { MacroData.shared }
 
     var body: some View {
@@ -1190,7 +1226,7 @@ struct RateScenarioView: View {
     }
 
     @ViewBuilder private func main(_ file: MacroData.File, _ M: MacroData.File.Meals) -> some View {
-        let d = pick >= 0 ? presets[pick].dr : custom, mm = 0.0   // 시장 공통 기대수익은 이 화면에서 뺐다 (목표일 전망의 추세 믿음과 같은 레버)
+        let d = presets[pick].dr, mm = 0.0   // 시장 공통 기대수익은 이 화면에서 뺐다 (목표일 전망의 추세 믿음과 같은 레버)
         let r = macro.scen(dr: d, m: mm) ?? RateScen(coef: M.coef, g0: M.g_now, dr: d, m: mm)
         let f = m.forecast, kb = beta, ci = closedInput(f)
         let base = Self.prob(f, ci, 0)
@@ -1202,22 +1238,20 @@ struct RateScenarioView: View {
         let eps = H > 0 ? exp(r.cum[H - 1][1] / 100) - 1 : 0
         let m0 = Self.months(ci, 0), m1 = Self.months(ci, mid)
         let endAmt = f.q50.last ?? 0, T = ci.T
-        let when = pick >= 0 ? (pick == 0 ? String(localized: "내리면") : pick == 1 ? String(localized: "그대로면") : pick == 2 ? String(localized: "작년만큼 오르면") : String(localized: "2022년처럼 오르면"))
-                             : String(localized: "\(String(describing: Self.signed(d, "%p", 1))) 움직이면")
+        let when = pick == 0 ? String(localized: "내리면") : pick == 1 ? String(localized: "그대로면") : pick == 2 ? String(localized: "작년만큼 오르면") : String(localized: "2022년처럼 오르면")
 
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                DetailHead(title: String(localized: "금리 충격 테스트"), sub: "")
-                Text("금리가 바뀌면 내 목표는?").appFont(20, .bold)
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                DetailHead(title: String(localized: "금리가 바뀌면 내 목표는?"), sub: "")
+                HStack(spacing: 6) {
                     ForEach(presets.indices, id: \.self) { i in
                         let on = pick == i
                         Button { pick = i } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(presets[i].label).appFont(14, .bold)
-                                Text(presets[i].sub).appFont(12).foregroundStyle(on ? Theme.tealDark : Theme.sub)
+                            VStack(spacing: 2) {
+                                Text(presets[i].label).appFont(13, .bold).lineLimit(1).minimumScaleFactor(0.7)
+                                Text(presets[i].sub).appFont(11).foregroundStyle(on ? Theme.tealDark : Theme.sub).lineLimit(1).minimumScaleFactor(0.7)
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                            .frame(maxWidth: .infinity).padding(.vertical, 10).padding(.horizontal, 4)
                             .background(on ? Theme.tealBg : Theme.card, in: RoundedRectangle(cornerRadius: 14))
                             .overlay { RoundedRectangle(cornerRadius: 14).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 2 : 1) }
                         }
@@ -1245,29 +1279,17 @@ struct RateScenarioView: View {
                 }
                 Card {
                     Text("어떻게 번지나?").appFont(16, .bold)
-                    step(1, String(localized: "금리"), file.now?.rate.map { String(format: "%.2f%% → %.2f%%", $0, $0 + d) } ?? Self.signed(d, "%p", 1), String(localized: "미국 10년물"))
-                    step(2, String(localized: "기업 이익"), abs(eps) < 0.005 ? String(localized: "\(String(describing: H))년간 거의 그대로") : String(localized: "\(String(describing: H))년간 \(String(describing: eps < 0 ? "−" : "+"))\(String(describing: Int((abs(eps) * 100).rounded())))%"), "")
-                    step(3, String(localized: "내 기대수익"), abs(mid) < 0.0005 ? String(localized: "거의 그대로") : String(localized: "연 \(String(describing: mid < 0 ? "−" : "+"))\(String(describing: String(format: "%.1f", abs(mid) * 100)))%p"), "")
+                    HStack(spacing: 6) {
+                        cell(String(localized: "금리"), Self.signed(d, "%p", 1), String(localized: "미국 10년물"))
+                        cell(String(localized: "기업 이익"), abs(eps) < 0.005 ? String(localized: "그대로") : (eps < 0 ? "−" : "+") + "\(Int((abs(eps) * 100).rounded()))%", String(localized: "\(String(describing: H))년간"))
+                        cell(String(localized: "내 기대수익"), abs(mid) < 0.0005 ? String(localized: "그대로") : (mid < 0 ? "−" : "+") + String(format: "%.1f%%p", abs(mid) * 100), String(localized: "1년에"))
+                    }
                     NavigationLink { RateWhyView(r: r, when: when, epsLast: file.eps_last) } label: {
                         Text("근거 ›").appFont(13, .bold).foregroundStyle(Theme.teal)
                     }
                 }
                 weakCard
                 rateEventsCard
-                Card {
-                    Button { withAnimation { open.toggle() } } label: {
-                        HStack { Text("직접 정하기").appFont(15, .bold); Spacer(); Image(systemName: open ? "chevron.up" : "chevron.down") }
-                    }
-                    .buttonStyle(.plain).foregroundStyle(Theme.ink)
-                    if open {
-                        HStack { Text("1년 뒤 10년물").appFont(14); Spacer(); Text(Self.signed(d, "%p", 1)).appFont(15, .bold) }
-                        Slider(value: Binding(get: { d }, set: { custom = $0; pick = -1 }), in: -2...3, step: 0.1)
-                            .tint(Theme.orange).accessibilityLabel("앞으로 1년 10년물 금리 변화")
-                        if let c = macro.change1y {
-                            Text("작년 \(Self.signed(c, "%p", 2))").appFont(12).foregroundStyle(Theme.muted)
-                        }
-                    }
-                }
                 footnote(String(localized: "'만약에' 화면 · 추천 아님"))
             }
             .padding(16)
@@ -1279,11 +1301,18 @@ struct RateScenarioView: View {
         let events = MarketEvents.rateUpcoming(days: 60).prefix(4)
         Card {
             Text("금리 일정").appFont(16, .bold)
-            ForEach(Array(events.enumerated()), id: \.offset) { _, e in
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(MarketEvents.when(e.day)).appFont(12, .semibold).foregroundStyle(Theme.teal).frame(minWidth: 64, alignment: .leading)
-                    Text(e.kind.replacingOccurrences(of: " 금리 결정", with: "")).appFont(14, .bold)
-                    Spacer()
+            if !events.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(Array(events.enumerated()), id: \.offset) { _, e in
+                        VStack(spacing: 2) {
+                            Text(MarketEvents.when(e.day)).appFont(12, .semibold).foregroundStyle(Theme.teal).lineLimit(1).minimumScaleFactor(0.7)
+                            Text(e.kind.replacingOccurrences(of: " 금리 결정", with: "")).appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.7)
+                        }
+                        .padding(.vertical, 8).padding(.horizontal, 4)
+                        .frame(maxWidth: .infinity, minHeight: 64)
+                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                    }
                 }
             }
             if events.isEmpty { Text("60일 안 금리 일정 없음").appFont(13).foregroundStyle(Theme.sub) }
@@ -1296,7 +1325,6 @@ struct RateScenarioView: View {
 
     /// 내 종목 중 금리에 약한 곳: 10년물 +1%p 때 움직임(coef.1)이 낮은 순. 비율·민감도로만 보여 준다 (종목 조언 아님)
     @ViewBuilder private var weakCard: some View {
-        let tot = max(1, m.total)
         let list = m.rows.filter { $0.value > 0 }
             .map { (r: $0, c: ExternalView.coef($0.sym).1) }
             .sorted { $0.c < $1.c }
@@ -1304,28 +1332,20 @@ struct RateScenarioView: View {
             let lo = list.map { $0.c }.min() ?? 0, hi = list.map { $0.c }.max() ?? 0
             let span = max(0.0001, hi - lo)
             Card {
-                Text("금리에 약한 종목").appFont(16, .bold)
-                ForEach(Array(list.prefix(6).enumerated()), id: \.offset) { _, e in
-                    // 가장 약한 쪽 1/3 은 크게, 가장 강한 쪽 1/3 은 덜, 나머지는 보통
-                    let t = (e.c - lo) / span
-                    let tier = list.count < 2 ? 1 : (t < 1.0 / 3 ? 0 : t > 2.0 / 3 ? 2 : 1)
-                    let col = tier == 0 ? Theme.orange : tier == 1 ? Theme.muted : Theme.teal
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(e.r.sym.name).appFont(14, .bold).lineLimit(1)
-                            Spacer()
-                            Text([String(localized: "크게"), String(localized: "보통"), String(localized: "덜")][tier]).appFont(12, .bold).foregroundStyle(col)
-                        }
-                        GeometryReader { g in
-                            ZStack(alignment: .leading) {
-                                Capsule().fill(Theme.muted.opacity(0.2))
-                                Capsule().fill(col).frame(width: g.size.width * (0.15 + 0.85 * (1 - t)))
-                            }
-                        }
-                        .frame(height: 8)
-                        Text("\(Int((e.r.value / tot * 100).rounded()))%").appFont(12).foregroundStyle(Theme.muted)
+                Text("금리에 약한 순").appFont(16, .bold)
+                // 가장 약한 쪽 1/3 은 주황, 가장 강한 쪽 1/3 은 초록, 나머지는 회색
+                FlowRow(spacing: 6) {
+                    ForEach(Array(list.enumerated()), id: \.offset) { _, e in
+                        let t = (e.c - lo) / span
+                        let tier = list.count < 2 ? 1 : (t < 1.0 / 3 ? 0 : t > 2.0 / 3 ? 2 : 1)
+                        let col = tier == 0 ? Theme.orange : tier == 1 ? Theme.muted : Theme.teal
+                        Text(e.r.sym.name).appFont(13, .bold).lineLimit(1)
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .background(col.opacity(0.15), in: Capsule())
+                            .overlay(Capsule().stroke(col, lineWidth: 1))
                     }
                 }
+                Text("약함 → 강함").appFont(12).foregroundStyle(Theme.muted)
                 compareLink
             }
         }
@@ -1388,15 +1408,17 @@ struct RateScenarioView: View {
         HStack { Text(k).appFont(13).foregroundStyle(Theme.sub); Spacer(); Text(v).appFont(14, .bold) }
     }
 
-    private func step(_ n: Int, _ title: String, _ v: String, _ note: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text("\(n)").appFont(13, .bold).foregroundStyle(.white).frame(width: 24, height: 24).background(Theme.teal, in: Circle())
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).appFont(13).foregroundStyle(Theme.sub)
-                Text(v).appFont(15, .bold)
-                if !note.isEmpty { Text(note).appFont(12).foregroundStyle(Theme.muted) }
-            }
+    /// 작은 칸 하나 (미션 체크인 칸 모양): 이름, 값, 단위
+    private func cell(_ k: String, _ v: String, _ note: String) -> some View {
+        VStack(spacing: 2) {
+            Text(k).appFont(12).foregroundStyle(Theme.sub).lineLimit(1)
+            Text(v).appFont(15, .bold).lineLimit(1).minimumScaleFactor(0.7)
+            if !note.isEmpty { Text(note).appFont(11).foregroundStyle(Theme.muted).lineLimit(1) }
         }
+        .padding(.vertical, 8).padding(.horizontal, 4)
+        .frame(maxWidth: .infinity, minHeight: 64)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
     }
 
     /// "2029-10-01" → "2029.10"
@@ -1522,12 +1544,14 @@ struct DividendView: View {
     /// 분석 탭 시트: "div" 배당만 · "tax" 세금만 (나눈 두 페이지). nil 이면 예전처럼 둘을 전환
     var only: String? = nil
     @State private var tab = "div"
-    @State private var mode = "month"
     @State private var extra = 0.0
+    /// 배당 계산은 화면을 열 때·자료가 바뀔 때만 한 번 (전환·슬라이더마다 다시 하지 않는다)
+    @State private var dd: DivData?
     private var calc: SiteCalc { SiteCalc.shared }
 
     /// 종목 하나의 앞으로 1년 배당 (화면용)
     struct Paid { let id: String; let name: String; let out: SiteCalc.DivOut; let tax: Double; let krw: Bool; let payMonths: [Int] }
+    struct DivData { let months: [String]; let byMonth: [Double]; let paid: [Paid]; let net: Double; let gross: Double; let zero: [String]; let unknown: [String] }
 
     /// 분석 허브 줄: 한 달 평균 세후 배당(원)과 내년 5월 양도세(원). 이 화면 첫 문장과 같은 식
     static func hubMonthly(_ m: AppModel) -> Double {
@@ -1540,7 +1564,7 @@ struct DividendView: View {
     }
     static func hubTax(_ m: AppModel) -> Double { m.taxGain > 0 ? max(0, SiteCalc.capGainTax(m.taxGain * 1e4)) : 0 }
 
-    var body: some View {
+    private func build() -> DivData {
         // 웹(종목 › 배당·세금)과 같은 식: 지난 12개월 배당락(사이트 시세에서 뽑은 날짜·금액)이 앞으로 같은 달에 (1+증가율)로 다시 온다고 본 세후 원화
         // 환율은 웹 fxBase 와 같게 매매기준율 (없거나 5일 넘게 묵었으면 지금 환율)
         let t = SiteCalc.today(), fx = Market.shared.valFx
@@ -1561,6 +1585,11 @@ struct DividendView: View {
         let byMonth = months.map { mo in paid.reduce(0.0) { $0 + ($1.out.byMonth[mo] ?? 0) } }
         let zero = per.filter { $0.known && $0.out == nil }.map(\.id)
         let unknown = per.filter { !$0.known }.map(\.id)
+        return DivData(months: months, byMonth: byMonth, paid: paid, net: net, gross: gross, zero: zero, unknown: unknown)
+    }
+
+    var body: some View {
+        let fx = Market.shared.valFx
         // 해외주식 평가 이익: 웹과 같게 (지금 가격 − 매수 단가) × 수량 × 매매기준율. 매수 단가를 넣은 종목만
         let us = m.rows.filter { $0.sym.currency == .usd && $0.h.avg > 0 }
         let usU = us.reduce(0.0) { $0 + ($1.sym.last - $1.h.avg) * $1.h.qty * fx }
@@ -1568,7 +1597,7 @@ struct DividendView: View {
 
         let inner = VStack(alignment: .leading, spacing: 14) {
             if (only ?? tab) == "div" {
-                income(months: months, byMonth: byMonth, paid: paid, net: net, gross: gross, zero: zero, unknown: unknown)
+                if let dd { income(months: dd.months, byMonth: dd.byMonth, paid: dd.paid, net: dd.net, gross: dd.gross, zero: dd.zero, unknown: dd.unknown) }
             } else {
                 capTax(G: G, usU: usU, usIds: us.map(\.id))
             }
@@ -1590,7 +1619,10 @@ struct DividendView: View {
         }
         .background(Theme.bg)
         .toolbarTitleDisplayMode(.inlineLarge)
-        .task { await calc.refresh() }
+        .onAppear { if dd == nil { dd = build() } }
+        .onChange(of: fx) { dd = build() }
+        .onChange(of: m.rows.count) { dd = build() }
+        .task { await calc.refresh(); dd = build() }
     }
 
     // MARK: ① 받는 배당
@@ -1609,10 +1641,7 @@ struct DividendView: View {
             }
         }
         if !paid.isEmpty {
-            Card {
-                SegTabs(items: [("month", String(localized: "달별")), ("stock", String(localized: "종목별"))], selection: $mode, small: true)
-                if mode == "month" { monthChart(months: months, byMonth: byMonth, paid: paid) } else { stockList(paid) }
-            }
+            Card { monthChart(months: months, byMonth: byMonth, paid: paid) }
         }
         let none = (zero.isEmpty ? "" : String(localized: "\(String(describing: zero.joined(separator: "·"))) 무배당"))
             + (unknown.isEmpty ? "" : (zero.isEmpty ? "" : " · ") + String(localized: "\(String(describing: unknown.joined(separator: "·"))) 자료 없음(0원)"))
@@ -1655,6 +1684,30 @@ struct DividendView: View {
         howCalc([String(localized: "지난 12개월 배당이 같은 달에 들어옴"), String(localized: "지난 3년 늘어난 속도만큼 증가"), String(localized: "회사 결정에 따라 달라짐 · 세무 상담 아님")])
     }
 
+    /// 쌓는 한 칸: 종목 하나(많으면 뒤쪽은 '그 외'로 묶음)
+    private struct Series { let id: String; let sched: String; let y1: Double; let byMonth: [Double]; let color: Color }
+
+    /// 막대를 종목 색으로 쌓는다: 매달 주는 종목이 바닥, 그 위로 1년 합이 큰 순
+    private func series(months: [String], paid: [Paid]) -> [Series] {
+        let colors = [Theme.teal.opacity(0.4), Theme.teal, Theme.orange.opacity(0.8), Theme.blue.opacity(0.75), Theme.purple.opacity(0.6)]
+        let sorted = paid.sorted { ($0.out.n >= 12 ? 1 : 0, $0.out.y1) > ($1.out.n >= 12 ? 1 : 0, $1.out.y1) }
+        let sched = { (x: Paid) -> String in
+            x.out.n >= 12 ? String(localized: "매달")
+                : x.payMonths.isEmpty ? String(localized: "1년 \(String(describing: x.out.n))번")
+                : String(localized: "\(String(describing: x.payMonths.sorted().map { "\($0)" }.joined(separator: "·")))월")
+        }
+        let main = sorted.count > colors.count ? Array(sorted.prefix(colors.count - 1)) : sorted
+        var out = main.enumerated().map { k, x in
+            Series(id: x.id, sched: sched(x), y1: x.out.y1, byMonth: months.map { x.out.byMonth[$0] ?? 0 }, color: colors[k])
+        }
+        let rest = sorted.dropFirst(main.count)
+        if !rest.isEmpty {
+            out.append(Series(id: String(localized: "그 외"), sched: rest.map(\.id).joined(separator: "·"), y1: rest.reduce(0) { $0 + $1.out.y1 },
+                              byMonth: months.map { mo in rest.reduce(0) { $0 + ($1.out.byMonth[mo] ?? 0) } }, color: Theme.muted.opacity(0.5)))
+        }
+        return out
+    }
+
     private func monthChart(months: [String], byMonth: [Double], paid: [Paid]) -> some View {
         let mMax = max(1, byMonth.max() ?? 1)
         let pos = byMonth.filter { $0 > 0 }.sorted()
@@ -1665,27 +1718,7 @@ struct DividendView: View {
         // 연도 구간: 같은 해 달끼리 묶음
         var years: [(y: String, n: Int)] = []
         for s in months { let y = String(s.prefix(4)); if years.last?.y == y { years[years.count - 1].n += 1 } else { years.append((y, 1)) } }
-        // 설명 문장
-        var notes: [String] = []
-        let hiSorted = hi.sorted()
-        let causes = Array(Set(hiSorted.flatMap { i in paid.filter { $0.payMonths.count < 12 && ($0.out.byMonth[months[i]] ?? 0) > 0 }.map(\.id) })).sorted()
-        if !hiSorted.isEmpty, (1...2).contains(causes.count) {
-            notes.append(String(localized: "\(String(describing: hiSorted.map { "\(mo($0))" }.joined(separator: "·")))월: \(String(describing: causes.joined(separator: "·"))) 겹침"))
-        }
-        let rest = byMonth.indices.filter { byMonth[$0] > 0 && !hi.contains($0) }.map { byMonth[$0] }.sorted()
-        let zeroM = byMonth.indices.filter { byMonth[$0] <= 0 }
-        let monthly = paid.filter { $0.payMonths.count == 12 }
-        var parts: [String] = []
-        if (1...3).contains(zeroM.count) {
-            parts.append(zeroM.map { "\(mo($0))" }.joined(separator: "·") + String(localized: "월 없음"))
-        } else if zeroM.count > 3 {
-            parts.append(String(localized: "배당 없는 달 \(String(describing: zeroM.count))개"))
-        }
-        if !rest.isEmpty, !hi.isEmpty {
-            let w = AppModel.wonRead(rest[rest.count / 2])
-            parts.append(String(localized: "나머지 ") + (monthly.count == 1 ? "\(monthly[0].id) " : "") + String(localized: "약 ") + (w.hasSuffix("천원") ? String(w.dropLast()) : w))
-        }
-        if !parts.isEmpty { notes.append(parts.joined(separator: " · ")) }
+        let ser = series(months: months, paid: paid)
 
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .bottom, spacing: 4) {
@@ -1693,9 +1726,17 @@ struct DividendView: View {
                     VStack(spacing: 3) {
                         Text(hi.contains(i) ? Self.short(byMonth[i]) : " ").appFont(9, .semibold).foregroundStyle(Theme.tealDark)
                             .lineLimit(1).fixedSize()
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(byMonth[i] <= 0 ? Theme.track : hi.contains(i) || hi.isEmpty ? Theme.teal : Theme.teal.opacity(0.4))
-                            .frame(height: max(2, byMonth[i] / mMax * 80))
+                        if byMonth[i] <= 0 {
+                            RoundedRectangle(cornerRadius: 1).fill(Theme.track).frame(height: 2)
+                        } else {
+                            // 위 칸부터 그린다 (바닥 = 첫 종목)
+                            VStack(spacing: 1) {
+                                ForEach(ser.indices.reversed().filter { ser[$0].byMonth[i] > 0 }, id: \.self) { k in
+                                    Rectangle().fill(ser[k].color).frame(height: max(1, ser[k].byMonth[i] / mMax * 80))
+                                }
+                            }
+                            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 3, topTrailingRadius: 3))
+                        }
                         Text("\(mo(i))").appFont(10).foregroundStyle(Theme.muted)
                     }
                     .frame(maxWidth: .infinity)
@@ -1715,34 +1756,19 @@ struct DividendView: View {
                     }
                 }
             }.frame(height: 18)
-            ForEach(notes, id: \.self) { n in
-                HStack(alignment: .top, spacing: 6) {
-                    Circle().fill(Theme.teal).frame(width: 5, height: 5).padding(.top, 6)
-                    Text(n).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-    }
-
-    private func stockList(_ paid: [Paid]) -> some View {
-        let sMax = max(1, paid.map(\.out.y1).max() ?? 1)
-        return VStack(alignment: .leading, spacing: 14) {
-            ForEach(paid.sorted { $0.out.y1 > $1.out.y1 }, id: \.id) { x in
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+            // 색 풀이 = 종목별 1년 합 (큰 순)
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(ser.sorted { $0.y1 > $1.y1 }, id: \.id) { x in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        RoundedRectangle(cornerRadius: 3).fill(x.color).frame(width: 10, height: 10)
                         Text(x.id).appFont(14, .bold)
-                        if !x.name.isEmpty { Text(x.name).appFont(12).foregroundStyle(Theme.muted).lineLimit(1) }
-                        Spacer()
-                        Text(AppModel.won1(x.out.y1)).appFont(14, .bold)
+                        Text(x.sched).appFont(12).foregroundStyle(Theme.sub).lineLimit(1)
+                        Spacer(minLength: 8)
+                        Text(AppModel.won1(x.y1)).appFont(14, .bold)
                     }
-                    GeometryReader { g in
-                        RoundedRectangle(cornerRadius: 3).fill(Theme.teal).frame(width: max(4, g.size.width * x.out.y1 / sMax))
-                    }.frame(height: 8)
-                    Text((x.out.n == 12 ? String(localized: "매달") : String(localized: "1년 \(String(describing: x.out.n))번") + (x.payMonths.isEmpty ? "" : String(localized: "(\(String(describing: x.payMonths.map { "\($0)" }.joined(separator: "·")))월)")))
-                         + String(localized: " · 연 \(String(describing: String(format: "%.2f", x.out.yld * 100)))%"))
-                        .appFont(12).foregroundStyle(Theme.sub)
                 }
             }
+            .padding(.top, 6)
         }
     }
 
@@ -1753,104 +1779,93 @@ struct DividendView: View {
         let tax = SiteCalc.capGainTax(G), ded = SiteCalc.cgtDed
         let year = (Int(SiteCalc.today().prefix(4)) ?? 2026) + 1
         Card {
-            Text("올해 판 미국 주식").appFont(12).foregroundStyle(Theme.sub)
+            Text(G > 0 ? String(localized: "올해 판 미국 주식 이익") + " " + AppModel.man(G) : String(localized: "올해 판 미국 주식")).appFont(12).foregroundStyle(Theme.sub)
             if G <= 0 {
                 Text("올해 판 이익 없음\n낼 양도세 없음").appFont(20, .bold).lineSpacing(2)
             } else if tax <= 0 {
                 Text("\(AppModel.man(ded)) 공제 안\n낼 세금 없음").appFont(20, .bold).lineSpacing(2).roll(String(localized: "\(String(describing: AppModel.man(ded))) 공제 안\n낼 세금 없음"))
             } else {
-                (Text("내년 5월 세금\n") + Text("약 \(AppModel.man(tax))원").foregroundColor(Theme.orange))
-                    .appFont(22, .bold).lineSpacing(2)
-                Text("연말 전 더 팔면 늘어요").appFont(13).foregroundStyle(Theme.sub)
+                (Text("5월에") + Text(" ") + Text(String(localized: "약 ") + AppModel.man(tax)).foregroundColor(Theme.orange))
+                    .appFont(26, .heavy)
+                // 판 이익 막대: 공제 · 세금 · 내 몫
+                GeometryReader { g in
+                    let w = g.size.width - 4
+                    HStack(spacing: 2) {
+                        Rectangle().fill(Theme.green.opacity(0.3)).frame(width: w * min(1, ded / G))
+                        Rectangle().fill(Theme.orange).frame(width: w * tax / G)
+                        Rectangle().fill(Theme.line)
+                    }.clipShape(RoundedRectangle(cornerRadius: 6))
+                }.frame(height: 22)
+                HStack(alignment: .top, spacing: 14) {
+                    taxPart(String(localized: "공제"), AppModel.man(ded))
+                    taxPart(String(localized: "세금"), AppModel.man(tax), Theme.orange)
+                    Spacer(minLength: 8)
+                    taxPart(String(localized: "내 몫"), AppModel.man(G - ded - tax), trailing: true)
+                }
                 HStack(spacing: 6) {
                     Image(systemName: "calendar").foregroundStyle(Theme.muted)
-                    (Text("신고·납부 ") + Text("\(String(year)).5.1 ~ 31").bold()).appFont(13)
+                    (Text("신고·납부 ") + Text("\(String(year)).5.1~31").bold())
                 }
-                .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.line, in: RoundedRectangle(cornerRadius: 10))
-            }
-            if G > 0 {
-                GeometryReader { g in
-                    HStack(spacing: 2) {
-                        Rectangle().fill(Theme.green.opacity(0.25)).frame(width: g.size.width * min(1, ded / G))
-                        if G > ded { Rectangle().fill(Theme.orange.opacity(0.3)) }
-                    }.clipShape(RoundedRectangle(cornerRadius: 4))
-                }.frame(height: 14)
-                HStack(spacing: 12) {
-                    legend(Theme.green.opacity(0.25), String(localized: "\(String(describing: AppModel.man(ded))) 공제"))
-                    if G > ded { legend(Theme.orange.opacity(0.3), String(localized: "나머지 22%")) }
-                }
-            }
-            if tax > 0 {
-                VStack(spacing: 8) {
-                    receiptRow(String(localized: "판 이익"), AppModel.man(G))
-                    receiptRow(String(localized: "공제"), "−" + AppModel.man(ded))
-                    receiptRow(String(localized: "과세 이익"), AppModel.man(G - ded))
-                    receiptRow(String(localized: "세율"), "× 22%")
-                    Divider()
-                    receiptRow(String(localized: "세금"), String(localized: "약 ") + AppModel.man(tax), bold: true, color: Theme.orange)
-                }
-                .padding(12).background(Theme.line.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
+                .appFont(12).padding(.horizontal, 10).padding(.vertical, 6)
+                .background(Theme.line, in: RoundedRectangle(cornerRadius: 8))
             }
         }
         Card {
-            Text("더 팔면?").appFont(15, .bold)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("더 팔면?").appFont(15, .bold)
+                if usU > 0 && min(extra, usU) > 0 {
+                    Text(AppModel.man(min(extra, usU)) + " " + String(localized: "더 팔 때")).appFont(12).foregroundStyle(Theme.sub)
+                }
+            }
             if usIds.isEmpty {
                 Text("매수 단가 넣은 미국 주식 없음").appFont(13).foregroundStyle(Theme.sub)
             } else if usU <= 0 {
                 Text(String(localized: "안 판 이익 없음") + (usU < 0 ? String(localized: " · 손실은 판 해 이익에서 빠짐") : "")).appFont(13).foregroundStyle(Theme.sub)
             } else {
-                let x = min(extra, usU), after = SiteCalc.capGainTax(G + x)
-                HStack { Text("안 판 이익").foregroundStyle(Theme.sub); Spacer(); Text(AppModel.man(usU)).bold() }.appFont(13)
-                HStack {
-                    Text("추가로 팔 이익").appFont(13).foregroundStyle(Theme.sub)
-                    Spacer()
-                    Text(x <= 0 ? String(localized: "0원") : AppModel.man(x)).appFont(14, .bold)
-                }
+                // 막대 눈금은 전부 팔 때 세금에 고정: 밀면 아래 막대가 자란다
+                let x = min(extra, usU), after = SiteCalc.capGainTax(G + x), top = max(1, SiteCalc.capGainTax(G + usU))
+                taxBar(String(localized: "지금"), tax, top, Theme.orange.opacity(0.45), Theme.ink)
+                taxBar(String(localized: "더 팔면"), after, top, Theme.orange, Theme.orange)
                 Slider(value: $extra, in: 0...usU, step: max(1e4, (usU / 200 / 1e4).rounded() * 1e4)).tint(Theme.orange)
                     .accessibilityLabel("추가로 팔 이익")
                     .accessibilityValue(x <= 0 ? String(localized: "0원") : AppModel.man(x))
-                HStack { Text("0"); Spacer(); Text("전부") }.appFont(11).foregroundStyle(Theme.muted)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("내년 5월 세금").appFont(13)
-                        Spacer()
-                        Text(String(localized: "약 ") + AppModel.man(after)).appFont(17, .bold).foregroundStyle(Theme.orange).roll(String(localized: "약 ") + AppModel.man(after))
-                    }
-                    if x > 0 { Text("지금보다 +\(AppModel.man(after - tax))").appFont(12).foregroundStyle(Theme.sub) }
-                }
-                .padding(12).background(Theme.line.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
+                HStack { Text("0"); Spacer(); Text(String(localized: "전부") + " " + AppModel.man(usU)) }.appFont(11).foregroundStyle(Theme.muted)
             }
         }
-        Card {
-            Text("알아두기").appFont(15, .bold)
-            tip(1, String(localized: "같은 해 손실은 이익에서 빼요"))
-            tip(2, String(localized: "\(String(describing: AppModel.man(ded))) 공제는 해마다 · 이월 없음"))
+        FlowRow(spacing: 6) {
+            ForEach([String(localized: "손실은 이익에서 빠져요"), String(localized: "공제는 해마다 새로")], id: \.self) { t in
+                Text(t).appFont(12).foregroundStyle(Theme.teal)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(Theme.teal.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+            }
         }
-        howCalc([String(localized: "판 이익: 앱 입력값"), String(localized: "안 판 이익: 산 날·오늘 환율로 환산"), String(localized: "국내 주식: 대주주 아니면 양도세 없음"), String(localized: "매매 권유·세무 상담 아님")])
     }
 
     // MARK: 작은 조각
+
+    private func taxPart(_ k: String, _ v: String, _ c: Color = Theme.ink, trailing: Bool = false) -> some View {
+        VStack(alignment: trailing ? .trailing : .leading, spacing: 2) {
+            Text(k).appFont(11).foregroundStyle(Theme.sub)
+            Text(v).appFont(13, .bold).foregroundStyle(c)
+        }
+    }
+
+    private func taxBar(_ k: String, _ v: Double, _ top: Double, _ fill: Color, _ vc: Color) -> some View {
+        HStack(spacing: 8) {
+            Text(k).appFont(12).foregroundStyle(Theme.sub).frame(width: 48, alignment: .leading)
+            GeometryReader { g in
+                RoundedRectangle(cornerRadius: 4).fill(fill).frame(width: max(4, g.size.width * min(1, v / top)))
+            }.frame(height: 16)
+            Text(AppModel.man(v)).appFont(13, .bold).foregroundStyle(vc).roll(AppModel.man(v)).frame(minWidth: 64, alignment: .trailing)
+        }
+    }
+
 
     private func receiptRow(_ k: String, _ v: String, bold: Bool = false, color: Color = Theme.ink) -> some View {
         HStack {
             Text(k).appFont(13, bold ? .bold : .regular).foregroundStyle(bold ? Theme.ink : Theme.sub)
             Spacer(minLength: 8)
             Text(v).appFont(bold ? 15 : 13, bold ? .bold : .semibold).foregroundStyle(color)
-        }
-    }
-
-    private func legend(_ c: Color, _ t: String) -> some View {
-        HStack(spacing: 4) {
-            RoundedRectangle(cornerRadius: 2).fill(c).frame(width: 10, height: 10)
-            Text(t).appFont(11).foregroundStyle(Theme.sub)
-        }
-    }
-
-    private func tip(_ n: Int, _ t: String) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Text("\(n)").appFont(12, .bold).foregroundStyle(.white).frame(width: 20, height: 20).background(Theme.teal, in: Circle())
-            Text(t).appFont(13).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -1901,9 +1916,8 @@ private struct SegTabs: View {
 struct FxImpactView: View {
     @Environment(AppModel.self) private var m
     @State private var period = "1y"
-    /// nil 이면 지금 환율(BASE). 시세가 늦게 와도 시작 상태 변화가 0 이 되게
-    @State private var what: Double? = nil
-    @State private var more = false
+    /// 지금 환율(BASE)에서 옮긴 폭(원). 입구 '환율 10원↓'로 들어오니 −10 에서 시작. 폭으로 두어 시세가 늦게 와도 변화가 같게
+    @State private var off: Double = -10
 
     var body: some View {
         // 웹(전망 › 환율 영향)과 같은 자료·식: 지난 원/달러는 사이트 값(calc.json), 앞날 범위는 웹 전망 모형의 환율 μ·σ(stats.json)로
@@ -1926,8 +1940,7 @@ struct FxImpactView: View {
         let X = { (t: Double) in t <= 0 ? (t + 1) * 0.7 : 0.7 + t * 0.3 }
         let Y = { (v: Double) in max(0, min(1, (hi - v) / max(1, hi - lo))) }
         let valAt = { (r: Double) in m.total + usdV * (r / BASE - 1) }
-        let r = what ?? BASE, dv = valAt(r) - m.total
-        let per10 = usdV * 10 / BASE
+        let r = BASE + off, dv = valAt(r) - m.total
         let T = max(0.01, m.goalToDate.timeIntervalSince(Date()) / (365.25 * 86400))
         let goalD = { let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "yyyy.M"; return f.string(from: m.goalToDate) }()
         let at = { (z: Double) in Int(SiteCalc.fxAt(now: FX, t: T, z: z, mu: mu, vol: vol).rounded()).formatted() }
@@ -1939,28 +1952,45 @@ struct FxImpactView: View {
             if p.count == 3 { return "\(p[1])/\(p[2])" }
             let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "M/d"; return f.string(from: Date())
         }()
-        let why = usdW >= 0.995 ? String(localized: "주식 100% 달러") : String(localized: "달러 \(String(describing: AppModel.pct(usdW)))")
         let lo1 = c?.lo1, hi1 = c?.hi1
-        let gap = max(0, m.keyValue - valAt(r)), prog = m.keyValue > 0 ? min(1, max(0, valAt(r) / m.keyValue)) : 0
-        let sMin = min(1100, (BASE - 50).rounded(.down)), sMax = max(1600, (BASE + 50).rounded(.up))
+        // 지금을 가운데 두고 좌우 같은 폭: 슬라이더 손잡이가 '지금' 칩 아래에 온다
+        let span = 150.0
 
         PinnedLayout {
             // 설명 줄이 없어 흰 띠만 남았다: 띠 없이 제목만 건다
-            DetailHead(title: String(localized: "환율 영향"), sub: "")
+            DetailHead(title: String(localized: "환율이 바뀌면?"), sub: "")
         } content: {
             VStack(alignment: .leading, spacing: 14) {
-                // 1. 한 줄 요약
-                Card(dark: true) {
-                    Text(usdV <= 0 ? String(localized: "환율") : String(localized: "환율 10원 ↓")).appFont(12, .semibold).foregroundStyle(Theme.sub)
-                    if usdV <= 0 {
-                        Text("달러 자산 없음 · 영향 없음").appFont(18, .bold)
-                    } else {
-                        Text("내 자산 \(AppModel.man(per10)) ↓").appFont(20, .bold).roll(String(localized: "내 자산 \(String(describing: AppModel.man(per10))) ↓"))
-                        Text(why)
-                            .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
+                // 1. 환율이 바뀌면 내 자산은? (입구 숫자와 같은 −10원에서 시작)
+                if usdV > 0 {
+                    Card {
+                        // 제목은 화면 머리('환율이 바뀌면?')로 올렸다
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text("\(won(r))이면").appFont(13).foregroundStyle(Theme.sub)
+                                Spacer()
+                                Text("주가 고정").appFont(12).foregroundStyle(Theme.muted)
+                            }
+                            Text(AppModel.man(valAt(r))).appFont(24, .bold).monospacedDigit().roll(AppModel.man(valAt(r)))
+                            Text(abs(dv) < 0.5 ? String(localized: "지금과 같음") : (dv > 0 ? "+" : "−") + AppModel.man(abs(dv)))
+                                .appFont(13, .bold).foregroundStyle(abs(dv) < 0.5 ? Theme.muted : Theme.change(dv))
+                        }
+                        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
+                        Slider(value: Binding(get: { off }, set: { off = $0.rounded() }), in: -span...span, step: 1).tint(Theme.blue).accessibilityLabel("환율")
+                        // 내린 쪽 · 지금 · 오른 쪽을 같은 폭으로 (입구 '10원↓'가 바로 눌린 칸)
                         HStack(spacing: 6) {
-                            pill(trendWord(c?.trend))
-                            if let y = c?.ret_1y { pill(String(localized: "1년 \(String(describing: AppModel.sgn(y)))")) }
+                            ForEach([-50.0, -10, 0, 10, 50], id: \.self) { v in
+                                let on = off == v
+                                Button { off = v } label: {
+                                    Text(v == 0 ? String(localized: "지금") : Int((BASE + v).rounded()).formatted()).appFont(12, .bold).lineLimit(1)
+                                        .frame(maxWidth: .infinity, minHeight: 34)
+                                        .foregroundStyle(on ? .white : Theme.ink)
+                                        .background(on ? Theme.blue : Theme.card, in: Capsule())
+                                        .overlay(Capsule().stroke(on ? Theme.blue : Theme.border, lineWidth: 1.5))
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
                     }
                 }
@@ -2023,63 +2053,16 @@ struct FxImpactView: View {
                     }
                     ChipRow(items: [("1m", String(localized: "1개월")), ("3m", String(localized: "3개월")), ("1y", String(localized: "1년")), ("3y", String(localized: "3년"))], selection: $period, accent: Theme.blue, fill: true)
                 }
-                // 3. 환율이 바뀌면 내 자산은?
-                if usdV > 0 {
-                    Card {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text("환율이 바뀌면?").appFont(16, .bold)
-                            Spacer()
-                            Text("주가 고정").appFont(12).foregroundStyle(Theme.muted)
-                        }
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("\(won(r))이면").appFont(13).foregroundStyle(Theme.sub)
-                            Text(AppModel.man(valAt(r))).appFont(24, .bold).monospacedDigit().roll(AppModel.man(valAt(r)))
-                            Text(abs(dv) < 0.5 ? String(localized: "지금과 같음") : (dv > 0 ? "+" : "−") + AppModel.man(abs(dv)))
-                                .appFont(13, .bold).foregroundStyle(abs(dv) < 0.5 ? Theme.muted : Theme.change(dv))
-                        }
-                        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
-                        Slider(value: Binding(get: { r }, set: { what = $0 }), in: sMin...sMax, step: 1).tint(Theme.blue).accessibilityLabel("환율")
-                        HStack(spacing: 6) {
-                            ForEach([1250.0, 1300, 0, 1450, 1500], id: \.self) { v in
-                                let on = v == 0 ? what == nil || what == BASE : what == v
-                                Button { what = v == 0 ? nil : v } label: {
-                                    Text(v == 0 ? String(localized: "지금") : Int(v).formatted()).appFont(12, .bold).lineLimit(1)
-                                        .frame(maxWidth: .infinity, minHeight: 34)
-                                        .foregroundStyle(on ? .white : Theme.ink)
-                                        .background(on ? Theme.blue : Theme.card, in: Capsule())
-                                        .overlay(Capsule().stroke(on ? Theme.blue : Theme.border, lineWidth: 1.5))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        Divider()
-                        Text(gap > 0 ? String(localized: "\(String(describing: m.keyName))까지 \(String(describing: AppModel.man(gap)))") : String(localized: "\(String(describing: m.keyName)) 도달")).appFont(13, .semibold)
-                        GeometryReader { g in
-                            ZStack(alignment: .leading) {
-                                Capsule().fill(Theme.track)
-                                Capsule().fill(Theme.blue).frame(width: g.size.width * prog)
-                            }
-                        }
-                        .frame(height: 8)
+                // 3. 숫자 칸 4개 (금리 일정 칸 모양)
+                Card {
+                    HStack(spacing: 6) {
+                        cell(String(localized: "1년 범위"), lo1.flatMap { l in hi1.map { "\(Int(l.rounded()).formatted())~\(Int($0.rounded()).formatted())" } } ?? "-", "")
+                        cell(String(localized: "출렁임"), volWord(vol), String(localized: "연 \(String(describing: String(format: "%.1f", vol * 100)))%"))
+                        cell(String(localized: "\(String(describing: goalD)) 예상"), at(0), "\(at(-1.645))~\(at(1.645))")
+                        cell(String(localized: "환율 손익 · 1년"), eff1y.map { AppModel.sgn($0) } ?? "-", "", color: Theme.change(eff1y ?? 0))
                     }
+                    Text("지난 흐름 기준 예상").appFont(12).foregroundStyle(Theme.muted)
                 }
-                // 4. 자세히 보기
-                DisclosureGroup(isExpanded: $more) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        kpiGrid([
-                            Kpi(k: String(localized: "1년 범위"), v: lo1.flatMap { l in hi1.map { "\(Int(l.rounded()).formatted())~\(Int($0.rounded()).formatted())" } } ?? "-", sub: ""),
-                            Kpi(k: String(localized: "출렁임"), v: String(localized: "\(String(describing: volWord(vol))) · 연 \(String(describing: String(format: "%.1f", vol * 100)))%"), sub: ""),
-                            Kpi(k: String(localized: "\(String(describing: goalD)) 예상"), v: at(0) + String(localized: "원"), sub: String(localized: "10번 중 9번 \(String(describing: at(-1.645)))~\(String(describing: at(1.645)))")),
-                            Kpi(k: String(localized: "환율 손익 · 1년"), v: eff1y.map { AppModel.sgn($0) } ?? "-", sub: "", color: Theme.change(eff1y ?? 0)),
-                        ])
-                        footnote(String(localized: "지난 흐름 기준 예상"))
-                    }
-                    .padding(.top, 8)
-                } label: {
-                    Text("자세히").appFont(14, .semibold).foregroundStyle(Theme.ink)
-                }
-                .tint(Theme.sub)
             }
             .padding(16)
         }
@@ -2088,9 +2071,17 @@ struct FxImpactView: View {
         .task { await SiteCalc.shared.refresh() }
     }
 
-    private func pill(_ s: String) -> some View {
-        Text(verbatim: s).appFont(12, .semibold).padding(.horizontal, 10).padding(.vertical, 5)
-            .background(Color.white.opacity(0.12), in: Capsule())
+    /// 작은 칸 하나 (금리 일정 칸 모양): 이름, 값, 아래 작은 글
+    private func cell(_ k: String, _ v: String, _ note: String, color: Color = Theme.ink) -> some View {
+        VStack(spacing: 2) {
+            Text(verbatim: k).appFont(11).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.7)
+            Text(verbatim: v).appFont(14, .bold).foregroundStyle(color).lineLimit(1).minimumScaleFactor(0.6).monospacedDigit()
+            if !note.isEmpty { Text(verbatim: note).appFont(10).foregroundStyle(Theme.muted).lineLimit(1).minimumScaleFactor(0.7) }
+        }
+        .padding(.vertical, 8).padding(.horizontal, 4)
+        .frame(maxWidth: .infinity, minHeight: 64)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
     }
 
     private func legend(_ c: Color, _ h: CGFloat, _ s: String) -> some View {
@@ -2113,27 +2104,40 @@ private func fxTicks(lo: Double, hi: Double) -> [Double] {
     return [a, (hi / 500).rounded(.up) * 500]
 }
 
-/// 사이트 추세 문구(웹 model.js trendLabel)를 쉬운 말로
-private func trendWord(_ t: String?) -> String {
-    switch t ?? "" {
-    case "상승 추세", "약한 상승": return String(localized: "오르는 중")
-    case "하락 추세", "약세 전환 주의": return String(localized: "내려가는 중")
-    default: return String(localized: "옆으로")
-    }
-}
-
 /// 연 변동성을 말로
 private func volWord(_ v: Double) -> String { v < 0.07 ? String(localized: "낮음") : v <= 0.12 ? String(localized: "보통") : String(localized: "큼") }
 
 // MARK: 종목 한눈에 — 숫자만, 추천 문구 없음
 
-/// 종목 한눈에: 지금 가격이 지난 1년 중 어디쯤인지. 정렬은 종목 탭과 따로 (2026-10-14 결정)
+/// 종목 한눈에: 비중만큼 나눈 지도. 칸 색은 고른 기간 등락, 누르면 아래에 세 줄 상세 (2026-10-28 결정)
 struct GlanceView: View {
     @Environment(AppModel.self) private var m
-    @State private var order = "w"
-    @State private var tip: GlanceTip?
+    @State private var pick: String?
+    @State private var period: Period = .d1
+    @State private var inUsd = false
 
-    struct Item { let row: AppModel.Row; let k: AppModel.HoldMetrics; let vol: Double; let has: Bool }
+    /// mv: 고른 기간 등락 (기록이 없으면 nil)
+    struct Item { let row: AppModel.Row; let k: AppModel.HoldMetrics; let vol: Double; let has: Bool; var mv: Double? = nil }
+
+    /// 가장 짙은 색이 되는 등락 폭. 기간이 길수록 넓게 (2026-10-28 결정)
+    static func scale(_ p: Period) -> Double {
+        switch p { case .d1: 0.03; case .w1: 0.07; case .m1: 0.12; case .m3: 0.2; case .m6: 0.28; case .y1: 0.4; case .y3: 0.7 }
+    }
+
+    /// 고른 기간 원/달러 변화 (지금 ÷ 기간 첫날). 기록이 없으면 1
+    static func fxRatio(_ p: Period) -> Double {
+        let now = Market.shared.valFx
+        var start = 0.0
+        if p == .d1 { start = Market.shared.fx.prevClose }
+        else if let h = Market.shared.prices?.h["KRW=X"] {
+            let c = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+            let from = StubPriceProvider.dayNum(c.year ?? 1970, c.month ?? 1, c.day ?? 1) - p.days
+            for (d, v) in zip(h.dates, h.closes) {
+                if let n = StubPriceProvider.dayNum(d), n >= from { start = v; break }
+            }
+        }
+        return start > 0 && now > 0 ? now / start : 1
+    }
 
     /// 출렁임 단계: 연 변동성 20% 미만 작은 편 / 40% 미만 보통 / 그 위 큰 편 (2026-10-14 결정)
     static func swing(_ v: Double) -> Int { v < 0.2 ? 0 : v < 0.4 ? 1 : 2 }
@@ -2141,32 +2145,40 @@ struct GlanceView: View {
 
     var body: some View {
         let all = m.rows.map { r in Item(row: r, k: m.metrics(r), vol: SiteStats.params(r.id).2, has: m.prices.hasHistory(r.sym)) }
-        let sorted = all.sorted {
-            switch order {
-            case "dd": return $0.k.dd < $1.k.dd
-            case "vol": return $0.vol > $1.vol
-            default: return $0.k.w > $1.k.w
-            }
+        // 원으로 보면 달러 종목은 기간 환율 변화까지 곱한다 (2026-10-28 결정)
+        let fx = inUsd ? 1 : Self.fxRatio(period)
+        let sorted = all.sorted { $0.k.w > $1.k.w }.map { (d0: Item) -> Item in
+            var d = d0
+            let pts = m.prices.series(d.row.sym, period: period)
+            let k = d.row.sym.currency == .usd ? fx : 1
+            if period == .d1 || d.has, let a = pts.first, let b = pts.last, a > 0 { d.mv = b / a * k - 1 }
+            return d
         }
-        // 거의 안 움직이는 자산(SGOV 등)은 "그 외"로, 국내는 한 카드에 줄로
-        let calm = sorted.filter { $0.has && $0.vol < 0.02 }
-        let kr = sorted.filter { $0.row.sym.currency == .krw && !calm.map(\.row.id).contains($0.row.id) }
-        let us = sorted.filter { $0.row.sym.currency != .krw && !calm.map(\.row.id).contains($0.row.id) }
 
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 DetailHead(title: String(localized: "종목 한눈에"), sub: "")
-                if let top = all.max(by: { $0.k.w < $1.k.w }) {
+                HStack {
+                    Spacer()
+                    HoldSeg(items: [(true, "$"), (false, String(localized: "원"))], selection: $inUsd)
+                        .accessibilityLabel("금액 단위: \(inUsd ? String(localized: "달러") : String(localized: "원"))")
+                }
+                ChipRow(items: Period.allCases.map { ($0, $0.label) }, selection: $period, fill: true, pad: 4)
+                if let top = sorted.first {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(summary(top)).appFont(14).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(14).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 14))
                 }
-                ChipRow(items: [("w", String(localized: "비중순")), ("dd", String(localized: "하락순")), ("vol", String(localized: "출렁임순"))], selection: $order, fill: true)
-                ForEach(us, id: \.row.id) { card($0) }
-                if !kr.isEmpty { krCard(kr) }
-                if !calm.isEmpty { calmCard(calm) }
+                treemap(sorted)
+                Text("빨강은 오름, 파랑은 내림 · 짙을수록 크게").appFont(11).foregroundStyle(Theme.sub)
+                if let d = sorted.first(where: { $0.row.id == pick }) {
+                    card(d).id(d.row.id).transition(.opacity)
+                } else {
+                    Text("칸을 누르면 자세히 보여요").appFont(13).foregroundStyle(Theme.sub)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                }
                 footnote(String(localized: "매매 추천 아님"))
             }
             .padding(16).padding(.bottom, 40)
@@ -2175,7 +2187,6 @@ struct GlanceView: View {
         }
         .background(Theme.bg)
         .toolbarTitleDisplayMode(.inlineLarge)
-        .sheet(item: $tip) { t in GlanceSheet(tip: t, items: all).presentationDetents([.medium, .large]) }
     }
 
     private func summary(_ t: Item) -> String {
@@ -2185,124 +2196,144 @@ struct GlanceView: View {
         return String(localized: "1위 \(String(describing: n)) \(String(describing: w)) · 여러 종목에 나뉨")
     }
 
-    private func info(_ t: String, _ d: Item) -> some View {
-        Button { tip = GlanceTip(topic: t, id: d.row.id) } label: { Image(systemName: "info.circle").font(.system(size: 12)) }
-            .buttonStyle(.plain).foregroundStyle(Theme.muted)
+    /// 거의 안 움직이는 자산(SGOV 등)
+    private static func calm(_ d: Item) -> Bool { d.has && d.vol < 0.02 }
+
+    /// 칸 글: 기간 등락, 현금성, 기록 없음
+    private func tileText(_ d: Item) -> String {
+        if Self.calm(d) { return String(localized: "현금성") }
+        guard let mv = d.mv else { return String(localized: "기록 모으는 중") }
+        return AppModel.sgn(mv)
     }
 
-    private func chip(_ text: String, _ t: String, _ d: Item) -> some View {
-        Button { tip = GlanceTip(topic: t, id: d.row.id) } label: {
-            HStack(spacing: 3) { Text(text).appFont(12, .semibold); Image(systemName: "info.circle").font(.system(size: 10)) }
-                .padding(.horizontal, 9).padding(.vertical, 5).foregroundStyle(Theme.ink)
-                .background(Theme.line, in: Capsule())
+    /// 칸 금액: 그 기간 평가금 변화. 달러로 보면 달러 종목만 $ (종목 탭과 같다)
+    private func amountText(_ d: Item) -> String? {
+        guard !Self.calm(d), let mv = d.mv, mv > -1 else { return nil }
+        let usd = inUsd && d.row.sym.currency == .usd
+        let v = usd ? d.row.value / Market.shared.valFx : d.row.value
+        let ch = v - v / (1 + mv)
+        return (ch < 0 ? "−" : "+") + (usd ? "$" + Int(abs(ch).rounded()).formatted() : HoldFmt.won(abs(ch)))
+    }
+
+    /// 칸 색: 오르면 빨강, 내리면 파랑. 기간마다 정한 폭(scale)에서 가장 짙다. 현금성·기록 없음은 회색
+    private func tone(_ d: Item) -> (Color, Color) {
+        guard !Self.calm(d), let mv = d.mv else { return (Theme.line, Theme.ink) }
+        let t = min(1, abs(mv) / Self.scale(period))
+        return (Theme.change(mv).opacity(0.15 + 0.75 * t), t > 0.45 ? .white : Theme.ink)
+    }
+
+    private func treemap(_ list: [Item]) -> some View {
+        GeometryReader { g in
+            // 0%인 종목도 누를 수 있게 아주 작은 칸은 남긴다
+            let rs = Self.squarify(list.map { max($0.k.w, 0.006) }, in: CGRect(origin: .zero, size: g.size))
+            ZStack(alignment: .topLeading) {
+                ForEach(Array(list.enumerated()), id: \.element.row.id) { i, d in
+                    let r = rs[i].insetBy(dx: 1.5, dy: 1.5)
+                    tile(d, CGSize(width: max(0, r.width), height: max(0, r.height)))
+                        .position(x: r.midX, y: r.midY)
+                }
+            }
+            .frame(width: g.size.width, height: g.size.height)
+        }
+        .frame(height: 340)
+    }
+
+    private func tile(_ d: Item, _ sz: CGSize) -> some View {
+        let (bg, fg) = tone(d)
+        let on = pick == d.row.id
+        let big = sz.width > 120 && sz.height > 80
+        return Button {
+            withAnimation(.easeOut(duration: 0.2)) { pick = on ? nil : d.row.id }
+        } label: {
+            VStack(spacing: 2) {
+                if sz.width > 40 && sz.height > 28 {
+                    Text(d.row.sym.name).appFont(big ? 15 : 11, .bold).lineLimit(1).minimumScaleFactor(0.6)
+                    if sz.height > 46 {
+                        Text(tileText(d)).appFont(big ? 22 : 12, .bold).lineLimit(1).minimumScaleFactor(0.6)
+                    }
+                    if sz.height > 64, let a = amountText(d) {
+                        Text(a).appFont(big ? 13 : 10, .semibold).lineLimit(1).minimumScaleFactor(0.6)
+                    }
+                }
+            }
+            .padding(4)
+            .foregroundStyle(fg)
+            .frame(width: sz.width, height: sz.height)
+            .background(bg, in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.ink, lineWidth: on ? 2 : 0))
+            .contentShape(Rectangle())
         }.buttonStyle(.plain)
     }
 
+    /// 비중 지도 칸 나누기 (squarified treemap). 값은 큰 순서로 받는다
+    static func squarify(_ vals: [Double], in box: CGRect) -> [CGRect] {
+        let total = vals.reduce(0, +)
+        guard total > 0, box.width > 0, box.height > 0 else { return vals.map { _ in .zero } }
+        let scale = Double(box.width * box.height) / total
+        var areas = ArraySlice(vals.map { $0 * scale })
+        var rect = box, out: [CGRect] = []
+        while !areas.isEmpty {
+            let side = Double(min(rect.width, rect.height))
+            func worst(_ row: [Double]) -> Double {
+                let s = row.reduce(0, +), mx = row.max() ?? 0, mn = row.min() ?? 0
+                guard s > 0, mn > 0 else { return .infinity }
+                return max(side * side * mx / (s * s), s * s / (side * side * mn))
+            }
+            var row: [Double] = []
+            while let a = areas.first, row.isEmpty || worst(row + [a]) <= worst(row) {
+                row.append(a); areas = areas.dropFirst()
+            }
+            let s = row.reduce(0, +)
+            if rect.width >= rect.height {
+                // 왼쪽에 세로 한 줄
+                let w = CGFloat(s / Double(rect.height))
+                var y = rect.minY
+                for a in row {
+                    let h = CGFloat(a) / w
+                    out.append(CGRect(x: rect.minX, y: y, width: w, height: h)); y += h
+                }
+                rect = CGRect(x: rect.minX + w, y: rect.minY, width: max(0, rect.width - w), height: rect.height)
+            } else {
+                // 위에 가로 한 줄
+                let h = CGFloat(s / Double(rect.width))
+                var x = rect.minX
+                for a in row {
+                    let w = CGFloat(a) / h
+                    out.append(CGRect(x: x, y: rect.minY, width: w, height: h)); x += w
+                }
+                rect = CGRect(x: rect.minX, y: rect.minY + h, width: rect.width, height: max(0, rect.height - h))
+            }
+        }
+        return out
+    }
+
+    /// 세 줄 상세: 이름·비중·최고가 대비 / 1년 범위 막대 / 1년·출렁임·내 보유
     private func card(_ d: Item) -> some View {
         let s = d.row.sym
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(s.name).appFont(16, .bold)
-                Text(s.short).appFont(12).foregroundStyle(Theme.muted)
-                Spacer()
-                Button { tip = GlanceTip(topic: "w", id: d.row.id) } label: {
-                    Text(AppModel.pct(d.k.w)).appFont(12, .semibold).foregroundStyle(Theme.tealDark)
-                        .padding(.horizontal, 9).padding(.vertical, 4).background(Theme.tealBg, in: Capsule())
-                }.buttonStyle(.plain)
-            }
-            if d.has {
-                HStack(spacing: 4) { Text("1년 최고가 대비").appFont(13).foregroundStyle(Theme.sub); info("dd", d) }
-                Text(d.k.dd > -0.0005 ? String(localized: "지금이 최고가") : AppModel.sgn(d.k.dd)).appFont(28, .bold).foregroundStyle(d.k.dd > -0.0005 ? Theme.up : Theme.down).roll(d.k.dd > -0.0005 ? String(localized: "지금이 최고가") : AppModel.sgn(d.k.dd))
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text(AppModel.price(s, s.last)).appFont(13, .semibold)
-                        Spacer()
-                    }
-                    RangeBar(lo: d.k.lo, hi: d.k.hi, now: s.last)
-                    HStack {
-                        Text(AppModel.price(s, d.k.lo)).appFont(11).foregroundStyle(Theme.sub)
-                        Spacer()
-                        Text(AppModel.price(s, d.k.hi)).appFont(11).foregroundStyle(Theme.sub)
-                    }
-                }
-                .padding(12).background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
+        var tail: [String] = d.has
+            ? [String(localized: "1년 \(String(describing: AppModel.sgn(d.k.r1)))"), String(localized: "출렁임 \(String(describing: Self.swingName[Self.swing(d.vol)]))")]
+            : [String(localized: "1년 기록 모으는 중")]
+        if d.row.cost > 0 && s.id != KoreaEstimate.sumId { tail.append(String(localized: "내 보유 \(String(describing: AppModel.sgn(d.k.vc)))")) }
+        return DetailLink(sym: s) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
-                    chip(String(localized: "1년 \(String(describing: AppModel.sgn(d.k.r1)))"), "r1", d)
-                    chip(String(localized: "출렁임 \(String(describing: Self.swingName[Self.swing(d.vol)]))"), "vol", d)
+                    Text(s.name).appFont(15, .bold).lineLimit(1)
+                    Text(AppModel.pct(d.k.w)).appFont(12, .semibold).foregroundStyle(Theme.tealDark)
+                    Spacer(minLength: 4)
+                    if d.has {
+                        Text(d.k.dd > -0.0005 ? String(localized: "1년 최고가") : String(localized: "최고가 대비 \(String(describing: AppModel.sgn(d.k.dd)))"))
+                            .appFont(13, .semibold).foregroundStyle(Theme.change(d.k.dd > -0.0005 ? 1 : -1))
+                    }
+                    Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(Theme.teal)
                 }
-            } else {
-                Text(AppModel.price(s, s.last)).appFont(13, .semibold)
-                RangeBar(lo: 0, hi: 0, now: 0)
-                Text("1년 기록 모으는 중").appFont(12).foregroundStyle(Theme.sub)
+                if d.has { RangeBar(lo: d.k.lo, hi: d.k.hi, now: s.last) } else { RangeBar(lo: 0, hi: 0, now: 0) }
+                Text(tail.joined(separator: " · ")).appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
             }
-            Divider()
-            DetailLink(sym: s) {
-                HStack {
-                    Text(d.row.cost > 0 && s.id != KoreaEstimate.sumId ? String(localized: "내 보유 \(String(describing: AppModel.sgn(d.k.vc)))") : String(localized: "내 보유")).appFont(13, .semibold)
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.system(size: 12))
-                }.foregroundStyle(Theme.teal).contentShape(Rectangle())
-            }.buttonStyle(.plain)
-        }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
-    }
-
-    private func krCard(_ list: [Item]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("국내 \(list.count)").appFont(15, .bold)
-                Spacer()
-                Text(AppModel.pct(list.map(\.k.w).reduce(0, +))).appFont(12).foregroundStyle(Theme.sub)
-            }
-            ForEach(Array(list.enumerated()), id: \.element.row.id) { i, d in
-                if i > 0 { Divider() }
-                let s = d.row.sym
-                DetailLink(sym: s) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(s.name).appFont(14, .semibold)
-                            Spacer()
-                            Text(!d.has ? AppModel.price(s, s.last) : d.k.dd > -0.0005 ? String(localized: "1년 최고가") : String(localized: "최고가 대비 \(String(describing: AppModel.sgn(d.k.dd)))"))
-                                .appFont(12, .semibold).foregroundStyle(!d.has ? Theme.sub : Theme.change(d.k.dd > -0.0005 ? 1 : -1))
-                        }
-                        if d.has {
-                            RangeBar(lo: d.k.lo, hi: d.k.hi, now: s.last)
-                            Text("\(Int(d.k.lo.rounded()).formatted())~\(AppModel.price(s, d.k.hi)) · 1년 \(AppModel.sgn(d.k.r1)) · 출렁임 \(Self.swingName[Self.swing(d.vol)])")
-                                .appFont(11).foregroundStyle(Theme.sub)
-                        } else {
-                            RangeBar(lo: 0, hi: 0, now: 0)
-                            Text("1년 기록 모으는 중").appFont(11).foregroundStyle(Theme.sub)
-                        }
-                    }.contentShape(Rectangle())
-                }.buttonStyle(.plain)
-            }
-        }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
-    }
-
-    private func calmCard(_ list: [Item]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("그 외").appFont(15, .bold)
-            ForEach(list, id: \.row.id) { d in
-                DetailLink(sym: d.row.sym) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(d.row.sym.name).appFont(14, .semibold)
-                        }
-                        Spacer()
-                        Text("현금성").appFont(11, .semibold).foregroundStyle(Theme.tealDark)
-                            .padding(.horizontal, 8).padding(.vertical, 4).background(Theme.tealBg, in: Capsule())
-                    }.contentShape(Rectangle())
-                }.buttonStyle(.plain)
-            }
-        }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
+            .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
+            .contentShape(Rectangle())
+        }.buttonStyle(.plain)
     }
 }
 

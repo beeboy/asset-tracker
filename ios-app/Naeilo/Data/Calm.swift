@@ -509,3 +509,43 @@ extension AppModel {
     /// 말하는 인물: 매칭된 인물, 없으면 홈 친구. 홈에 내 캐릭터를 두면 내 캐릭터가 (말투는 유형 인물)
     var calmSpeaker: String { homeFriendShown == "me" ? "me" : calm.type ?? homeFriendShown }
 }
+
+// MARK: 두 기기 기록 합치기 (동기화 app.calm)
+// 기록은 매매를 고친 기기에만 생긴다. 두 기기가 같은 지수를 내도록 받을 때마다 합친다.
+// 어느 기기에서 합쳐도 같은 값이 나오게 순서와 상관없이 고른다.
+
+extension Calm {
+    /// 같은 날·같은 종목·같은 방향이면 같은 매매로 본다 (기다림은 따로)
+    private static func slot(_ e: CalmEvent) -> String { "\(e.day)|\(e.sym)|\(e.isTrade ? (e.buy ? "b" : "s") : "w")" }
+    private static func sig(_ v: [CalmEvent]) -> String { v.map { "\($0.act.rawValue)\($0.win)\($0.big)\($0.pts)" }.joined(separator: ",") }
+
+    static func merge(_ a: Calm, _ b: Calm) -> Calm {
+        var by = Dictionary(grouping: a.events, by: slot)
+        for (k, v) in Dictionary(grouping: b.events, by: slot) {
+            let m = by[k] ?? []
+            // 같은 자리는 더 많이 적힌 쪽, 같으면 내용으로 정한다 (양쪽이 처음 채운 기록이 겹쳐도 두 번 세지 않게)
+            if v.count > m.count || (v.count == m.count && sig(v) > sig(m)) { by[k] = v }
+        }
+        let traded = Set(by.values.joined().filter(\.isTrade).map { "\($0.day)|\($0.sym)" })
+        let ev = by.sorted { $0.key < $1.key }.flatMap(\.value)
+            .filter { $0.isTrade || !traded.contains("\($0.day)|\($0.sym)") }
+        // 유형·함께한 날·사다리는 더 늦게 유형을 정한 쪽을 따른다
+        let lead = (a.typeMonth ?? "", a.together.count, a.type ?? "") >= (b.typeMonth ?? "", b.together.count, b.type ?? "") ? a : b
+        let other = lead == a ? b : a
+        var c = lead
+        c.events = Array(ev.suffix(keep))
+        c.notes = a.notes
+        if lead.type == other.type {
+            c.together = Array(Set(lead.together + other.together)).sorted()
+            if let o = other.ladder, o.type == c.ladder?.type, (o.step, o.done.count) > (c.ladder!.step, c.ladder!.done.count) { c.ladder = o }
+            if c.ladder == nil { c.ladder = other.ladder }
+        }
+        // 다 오른 걸음은 유형이 달라도 남긴다
+        if var l = c.ladder {
+            for d in other.ladder?.done ?? [] where !l.done.contains(where: { $0.type == d.type && $0.step == d.step }) { l.done.append(d) }
+            l.done.sort { ($0.day, $0.type, $0.step) < ($1.day, $1.type, $1.step) }
+            c.ladder = l
+        }
+        return c
+    }
+}

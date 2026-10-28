@@ -4,6 +4,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import com.naeilo.app.core.cformat
 import com.naeilo.app.core.tr
+import com.naeilo.app.ui.home.FlowRow
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -117,7 +119,6 @@ fun DividendView(
     only: String? = null,   // ios: Views/AnalysisDetail.swift:1726
 ) {
     var tab by remember { mutableStateOf("div") }   // ios: Views/AnalysisDetail.swift:1714
-    var mode by remember { mutableStateOf("month") }   // ios: Views/AnalysisDetail.swift:1715
     var extra by remember { mutableStateOf(0.0) }   // ios: Views/AnalysisDetail.swift:1716
     val calc = SiteCalc.shared   // ios: Views/AnalysisDetail.swift:1717
 
@@ -157,7 +158,7 @@ fun DividendView(
     val inner: @Composable () -> Unit = {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if ((only ?: tab) == "div") {
-                Income(dd.months, dd.byMonth, dd.paid, dd.net, dd.gross, dd.zero, dd.unknown, mode) { mode = it }
+                Income(dd.months, dd.byMonth, dd.paid, dd.net, dd.gross, dd.zero, dd.unknown)
             } else {
                 CapTax(G = G, usU = dd.usU, usIds = dd.usIds, extra = extra) { extra = it }
             }
@@ -184,8 +185,7 @@ fun DividendView(
 // ① 받는 배당
 // ios: Views/AnalysisDetail.swift:1781,1782
 @Composable
-private fun Income(months: List<String>, byMonth: List<Double>, paid: List<DividendView.Paid>, net: Double, gross: Double, zero: List<String>, unknown: List<String>,
-                   mode: String, setMode: (String) -> Unit) {
+private fun Income(months: List<String>, byMonth: List<Double>, paid: List<DividendView.Paid>, net: Double, gross: Double, zero: List<String>, unknown: List<String>) {
     // ios: Views/AnalysisDetail.swift:1783
     Card {
 
@@ -207,10 +207,7 @@ private fun Income(months: List<String>, byMonth: List<Double>, paid: List<Divid
     // ios: Views/AnalysisDetail.swift:1794
     if (paid.isNotEmpty()) {
         // ios: Views/AnalysisDetail.swift:1795
-        Card {
-            SegTabs(items = listOf("month" to "달별", "stock" to "종목별"), selection = mode, onSelect = setMode, small = true)   // ios: Views/AnalysisDetail.swift:1796
-            if (mode == "month") MonthChart(months, byMonth, paid) else StockList(paid)   // ios: Views/AnalysisDetail.swift:1797
-        }
+        Card { MonthChart(months, byMonth, paid) }   // ios: Views/AnalysisDetail.swift:1606 (달별·종목별을 한 그래프로)
     }
 
     val none = (if (zero.isEmpty()) "" else "${zero.joinToString("·")} 무배당") +   // Views/AnalysisDetail.swift:1910 (검사 예외: 보간 속 따옴표)
@@ -257,7 +254,7 @@ private fun Income(months: List<String>, byMonth: List<Double>, paid: List<Divid
 }
 
 /** 달별 막대 계산 묶음 */
-internal class MonthInfo(val mMax: Double, val hi: Set<Int>, val years: List<Pair<String, Int>>, val notes: List<String>, val label: String)
+internal class MonthInfo(val mMax: Double, val hi: Set<Int>, val years: List<Pair<String, Int>>, val label: String)
 
 /** 달별 막대 계산 (화면 밖 몸통. 숫자 맞추기 G 가 부른다) */
 internal fun monthInfo(months: List<String>, byMonth: List<Double>, paid: List<DividendView.Paid>): MonthInfo {
@@ -270,216 +267,172 @@ internal fun monthInfo(months: List<String>, byMonth: List<Double>, paid: List<D
     // 연도 구간: 같은 해 달끼리 묶음
     val years = mutableListOf<Pair<String, Int>>()   // ios: Views/AnalysisDetail.swift:1849
     for (s in months) { val y = s.take(4); if (years.lastOrNull()?.first == y) years[years.size - 1] = Pair(y, years.last().second + 1) else years.add(Pair(y, 1)) }   // ios: Views/AnalysisDetail.swift:1850
-    // 설명 문장
-    val notes = mutableListOf<String>()   // ios: Views/AnalysisDetail.swift:1852
-    val hiSorted = hi.sorted()   // ios: Views/AnalysisDetail.swift:1853
-    val causes = hiSorted.flatMap { i -> paid.filter { it.payMonths.size < 12 && (it.out.byMonth[months[i]] ?: 0.0) > 0 }.map { it.id } }.toSet().sorted()   // ios: Views/AnalysisDetail.swift:1854
-    // ios: Views/AnalysisDetail.swift:1855
-    if (hiSorted.isNotEmpty() && causes.size in 1..2) {
-
-        notes.add("${hiSorted.joinToString("·") { "${mo(it)}" }}월: ${causes.joinToString("·")} 겹침")   // Views/AnalysisDetail.swift:1966 (검사 예외: 보간 속 따옴표)
-    }
-    val rest = byMonth.indices.filter { byMonth[it] > 0 && it !in hi }.map { byMonth[it] }.sorted()   // ios: Views/AnalysisDetail.swift:1858
-    val zeroM = byMonth.indices.filter { byMonth[it] <= 0 }   // ios: Views/AnalysisDetail.swift:1859
-    val monthly = paid.filter { it.payMonths.size == 12 }   // ios: Views/AnalysisDetail.swift:1860
-    val parts = mutableListOf<String>()   // ios: Views/AnalysisDetail.swift:1861
-    // ios: Views/AnalysisDetail.swift:1862
-    if (zeroM.size in 1..3) {
-        parts.add(zeroM.joinToString("·") { "${mo(it)}" } + "월 없음")   // ios: Views/AnalysisDetail.swift:1863
-    } else if (zeroM.size > 3) {   // ios: Views/AnalysisDetail.swift:1864
-        parts.add("배당 없는 달 ${zeroM.size}개")   // ios: Views/AnalysisDetail.swift:1865
-    }
-    // ios: Views/AnalysisDetail.swift:1867
-    if (rest.isNotEmpty() && hi.isNotEmpty()) {
-        val w = AppModel.wonRead(rest[rest.size / 2])   // ios: Views/AnalysisDetail.swift:1868
-        parts.add("나머지 " + (if (monthly.size == 1) "${monthly[0].id} " else "") + "약 " + (if (w.endsWith("천원")) w.dropLast(1) else w))   // ios: Views/AnalysisDetail.swift:1869
-    }
-    if (parts.isNotEmpty()) notes.add(parts.joinToString(" · "))   // ios: Views/AnalysisDetail.swift:1871
     // ios: Views/AnalysisDetail.swift:1889
     val label = "달마다 배당: " + months.indices.filter { byMonth[it] > 0 }.joinToString(", ") { "${mo(it)}월 ${AppModel.won1(byMonth[it])}" }
-    return MonthInfo(mMax, hi, years, notes, label)
+    return MonthInfo(mMax, hi, years, label)
 }
 
-// ios: Views/AnalysisDetail.swift:1841
+// ios: Views/AnalysisDetail.swift:1650
+/** 쌓는 한 칸: 종목 하나(많으면 뒤쪽은 '그 외'로 묶음) */
+private class Series(val id: String, val sched: String, val y1: Double, val byMonth: List<Double>, val color: Color)
+
+/** 막대를 종목 색으로 쌓는다: 매달 주는 종목이 바닥, 그 위로 1년 합이 큰 순 */
+// ios: Views/AnalysisDetail.swift:1653
+private fun series(months: List<String>, paid: List<DividendView.Paid>, colors: List<Color>, other: Color): List<Series> {
+    val sorted = paid.sortedWith(compareByDescending<DividendView.Paid> { if (it.out.n >= 12) 1 else 0 }.thenByDescending { it.out.y1 })
+    val sched = { x: DividendView.Paid ->
+        if (x.out.n >= 12) "매달" else if (x.payMonths.isEmpty()) "1년 ${x.out.n}번" else "${x.payMonths.sorted().joinToString("·") { "$it" }}월"   // (검사 예외: 보간 속 따옴표)
+    }
+    val main = if (sorted.size > colors.size) sorted.take(colors.size - 1) else sorted
+    val out = main.mapIndexed { k, x -> Series(x.id, sched(x), x.out.y1, months.map { x.out.byMonth[it] ?: 0.0 }, colors[k]) }.toMutableList()
+    val rest = sorted.drop(main.size)
+    if (rest.isNotEmpty()) {
+        out.add(Series("그 외", rest.joinToString("·") { it.id }, rest.fold(0.0) { a, x -> a + x.out.y1 },
+            months.map { mo -> rest.fold(0.0) { a, x -> a + (x.out.byMonth[mo] ?: 0.0) } }, other))
+    }
+    return out
+}
+
+// ios: Views/AnalysisDetail.swift:1673
 @Composable
 private fun MonthChart(months: List<String>, byMonth: List<Double>, paid: List<DividendView.Paid>) {
-    val mo = { i: Int -> months[i].takeLast(2).toIntOrNull() ?: 0 }   // ios: Views/AnalysisDetail.swift:1847
+    val mo = { i: Int -> months[i].takeLast(2).toIntOrNull() ?: 0 }
     val info = remember(months, byMonth, paid) { monthInfo(months, byMonth, paid) }
-    val mMax = info.mMax; val hi = info.hi; val years = info.years; val notes = info.notes
+    // 테마 색은 @Composable 이라 여기서 꺼내 넘긴다
+    val colors = listOf(Theme.teal.copy(alpha = 0.4f), Theme.teal, Theme.orange.copy(alpha = 0.8f), Theme.blue.copy(alpha = 0.75f), Theme.purple.copy(alpha = 0.6f))
+    val other = Theme.muted.copy(alpha = 0.5f)
+    val ser = remember(months, paid, colors, other) { series(months, paid, colors, other) }
+    val mMax = info.mMax; val hi = info.hi; val years = info.years
 
-    // ios: Views/AnalysisDetail.swift:1873
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // ios: Views/AnalysisDetail.swift:1874,1887,1888
         Row(Modifier.fillMaxWidth().height(118.dp).clearAndSetSemantics { contentDescription = tr(info.label) }, horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Bottom) {
-            // ios: Views/AnalysisDetail.swift:1875
             months.indices.forEach { i ->
-                // ios: Views/AnalysisDetail.swift:1876,1884
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    // ios: Views/AnalysisDetail.swift:1877,1878
                     T(if (i in hi) DividendView.short(byMonth[i]) else " ", Modifier.wrapContentWidth(unbounded = true), style = appFont(9f, FontWeight.SemiBold), color = Theme.tealDark, maxLines = 1)
-                    // ios: Views/AnalysisDetail.swift:1879,1880,1881
-                    Box(Modifier.fillMaxWidth().height(max(2.0, byMonth[i] / mMax * 80).dp)
-                        .background(if (byMonth[i] <= 0) Theme.track else if (i in hi || hi.isEmpty()) Theme.teal else Theme.teal.copy(alpha = 0.4f), RoundedCornerShape(3.dp)))
-                    T("${mo(i)}", style = appFont(10f), color = Theme.muted)   // ios: Views/AnalysisDetail.swift:1882
+                    if (byMonth[i] <= 0) {
+                        Box(Modifier.fillMaxWidth().height(2.dp).background(Theme.track, RoundedCornerShape(1.dp)))
+                    } else {
+                        // 위 칸부터 그린다 (바닥 = 첫 종목)
+                        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                            ser.indices.reversed().filter { ser[it].byMonth[i] > 0 }.forEach { k ->
+                                Box(Modifier.fillMaxWidth().height(max(1.0, ser[k].byMonth[i] / mMax * 80).dp).background(ser[k].color))
+                            }
+                        }
+                    }
+                    T("${mo(i)}", style = appFont(10f), color = Theme.muted)
                 }
             }
         }
         // 연도 구간: 막대 칸 폭(12칸, 사이 4)에 맞춰 해마다 선 + 연도
-        // ios: Views/AnalysisDetail.swift:1891,1900
         BoxWithConstraints(Modifier.fillMaxWidth().height(18.dp)) {
-            val cell = (maxWidth - 44.dp) / 12   // ios: Views/AnalysisDetail.swift:1892
+            val cell = (maxWidth - 44.dp) / 12
             val bc = Theme.border
-            // ios: Views/AnalysisDetail.swift:1893
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                // ios: Views/AnalysisDetail.swift:1894
                 years.indices.forEach { k ->
-                    // ios: Views/AnalysisDetail.swift:1895,1896,1897 (위 선은 칸 맨 위에 1 높이)
                     T(years[k].first + "년", Modifier.width(cell * years[k].second + 4.dp * (years[k].second - 1)).drawBehind { drawRect(bc, size = Size(size.width, 1.dp.toPx())) }.padding(top = 3.dp),
                         style = appFont(10f).copy(textAlign = TextAlign.Center), color = Theme.muted, maxLines = 1)
                 }
             }
         }
-        // ios: Views/AnalysisDetail.swift:1901
-        notes.forEach { n ->
-            // ios: Views/AnalysisDetail.swift:1902
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Top) {
-                Box(Modifier.padding(top = 6.dp).size(5.dp, 5.dp).background(Theme.teal, CircleShape))   // ios: Views/AnalysisDetail.swift:1903
-                T(n, Modifier.weight(1f), style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:1904
-            }
-        }
-    }
-}
-
-// ios: Views/AnalysisDetail.swift:1910
-@Composable
-private fun StockList(paid: List<DividendView.Paid>) {
-    val sMax = max(1.0, paid.maxOfOrNull { it.out.y1 } ?: 1.0)   // ios: Views/AnalysisDetail.swift:1911
-    // ios: Views/AnalysisDetail.swift:1912
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        // ios: Views/AnalysisDetail.swift:1913
-        paid.sortedByDescending { it.out.y1 }.forEach { x ->
-            // ios: Views/AnalysisDetail.swift:1914
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                // ios: Views/AnalysisDetail.swift:1915
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    T(x.id, Modifier.alignByBaseline(), style = appFont(14f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:1916
-                    if (x.name.isNotEmpty()) T(x.name, Modifier.weight(1f).alignByBaseline(), style = appFont(12f), color = Theme.muted, maxLines = 1)   // ios: Views/AnalysisDetail.swift:1917
-                    if (x.name.isEmpty()) Spacer(Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:1918 (이름이 있으면 이름 칸이 남은 폭을 채운다)
-                    T(AppModel.won1(x.out.y1), Modifier.alignByBaseline(), style = appFont(14f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:1919
+        // 색 풀이 = 종목별 1년 합 (큰 순)
+        Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ser.sortedByDescending { it.y1 }.forEach { x ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(10.dp).background(x.color, RoundedCornerShape(3.dp)))
+                    T(x.id, style = appFont(14f, FontWeight.Bold))
+                    T(x.sched, Modifier.weight(1f), style = appFont(12f), color = Theme.sub, maxLines = 1)
+                    T(AppModel.won1(x.y1), style = appFont(14f, FontWeight.Bold))
                 }
-                // ios: Views/AnalysisDetail.swift:1921,1922,1923
-                BoxWithConstraints(Modifier.fillMaxWidth().height(8.dp)) {
-                    Box(Modifier.fillMaxHeight().width(maxOf(4.dp, maxWidth * (x.out.y1 / sMax).toFloat())).background(Theme.teal, RoundedCornerShape(3.dp)))
-                }
-
-                T((if (x.out.n == 12) "매달" else "1년 ${x.out.n}번" + (if (x.payMonths.isEmpty()) "" else "(${x.payMonths.joinToString("·") { "$it" }}월)"))   // Views/AnalysisDetail.swift:2034 (검사 예외: 보간 속 따옴표)
-                    + " · 연 ${cformat("%.2f", x.out.yld * 100)}%",   // Views/AnalysisDetail.swift:2035 (검사 예외: 보간 속 따옴표)
-                    style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:1926
             }
         }
     }
 }
 
 // ② 낼 양도세
-// ios: Views/AnalysisDetail.swift:1934,1935
+// ios: Views/AnalysisDetail.swift:1736
 @Composable
 private fun CapTax(G: Double, usU: Double, usIds: List<String>, extra: Double, setExtra: (Double) -> Unit) {
-    val tax = SiteCalc.capGainTax(G); val ded = SiteCalc.cgtDed   // ios: Views/AnalysisDetail.swift:1936
-    val year = (SiteCalc.today().take(4).toIntOrNull() ?: 2026) + 1   // ios: Views/AnalysisDetail.swift:1937
-    // ios: Views/AnalysisDetail.swift:1938
+    val tax = SiteCalc.capGainTax(G); val ded = SiteCalc.cgtDed
+    val year = (SiteCalc.today().take(4).toIntOrNull() ?: 2026) + 1
     Card {
-        T("올해 판 미국 주식", style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:1939
-        // ios: Views/AnalysisDetail.swift:1940
+        T(if (G > 0) tr("올해 판 미국 주식 이익") + " " + AppModel.man(G) else "올해 판 미국 주식", style = appFont(12f), color = Theme.sub)
         if (G <= 0) {
-            T("올해 판 이익 없음\n낼 양도세 없음", style = appFont(20f, FontWeight.Bold).ls(2f))   // ios: Views/AnalysisDetail.swift:1941
-        } else if (tax <= 0) {   // ios: Views/AnalysisDetail.swift:1942
-            T("${AppModel.man(ded)} 공제 안\n낼 세금 없음", style = appFont(20f, FontWeight.Bold).ls(2f), roll = "${AppModel.man(ded)} 공제 안\n낼 세금 없음")   // ios: Views/AnalysisDetail.swift:1943
-        } else {   // ios: Views/AnalysisDetail.swift:1944
+            T("올해 판 이익 없음\n낼 양도세 없음", style = appFont(20f, FontWeight.Bold).ls(2f))
+        } else if (tax <= 0) {
+            T("${AppModel.man(ded)} 공제 안\n낼 세금 없음", style = appFont(20f, FontWeight.Bold).ls(2f), roll = "${AppModel.man(ded)} 공제 안\n낼 세금 없음")
+        } else {
             val orange = Theme.orange
-            // ios: Views/AnalysisDetail.swift:1945,1946
-            TA(buildAnnotatedString { append("내년 5월 세금\n"); withStyle(SpanStyle(color = orange)) { append("약 ${AppModel.man(tax)}원") } }, style = appFont(22f, FontWeight.Bold).ls(2f))
-            T("연말 전 더 팔면 늘어요", style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:1947
-            // ios: Views/AnalysisDetail.swift:1948,1952,1953
-            Row(Modifier.fillMaxWidth().background(Theme.line, RoundedCornerShape(10.dp)).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Sym("calendar", 17f, Theme.muted)   // ios: Views/AnalysisDetail.swift:1949 (글자 크기는 기본 본문 17)
-                TA(buildAnnotatedString { append("신고·납부 "); withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("$year.5.1 ~ 31") } }, style = appFont(13f))   // ios: Views/AnalysisDetail.swift:1950
-            }
-        }
-        // ios: Views/AnalysisDetail.swift:1955
-        if (G > 0) {
-            // ios: Views/AnalysisDetail.swift:1956,1957,1960,1961
-            BoxWithConstraints(Modifier.fillMaxWidth().height(14.dp).clip(RoundedCornerShape(4.dp))) {
-                val bw = maxWidth
-                Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.fillMaxHeight().width(bw * min(1.0, ded / G).toFloat()).background(Theme.green.copy(alpha = 0.25f)))   // ios: Views/AnalysisDetail.swift:1958
-                    if (G > ded) Box(Modifier.fillMaxHeight().weight(1f).background(Theme.orange.copy(alpha = 0.3f)))   // ios: Views/AnalysisDetail.swift:1959
+            TA(buildAnnotatedString { append(tr("5월에") + " "); withStyle(SpanStyle(color = orange)) { append(tr("약 ") + AppModel.man(tax)) } }, style = appFont(26f, FontWeight.ExtraBold))
+            // 판 이익 막대: 공제 · 세금 · 내 몫
+            BoxWithConstraints(Modifier.fillMaxWidth().height(22.dp).clip(RoundedCornerShape(6.dp))) {
+                val w = maxWidth - 4.dp
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Box(Modifier.fillMaxHeight().width(w * min(1.0, ded / G).toFloat()).background(Theme.green.copy(alpha = 0.3f)))
+                    Box(Modifier.fillMaxHeight().width(w * (tax / G).toFloat()).background(Theme.orange))
+                    Box(Modifier.fillMaxHeight().weight(1f).background(Theme.line))
                 }
             }
-            // ios: Views/AnalysisDetail.swift:1962
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Legend(Theme.green.copy(alpha = 0.25f), "${AppModel.man(ded)} 공제")   // ios: Views/AnalysisDetail.swift:1963
-                if (G > ded) Legend(Theme.orange.copy(alpha = 0.3f), "나머지 22%")   // ios: Views/AnalysisDetail.swift:1964
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
+                TaxPart("공제", AppModel.man(ded))
+                TaxPart("세금", AppModel.man(tax), Theme.orange)
+                Spacer(Modifier.weight(1f))
+                TaxPart("내 몫", AppModel.man(G - ded - tax), trailing = true)
             }
-        }
-        // ios: Views/AnalysisDetail.swift:1967
-        if (tax > 0) {
-            // ios: Views/AnalysisDetail.swift:1968,1976
-            Column(Modifier.fillMaxWidth().background(Theme.line.copy(alpha = 0.6f), RoundedCornerShape(12.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ReceiptRow("판 이익", AppModel.man(G))   // ios: Views/AnalysisDetail.swift:1969
-                ReceiptRow("공제", "−" + AppModel.man(ded))   // ios: Views/AnalysisDetail.swift:1970
-                ReceiptRow("과세 이익", AppModel.man(G - ded))   // ios: Views/AnalysisDetail.swift:1971
-                ReceiptRow("세율", "× 22%")   // ios: Views/AnalysisDetail.swift:1972
-                HDivider()   // ios: Views/AnalysisDetail.swift:1973
-                ReceiptRow("세금", "약 " + AppModel.man(tax), bold = true, color = Theme.orange)   // ios: Views/AnalysisDetail.swift:1974
+            Row(Modifier.background(Theme.line, RoundedCornerShape(8.dp)).padding(horizontal = 10.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Sym("calendar", 12f, Theme.muted)
+                TA(buildAnnotatedString { append(tr("신고·납부 ")); withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("$year.5.1~31") } }, style = appFont(12f))
             }
         }
     }
-    // ios: Views/AnalysisDetail.swift:1979
     Card {
-        T("더 팔면?", style = appFont(15f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:1980
-        // ios: Views/AnalysisDetail.swift:1981
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
+            T("더 팔면?", style = appFont(15f, FontWeight.Bold))
+            if (usU > 0 && min(extra, usU) > 0) T(AppModel.man(min(extra, usU)) + " " + tr("더 팔 때"), style = appFont(12f), color = Theme.sub)
+        }
         if (usIds.isEmpty()) {
-            T("매수 단가 넣은 미국 주식 없음", style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:1982
-        } else if (usU <= 0) {   // ios: Views/AnalysisDetail.swift:1983
-            T("안 판 이익 없음" + (if (usU < 0) " · 손실은 판 해 이익에서 빠짐" else ""), style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:1984
-        } else {   // ios: Views/AnalysisDetail.swift:1985
-            val x = min(extra, usU); val after = SiteCalc.capGainTax(G + x)   // ios: Views/AnalysisDetail.swift:1986
-            // ios: Views/AnalysisDetail.swift:1987
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("안 판 이익", style = appFont(13f), color = Theme.sub); Spacer(Modifier.weight(1f)); T(AppModel.man(usU), style = appFont(13f, FontWeight.Bold)) }
-            // ios: Views/AnalysisDetail.swift:1988
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                T("추가로 팔 이익", style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:1989
-                Spacer(Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:1990
-                T(if (x <= 0) "0원" else AppModel.man(x), style = appFont(14f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:1991
-            }
-            // ios: Views/AnalysisDetail.swift:1993
+            T("매수 단가 넣은 미국 주식 없음", style = appFont(13f), color = Theme.sub)
+        } else if (usU <= 0) {
+            T(tr("안 판 이익 없음") + (if (usU < 0) tr(" · 손실은 판 해 이익에서 빠짐") else ""), style = appFont(13f), color = Theme.sub)
+        } else {
+            // 막대 눈금은 전부 팔 때 세금에 고정: 밀면 아래 막대가 자란다
+            val x = min(extra, usU); val after = SiteCalc.capGainTax(G + x); val top = max(1.0, SiteCalc.capGainTax(G + usU))
+            TaxBar("지금", tax, top, Theme.orange.copy(alpha = 0.45f), Theme.ink)
+            TaxBar("더 팔면", after, top, Theme.orange, Theme.orange)
             IosSlider(value = extra, onChange = setExtra, range = 0.0..usU, step = max(1e4, (usU / 200 / 1e4).swRound() * 1e4), tint = Theme.orange,
-                // ios: Views/AnalysisDetail.swift:1994,1995
                 modifier = Modifier.semantics { contentDescription = tr("추가로 팔 이익"); stateDescription = tr(if (x <= 0) "0원" else AppModel.man(x)) })
-            // ios: Views/AnalysisDetail.swift:1996
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("0", style = appFont(11f), color = Theme.muted); Spacer(Modifier.weight(1f)); T("전부", style = appFont(11f), color = Theme.muted) }
-            // ios: Views/AnalysisDetail.swift:1997,2005
-            Column(Modifier.fillMaxWidth().background(Theme.line.copy(alpha = 0.6f), RoundedCornerShape(12.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                // ios: Views/AnalysisDetail.swift:1998
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    T("내년 5월 세금", style = appFont(13f))   // ios: Views/AnalysisDetail.swift:1999
-                    Spacer(Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:2000
-                    T("약 " + AppModel.man(after), style = appFont(17f, FontWeight.Bold), color = Theme.orange, roll = "약 " + AppModel.man(after))   // ios: Views/AnalysisDetail.swift:2001
-                }
-                if (x > 0) T("지금보다 +${AppModel.man(after - tax)}", style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:2003
-            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("0", style = appFont(11f), color = Theme.muted); Spacer(Modifier.weight(1f)); T(tr("전부") + " " + AppModel.man(usU), style = appFont(11f), color = Theme.muted) }
         }
     }
-    // ios: Views/AnalysisDetail.swift:2008
-    Card {
-        T("알아두기", style = appFont(15f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:2009
-        Tip(1, "같은 해 손실은 이익에서 빼요")   // ios: Views/AnalysisDetail.swift:2010
-        Tip(2, "${AppModel.man(ded)} 공제는 해마다 · 이월 없음")   // ios: Views/AnalysisDetail.swift:2011
+    // ios: Views/AnalysisDetail.swift:1793
+    FlowRow(spacing = 6.dp) {
+        listOf("손실은 이익에서 빠져요", "공제는 해마다 새로").forEach {
+            T(it, Modifier.background(Theme.teal.copy(alpha = 0.12f), RoundedCornerShape(8.dp)).padding(horizontal = 10.dp, vertical = 6.dp), style = appFont(12f), color = Theme.teal)
+        }
     }
-    HowCalc(listOf("판 이익: 앱 입력값", "안 판 이익: 산 날·오늘 환율로 환산", "국내 주식: 대주주 아니면 양도세 없음", "매매 권유·세무 상담 아님"))   // ios: Views/AnalysisDetail.swift:2013
 }
 
 // 작은 조각
+// ios: Views/AnalysisDetail.swift:1804
+@Composable
+private fun TaxPart(k: String, v: String, c: Color = Theme.ink, trailing: Boolean = false) {
+    Column(horizontalAlignment = if (trailing) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        T(k, style = appFont(11f), color = Theme.sub)
+        T(v, style = appFont(13f, FontWeight.Bold), color = c)
+    }
+}
+
+// ios: Views/AnalysisDetail.swift:1811
+@Composable
+private fun TaxBar(k: String, v: Double, top: Double, fill: Color, vc: Color) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        T(k, Modifier.width(48.dp), style = appFont(12f), color = Theme.sub)
+        BoxWithConstraints(Modifier.weight(1f).height(16.dp)) {
+            Box(Modifier.fillMaxHeight().width((maxWidth * min(1.0, v / top).toFloat()).coerceAtLeast(4.dp)).background(fill, RoundedCornerShape(4.dp)))
+        }
+        T(AppModel.man(v), Modifier.widthIn(min = 64.dp), style = appFont(13f, FontWeight.Bold).copy(textAlign = TextAlign.End), color = vc, roll = AppModel.man(v))
+    }
+}
+
 // ios: Views/AnalysisDetail.swift:2018
 @Composable
 private fun ReceiptRow(k: String, v: String, bold: Boolean = false, color: Color = Theme.ink) {
@@ -488,27 +441,6 @@ private fun ReceiptRow(k: String, v: String, bold: Boolean = false, color: Color
         T(k, style = appFont(13f, if (bold) FontWeight.Bold else FontWeight.Normal), color = if (bold) Theme.ink else Theme.sub)   // ios: Views/AnalysisDetail.swift:2020
         Spacer(Modifier.weight(1f).padding(end = 8.dp))   // ios: Views/AnalysisDetail.swift:2021
         T(v, style = appFont(if (bold) 15f else 13f, if (bold) FontWeight.Bold else FontWeight.SemiBold), color = color)   // ios: Views/AnalysisDetail.swift:2022
-    }
-}
-
-// ios: Views/AnalysisDetail.swift:2026
-@Composable
-private fun Legend(c: Color, t: String) {
-    // ios: Views/AnalysisDetail.swift:2027
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(10.dp, 10.dp).background(c, RoundedCornerShape(2.dp)))   // ios: Views/AnalysisDetail.swift:2028
-        T(t, style = appFont(11f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:2029
-    }
-}
-
-// ios: Views/AnalysisDetail.swift:2033
-@Composable
-private fun Tip(n: Int, t: String) {
-    // ios: Views/AnalysisDetail.swift:2034
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
-        // ios: Views/AnalysisDetail.swift:2035
-        Box(Modifier.size(20.dp, 20.dp).background(Theme.teal, CircleShape), contentAlignment = Alignment.Center) { T("$n", style = appFont(12f, FontWeight.Bold), color = Color.White) }
-        T(t, Modifier.weight(1f), style = appFont(13f))   // ios: Views/AnalysisDetail.swift:2036
     }
 }
 

@@ -45,7 +45,6 @@ import com.naeilo.app.ui.analysis.factorText
 import com.naeilo.app.ui.analysis.fxTicks
 import com.naeilo.app.ui.analysis.lv
 import com.naeilo.app.ui.analysis.monthInfo
-import com.naeilo.app.ui.analysis.trendWord
 import com.naeilo.app.ui.analysis.volWord
 import com.naeilo.app.ui.analysis.ymDot
 
@@ -183,13 +182,12 @@ class GParityTest {
                 tax = 0.0, krw = false, payMonths = (p["pm"] as List<Number>).map { it.toInt() })
         }
         val x = monthInfo(c["months"] as List<String>, DS(c["by"]), paid)
-        listOf(x.mMax, x.hi.sorted(), x.years.map { listOf(it.first, it.second) }, x.notes, x.label)
+        listOf(x.mMax, x.hi.sorted(), x.years.map { listOf(it.first, it.second) }, x.label)
     }
 
     @Suppress("UNCHECKED_CAST")
     private fun runF(F: Map<String, Any?>): Map<String, Any?> = mapOf(
         "ticks" to (F["ticks"] as List<List<String>>).map { fxTicks(it[0].toDouble(), it[1].toDouble()) },
-        "trend" to (F["trend"] as List<String?>).map { trendWord(it) },
         "vol" to DS(F["vol"]).map { listOf(volWord(it), GlanceView.swing(it), GlanceView.swingName[GlanceView.swing(it)]) })
 }
 

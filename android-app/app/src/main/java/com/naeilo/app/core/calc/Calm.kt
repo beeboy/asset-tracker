@@ -580,3 +580,42 @@ fun AppModel.calmOpen() {
 
 /** 말하는 인물: 매칭된 인물, 없으면 홈 친구. 홈에 내 캐릭터를 두면 내 캐릭터가 (말투는 유형 인물) */
 val AppModel.calmSpeaker: String get() = if (homeFriendShown == "me") "me" else calm.type ?: homeFriendShown  // ios: Data/Calm.swift:510
+
+/* 두 기기 기록 합치기 (동기화 app.calm)
+ * 기록은 매매를 고친 기기에만 생긴다. 두 기기가 같은 지수를 내도록 받을 때마다 합친다.
+ * 어느 기기에서 합쳐도 같은 값이 나오게 순서와 상관없이 고른다. */
+
+/** 같은 날·같은 종목·같은 방향이면 같은 매매로 본다 (기다림은 따로) */
+private fun calmSlot(e: CalmEvent): String = "${e.day}|${e.sym}|${if (e.isTrade) (if (e.buy) "b" else "s") else "w"}"  // Data/Calm.swift:519 (검사 예외: 옮김)
+private fun calmSig(v: List<CalmEvent>): String = v.joinToString(",") { "${it.act.name}${it.win}${it.big}${it.pts}" }  // ios: Data/Calm.swift:520
+
+// ios: Data/Calm.swift:517,522
+fun Calm.Companion.merge(a: Calm, b: Calm): Calm {
+    val by = a.events.groupBy(::calmSlot).toMutableMap()  // ios: Data/Calm.swift:523
+    for ((k, v) in b.events.groupBy(::calmSlot)) {  // ios: Data/Calm.swift:524
+        val m = by[k] ?: emptyList()  // ios: Data/Calm.swift:525
+        // 같은 자리는 더 많이 적힌 쪽, 같으면 내용으로 정한다 (양쪽이 처음 채운 기록이 겹쳐도 두 번 세지 않게)
+        if (v.size > m.size || (v.size == m.size && calmSig(v) > calmSig(m))) by[k] = v  // ios: Data/Calm.swift:527
+    }
+    val traded = by.values.flatten().filter { it.isTrade }.map { "${it.day}|${it.sym}" }.toSet()  // ios: Data/Calm.swift:529
+    val ev = by.entries.sortedBy { it.key }.flatMap { it.value }  // ios: Data/Calm.swift:530
+        .filter { it.isTrade || "${it.day}|${it.sym}" !in traded }  // ios: Data/Calm.swift:531
+    // 유형·함께한 날·사다리는 더 늦게 유형을 정한 쪽을 따른다
+    val ka = Triple(a.typeMonth ?: "", a.together.size, a.type ?: ""); val kb = Triple(b.typeMonth ?: "", b.together.size, b.type ?: "")
+    val aLeads = compareValuesBy(ka, kb, { it.first }, { it.second }, { it.third }) >= 0  // ios: Data/Calm.swift:533
+    val lead = if (aLeads) a else b; val other = if (aLeads) b else a  // ios: Data/Calm.swift:534
+    val c = lead.copy(events = ev.takeLast(Calm.keep), notes = a.notes)  // ios: Data/Calm.swift:535,536,537
+    if (lead.type == other.type) {  // ios: Data/Calm.swift:538
+        c.together = (lead.together + other.together).toSet().sorted()  // ios: Data/Calm.swift:539
+        val o = other.ladder; val l0 = c.ladder
+        if (o != null && l0 != null && o.type == l0.type && compareValuesBy(o, l0, { it.step }, { it.done.size }) > 0) c.ladder = o  // ios: Data/Calm.swift:540
+        if (c.ladder == null) c.ladder = other.ladder  // ios: Data/Calm.swift:541
+    }
+    // 다 오른 걸음은 유형이 달라도 남긴다
+    c.ladder?.let { l ->  // ios: Data/Calm.swift:544
+        val done = l.done.toMutableList()
+        for (d in other.ladder?.done ?: emptyList()) if (done.none { it.type == d.type && it.step == d.step }) done.add(d)  // ios: Data/Calm.swift:545
+        c.ladder = l.copy(done = done.sortedWith(compareBy({ it.day }, { it.type }, { it.step })))  // ios: Data/Calm.swift:546,547
+    }
+    return c  // ios: Data/Calm.swift:549
+}

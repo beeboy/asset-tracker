@@ -45,6 +45,8 @@ import kotlin.math.min
 /** 선형 축 범위 그래프: 고른 시나리오의 50%·90% 띠와 중앙값, 다른 시나리오 중앙값(회색 점선), 목표선, 지금 점 */
 // ios: Views/ForecastParts.swift:6
 object ScenarioChart {
+    /** 맨 위 눈금 글자가 반쯤 잘리지 않게 비우는 높이 (dp) */
+    const val topPad = 8f   // ios: Views/ForecastParts.swift:17
     /** 눈금 간격: 위 끝까지 눈금이 3칸 이하가 되는 가장 작은 값 (5천만, 1억, 2.5억, 5억, 10억 …) */
     // ios: Views/ForecastParts.swift:17
     fun step(top: Double): Double {
@@ -89,10 +91,10 @@ fun ScenarioChart(
         val sh = selShift   // ios: Views/ForecastParts.swift:33
         val top0 = maxOf(goal, sel.q95.map { it + sh }.maxOrNull() ?: 1.0, others.flatMap { it.second }.maxOrNull() ?: 0.0) * 1.05   // ios: Views/ForecastParts.swift:34
         val (st, top) = tops(top0)   // ios: Views/ForecastParts.swift:35
-        val left = 36 * dp; val W = size.width - left; val H = size.height - 20 * dp   // ios: Views/ForecastParts.swift:36
+        val left = 36 * dp; val W = size.width - left; val H = size.height - 20 * dp - ScenarioChart.topPad * dp   // ios: Views/ForecastParts.swift:39
         val span = max(1e-9, sel.tY.lastOrNull() ?: 1.0); val v = sel.q50[0] + sh   // ios: Views/ForecastParts.swift:37
         if (st <= 0) return null
-        return Offset(left + (t0 / span).toFloat() * W, H - (min(max(v, 0.0), top) / top).toFloat() * H)   // ios: Views/ForecastParts.swift:38
+        return Offset(left + (t0 / span).toFloat() * W, ScenarioChart.topPad * dp + H - (min(max(v, 0.0), top) / top).toFloat() * H)   // ios: Views/ForecastParts.swift:41
     }
 
     // .font(.system(size: 10)): 큰 글자 설정을 따르지 않는다
@@ -108,10 +110,10 @@ fun ScenarioChart(
             val q75 = sel.q75.map { it + sh }; val q95 = sel.q95.map { it + sh }   // ios: Views/ForecastParts.swift:47
             val top0 = maxOf(goal, q95.maxOrNull() ?: 1.0, others.flatMap { it.second }.maxOrNull() ?: 0.0) * 1.05   // ios: Views/ForecastParts.swift:48
             val (st, top) = tops(top0)   // ios: Views/ForecastParts.swift:49
-            val left = 36.dp.toPx(); val bottom = 20.dp.toPx(); val W = size.width - left; val H = size.height - bottom   // ios: Views/ForecastParts.swift:50
+            val left = 36.dp.toPx(); val bottom = 20.dp.toPx(); val W = size.width - left; val H = size.height - bottom - ScenarioChart.topPad.dp.toPx()   // ios: Views/ForecastParts.swift:53
             val span = max(1e-9, sel.tY.lastOrNull() ?: 1.0)   // ios: Views/ForecastParts.swift:51
             val x = { i: Int -> left + (sel.tY[i] / span).toFloat() * W }   // ios: Views/ForecastParts.swift:52
-            val y = { v: Double -> H - (min(max(v, 0.0), top) / top).toFloat() * H }   // ios: Views/ForecastParts.swift:53
+            val y = { v: Double -> ScenarioChart.topPad.dp.toPx() + H - (min(max(v, 0.0), top) / top).toFloat() * H }   // ios: Views/ForecastParts.swift:56
             // ios: Views/ForecastParts.swift:54,55
             fun line(a: List<Double>): Path = Path().apply { for (i in 0..min(n, a.size - 1)) { val px = x(i); val py = y(a[i]); if (i == 0) moveTo(px, py) else lineTo(px, py) } }
             // ios: Views/ForecastParts.swift:57,58
@@ -133,6 +135,10 @@ fun ScenarioChart(
             // X축: 지금 / 1년 뒤 / 2년 뒤 / 끝날
             val yrsT = (1..max(1, span.toInt())).filter { it.toDouble() < span - 0.4 && it <= 4 }.map { yr -> Pair(left + (yr / span).toFloat() * W, tm.measure(com.naeilo.app.core.tr("${yr}년 뒤"), TextStyle(fontSize = 10.sp, color = muted))) }   // ios: Views/ForecastParts.swift:97,98,99
             val endT = tm.measure(com.naeilo.app.core.tr(endLabel), TextStyle(fontSize = 10.sp, color = muted))   // ios: Views/ForecastParts.swift:101
+            // 끝값이 가까우면 이름표가 겹친다: 위에서부터 12pt 이상 벌린다 (ios: Views/ForecastParts.swift:85,86,87)
+            val tags = (oth.map { (_, yy, t) -> Pair(yy - 7.dp.toPx(), t) } + (if (n > 0) listOf(Pair(y(q50[n]) - 8.dp.toPx(), selT)) else emptyList()))
+                .sortedBy { it.first }.toMutableList()
+            for (i in 1 until tags.size) if (tags[i].first - tags[i - 1].first < 12.dp.toPx()) tags[i] = Pair(tags[i - 1].first + 12.dp.toPx(), tags[i].second)
             val outer = if (n > 0) band(q95, q5) else null; val inner = if (n > 0) band(q75, q25) else null; val med = if (n > 0) line(q50) else null
             onDrawBehind {
                 if (n <= 0) return@onDrawBehind   // ios: Views/ForecastParts.swift:44
@@ -143,10 +149,9 @@ fun ScenarioChart(
                 // ios: Views/ForecastParts.swift:76,78
                 oth.forEach { (p, yy, t) ->
                     drawPath(p, muted, style = Stroke(1.4.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))))
-                    drawText(t, topLeft = Offset(size.width - 2.dp.toPx() - t.size.width, yy - 7.dp.toPx() - t.size.height / 2f))
                 }
                 drawPath(med!!, tealDark, style = Stroke(2.4.dp.toPx()))   // ios: Views/ForecastParts.swift:80
-                drawText(selT, topLeft = Offset(size.width - 2.dp.toPx() - selT.size.width, y(q50[n]) - 8.dp.toPx() - selT.size.height / 2f))   // ios: Views/ForecastParts.swift:82
+                tags.forEach { (yy, t) -> drawText(t, topLeft = Offset(size.width - 2.dp.toPx() - t.size.width, yy - t.size.height / 2f)) }   // ios: Views/ForecastParts.swift:88,89
                 // 목표선
                 val gy = y(goal)   // ios: Views/ForecastParts.swift:84
                 drawLine(orange, Offset(left, gy), Offset(size.width, gy), 1.6.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 4.dp.toPx())))   // ios: Views/ForecastParts.swift:85,86
