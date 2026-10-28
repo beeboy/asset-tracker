@@ -207,7 +207,6 @@ fun HomeView(m: AppModel) {
                             HeaderIcon("설정", "gearshape") { m.openSettings() }   // ios: Views/HomeView.swift:17
                         }
                     }
-                    SampleNote(m)   // ios: Views/HomeView.swift:13
                     Summary(m, lookRaw, { BoxLook.raw = it }, hideAmt) { hideAmt = !hideAmt }   // ios: Views/HomeView.swift:14
                     // '매달 더 넣으면?'은 홈에 두지 않는다. 미션 화면에만 (2026-10-26)   // ios: Views/HomeView.swift:24
                     ShelterBox(m) { inbox = true }   // ios: Views/HomeView.swift:17
@@ -217,6 +216,7 @@ fun HomeView(m: AppModel) {
                     Reminder { inbox = true }   // ios: Views/HomeView.swift:21
                     EarnHomeCard(m)   // ios: Views/HomeView.swift:22
                     TownButton { TownView(m, scroll = it) }   // ios: Views/HomeView.swift:23
+                    SampleNote(m)   // ios: Views/HomeView.swift:31 샘플 안내는 맨 아래 (2026-10-28)
                 }
             }
         }
@@ -707,7 +707,7 @@ fun SampleNote(m: AppModel) {
             // ios: Views/HomeView.swift:548,549
             T("샘플", Modifier.alignByBaseline().background(Theme.orange, CapsuleShape).padding(horizontal = 8.dp, vertical = 2.dp), style = appFont(12f, FontWeight.Bold), color = Color.White)
             // ios: Views/HomeView.swift:550,551
-            T("지금 숫자는 샘플(가상 종목 DRNK·QQQ)이에요. 종목 탭에서 내 종목을 넣으면 바뀌어요.", Modifier.alignByBaseline(), style = appFont(13f), color = Theme.sub)
+            T("가상 종목 DRNK·QQQ · 종목 탭에서 내 종목 넣기", Modifier.alignByBaseline(), style = appFont(13f), color = Theme.sub)
         }
     }
 }
@@ -858,7 +858,8 @@ private fun AmountView(text: String, amount: Double, size: Float, color: Color, 
 private fun SubLine(s: BoxScene, size: Float, modifier: Modifier = Modifier) {
     val st = TextStyle(fontSize = fx(size))
     FitRow(0.7f, modifier) {
-        T(s.ret?.let { AppModel.sgn(it) + " · " } ?: "", style = st, color = if ((s.ret ?: 0.0) >= 0) SceneBox.upC else SceneBox.downC, maxLines = 1)
+        // 총 수익률 대신 목표까지 진행률 (2026-10-28)
+        T(AppModel.pct(s.f) + " · ", style = st.copy(fontWeight = FontWeight.Bold), color = boxInk().gold, maxLines = 1)
         T(s.status, style = st, color = SceneBox.dim, maxLines = 1)
     }
 }

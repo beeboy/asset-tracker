@@ -206,7 +206,6 @@ fun HoldingsView(m: AppModel) {
                     // ios: Views/HoldingsView.swift:39
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Box(Modifier.outset(16.dp)) { AppHeader(tab = "종목") }   // ios: Views/HoldingsView.swift:40 (-16)
-                        SampleNote(m)   // ios: Views/HoldingsView.swift:41
                         TodayBoxFor(m, rows, lookRaw)   // ios: Views/HoldingsView.swift:42
                         TotalChart(m, rows, period) { period = it }   // ios: Views/HoldingsView.swift:43
                         ListBar(downFirst, { downFirst = !downFirst }, valueMode, { valueMode = it }, inUsd) { inUsd = it }   // ios: Views/HoldingsView.swift:44
@@ -231,6 +230,7 @@ fun HoldingsView(m: AppModel) {
                             }
                         }
                         if (adding) AddHoldingView(m, inline = true, close = { adding = false })   // ios: Views/HoldingsView.swift:70
+                        SampleNote(m)   // ios: Views/HoldingsView.swift:69 샘플 안내는 맨 아래 (2026-10-28)
                         Spacer(Modifier.height(24.dp))   // ios: Views/HoldingsView.swift:64 아래 탭바가 마지막 카드를 가리지 않게
                     }
                 }
@@ -448,7 +448,7 @@ private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, v: Boolean, bi
     val es = EarningsFeed.shared.summary(r.sym, r.h.qty)   // ios: Views/HoldingsView.swift:230
     val day = r.sym.quote.change   // ios: Views/HoldingsView.swift:231
     val bp = if (r.cost > 0) r.value / r.cost - 1 else 0.0   // ios: Views/HoldingsView.swift:232
-    val small = if (v) 13f else 14f   // ios: Views/HoldingsView.swift:233
+    val small = 14f   // ios: Views/HoldingsView.swift:233
     // ios: Views/HoldingsView.swift:234
     @Composable fun Name(mod: Modifier) = Row(mod, horizontalArrangement = Arrangement.spacedBy(if (v) 6.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
         // 글자 로고는 쓰지 않는다 (그림 로고만). 오늘 실적 금색 점은 이름 오른쪽 위
@@ -465,11 +465,8 @@ private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, v: Boolean, bi
     val pctC = if (v) (if (bp > 0) Theme.up else if (bp < 0) Theme.down else Theme.sub) else (if (day > 0) Theme.up else if (day < 0) Theme.down else Theme.sub)   // ios: Views/HoldingsView.swift:248
     // ios: Views/HoldingsView.swift:246,247,249
     @Composable fun Pct() = TA(
-        if (v) buildAnnotatedString {
-            append(AppModel.sgn(bp))
-            withStyle(SpanStyle(fontSize = fx(10.5f), fontWeight = FontWeight.SemiBold)) { append("(" + amt(inUsd, r, krw = r.value - r.cost, native = r.h.qty * (r.sym.last - r.h.avg)) + ")") }
-        } else AnnotatedString(AppModel.sgn2(day)),
-        Modifier.holdCol(1, colW), style = appFont(if (v) 12.5f else 14f, FontWeight.Bold).tnum(), color = pctC, maxLines = 1)
+        AnnotatedString(if (v) AppModel.sgn(bp) else AppModel.sgn2(day)),   // 평가금 보기 괄호 금액은 뺐다 (2026-10-27)
+        Modifier.holdCol(1, colW), style = appFont(14f, FontWeight.Bold).tnum(), color = pctC, maxLines = 1)
     // ios: Views/HoldingsView.swift:250,251,252,253,254,255
     @Composable fun Pill(mod: Modifier = Modifier) = Box(mod.holdCol(2, colW), contentAlignment = Alignment.CenterEnd) {
         T(if (v) amt(inUsd, r, krw = r.value, native = r.h.qty * r.sym.last) else px(inUsd, r, r.sym.last),
@@ -698,7 +695,10 @@ internal fun FitAnnotated(text: AnnotatedString, style: TextStyle, minScale: Flo
         val w = measurer.measure(t, style, maxLines = 1, softWrap = false).size.width
         val k = if (c.hasBoundedWidth && w > c.maxWidth) maxOf(minScale, c.maxWidth.toFloat() / w) else 1f
         val st = if (k < 1f) style.copy(fontSize = style.fontSize * k, letterSpacing = style.letterSpacing * k) else style
-        val p = subcompose(k) { com.naeilo.app.ui.TA(t, style = st, color = color, maxLines = maxLines) }.first().measure(c.copy(minWidth = 0))
+        val p = subcompose(Unit) {   // 칸 이름을 고정해야 글자 크기가 바뀌어도 플립이 이어진다
+            if (roll != null) com.naeilo.app.ui.RollText(t, roll, style = st.copy(color = color))
+            else com.naeilo.app.ui.TA(t, style = st, color = color, maxLines = maxLines)
+        }.first().measure(c.copy(minWidth = 0))
         val b = p[androidx.compose.ui.layout.FirstBaseline]
         layout(p.width, p.height, if (b != androidx.compose.ui.layout.AlignmentLine.Unspecified) mapOf(androidx.compose.ui.layout.FirstBaseline to b) else emptyMap()) { p.place(0, 0) }
     }

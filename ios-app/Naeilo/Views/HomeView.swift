@@ -19,7 +19,6 @@ struct HomeView: View {
                         // 기호 오른쪽 끝을 평가액 박스보다 조금 안쪽에 (안드로이드 실기기 재서 +4.5)
                         .padding(.trailing, 7.5)
                     }
-                SampleNote()
                 summary
                 // '매달 더 넣으면?'은 홈에 두지 않는다. 미션 화면에만 (2026-10-26)
                 shelterBox
@@ -29,6 +28,7 @@ struct HomeView: View {
                 reminder
                 EarnHomeCard()
                 TownButton { TownView(scroll: $0) }
+                SampleNote()   // 샘플 안내는 맨 아래 (2026-10-28)
             }
             .screen()
         }
@@ -455,7 +455,7 @@ struct SampleNote: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("샘플").appFont(12, .bold).foregroundStyle(.white)
                     .padding(.horizontal, 8).padding(.vertical, 2).background(Theme.orange, in: Capsule())
-                Text("지금 숫자는 샘플(가상 종목 DRNK·QQQ)이에요. 종목 탭에서 내 종목을 넣으면 바뀌어요.")
+                Text("가상 종목 DRNK·QQQ · 종목 탭에서 내 종목 넣기")
                     .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             }
             .padding(12).frame(maxWidth: .infinity, alignment: .leading)
@@ -582,7 +582,8 @@ struct SceneBox: View {
             .contentShape(Rectangle()).onTapGesture { hide.toggle() }
     }
     private func subLine(_ size: CGFloat) -> some View {
-        (Text(s.ret.map { AppModel.sgn($0) + " · " } ?? "").foregroundColor((s.ret ?? 0) >= 0 ? Self.upC : Self.downC)
+        // 총 수익률 대신 목표까지 진행률 (2026-10-28)
+        (Text(AppModel.pct(s.f) + " · ").fontWeight(.bold).foregroundColor(BoxInk.gold)
          + Text(s.status).foregroundColor(Self.dim))
             .font(.system(size: size)).lineLimit(1).minimumScaleFactor(0.7)
     }

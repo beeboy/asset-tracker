@@ -38,7 +38,6 @@ struct HoldingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: String(localized: "종목")).padding(.horizontal, -16)
-                SampleNote()
                 todayBox(rows)
                 totalChart(rows)
                 listBar
@@ -67,6 +66,7 @@ struct HoldingsView: View {
                     .buttonStyle(.plain).fixedSize()
                 }
                 if adding { AddHoldingView(inline: true, close: { withAnimation(.snappy) { adding = false } }).id("add") }
+                SampleNote()   // 샘플 안내는 맨 아래 (2026-10-28)
                 Color.clear.frame(height: 24)   // 아래 탭바가 마지막 카드를 가리지 않게
             }
             .screen()
@@ -235,13 +235,13 @@ struct HoldingsView: View {
         .accessibilityHidden(true)
     }
 
-    // 행 (시안 v33): 로고(실적 금색 점은 오른쪽 위) · 이름 · 평단가(평가금 보기는 수량) · 오늘 %(평가금 보기는 산 가격 대비 %와 금액) · 현재가(평가금)
+    // 행 (시안 v33): 로고(실적 금색 점은 오른쪽 위) · 이름 · 평단가(평가금 보기는 수량) · 오늘 %(평가금 보기는 산 가격 대비 %) · 현재가(평가금)
     // 로고·이름·평단가·%는 세부로, 금색 알약만 내 몫 실적 강 팝업으로 (실적이 없으면 알약 없이 세부로)
     private func row(_ r: AppModel.Row, _ mx: Double) -> some View {
         let es = EarningsFeed.shared.summary(r.sym, qty: r.h.qty)
         let day = r.sym.quote.change
         let bp = r.cost > 0 ? r.value / r.cost - 1 : 0
-        let v = valueMode, small: CGFloat = v ? 13 : 14
+        let v = valueMode, small: CGFloat = 14   // 평가금 보기도 현재가 보기와 같은 크기 (2026-10-27)
         // 글자 로고는 쓰지 않는다 (그림 로고만). 오늘 실적 금색 점은 이름 오른쪽 위
         let name = HStack(spacing: v ? 6 : 8) {
             if LogoTile.has(r.id) { LogoTile(symbol: r.id, size: 28) }
@@ -255,10 +255,9 @@ struct HoldingsView: View {
             }
         }
         let mid = Text(v ? "\(r.h.qty.formatted())주" : px(r, r.h.avg)).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1)
-        let chg = v ? (Text(AppModel.sgn(bp)) + Text("(" + amt(r, krw: r.value - r.cost, native: r.h.qty * (r.sym.last - r.h.avg)) + ")").font(.system(size: 10.5, weight: .semibold)))
-                    : Text(AppModel.sgn2(day))
+        let chg = Text(v ? AppModel.sgn(bp) : AppModel.sgn2(day))   // 평가금 보기 괄호 금액은 뺐다 (2026-10-27)
         let pctC = v ? (bp > 0 ? Theme.up : bp < 0 ? Theme.down : Theme.sub) : (day > 0 ? Theme.up : day < 0 ? Theme.down : Theme.sub)
-        let pct = chg.appFont(v ? 12.5 : 14, .bold).foregroundStyle(pctC).monospacedDigit().lineLimit(1).holdCol(1, colW)
+        let pct = chg.appFont(14, .bold).foregroundStyle(pctC).monospacedDigit().lineLimit(1).holdCol(1, colW)
         let pill = Text(v ? amt(r, krw: r.value, native: r.h.qty * r.sym.last) : px(r, r.sym.last))
             .appFont(small, .bold).monospacedDigit().lineLimit(1)
             .foregroundStyle(es != nil ? Color.black : Theme.ink)

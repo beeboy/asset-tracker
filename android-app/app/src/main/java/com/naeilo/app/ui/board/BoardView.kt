@@ -157,7 +157,6 @@ fun BoardView(
             // ios: Views/BoardView.swift:13
             Column(Modifier.animateContentSize(easeSpring), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box(Modifier.outset(16.dp)) { AppHeader(tab = "미션") }   // ios: Views/BoardView.swift:14 (-16)
-                SampleNote(m)   // ios: Views/BoardView.swift:15
                 // 맨 위는 미션 요약 박스: 진행 막대(시작 미션 + 체크인 칸), 누르면 체크인 팝업, 아래 게임 최고 점수 (2026-10-27)
                 steps.firstOrNull { it.inter }?.let { inter -> SummaryBox(m, inter, starts) { checkInOpen = true } }   // ios: Views/BoardView.swift:20
                 // 시작 미션을 다 끝내면 접힌 줄은 미션 판에서 뺀다
@@ -172,6 +171,7 @@ fun BoardView(
                     val d = LocalDensity.current
                     com.naeilo.app.ui.goal.GoalCellsCard(m, minHeight = with(d) { max(0, vh - cardTop - 24.dp.roundToPx()).toDp() })
                 } else LockedPlay(m)
+                SampleNote(m)   // ios: Views/BoardView.swift:29 샘플 안내는 맨 아래 (2026-10-28)
             }
         }
     }

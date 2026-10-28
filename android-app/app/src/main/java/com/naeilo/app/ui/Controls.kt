@@ -630,7 +630,8 @@ fun FitText(text: String, style: TextStyle, minScale: Float, modifier: Modifier 
         val w = measurer.measure(text, style, maxLines = 1, softWrap = false).size.width
         val k = if (c.hasBoundedWidth && w > c.maxWidth) maxOf(minScale, c.maxWidth.toFloat() / w) else 1f
         val st = if (k < 1f) style.copy(fontSize = style.fontSize * k, letterSpacing = if (style.letterSpacing.isSpecified) style.letterSpacing * k else style.letterSpacing) else style   // 정해지지 않은 자간은 곱하면 죽는다
-        val p = subcompose(k) { T(text, style = st, color = color, maxLines = 1, roll = roll) }.first().measure(c.copy(minWidth = 0))
+        // 칸 이름을 고정해야 글자 크기가 바뀌어도 플립이 이어진다
+        val p = subcompose(Unit) { T(text, style = st, color = color, maxLines = 1, roll = roll) }.first().measure(c.copy(minWidth = 0))
         val b = p[androidx.compose.ui.layout.FirstBaseline]
         // 칸이 더 넓으면(가득 채우기) 글은 앞(왼쪽)에 둔다. 제 폭만 알리면 바깥이 가운데에 놓는다
         layout(maxOf(p.width, c.minWidth), maxOf(p.height, c.minHeight), if (b != androidx.compose.ui.layout.AlignmentLine.Unspecified) mapOf(androidx.compose.ui.layout.FirstBaseline to b) else emptyMap()) { p.place(0, 0) }

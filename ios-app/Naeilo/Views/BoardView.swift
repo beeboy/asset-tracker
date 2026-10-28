@@ -16,7 +16,6 @@ struct BoardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 AppHeader(tab: String(localized: "미션")).padding(.horizontal, -16)
-                SampleNote()
                 // 맨 위는 미션 요약 박스: 진행 막대(시작 미션 + 체크인 칸), 누르면 체크인 팝업, 아래 게임 최고 점수 (2026-10-27)
                 if let inter = steps.first(where: \.inter) { summaryBox(inter, starts: starts) }
                 // 시작 미션을 다 끝내면 접힌 줄은 미션 판에서 뺀다
@@ -27,6 +26,7 @@ struct BoardView: View {
                 }
                 // 100칸 카드(패들까지) · 게임 박스 · 맨 아래 캐릭터 말풍선
                 if m.playUnlocked { GoalCellsCard().frame(maxHeight: .infinity) } else { lockedPlay }
+                SampleNote()   // 샘플 안내는 맨 아래 (2026-10-28)
             }
             .screen()
             .frame(minHeight: geo.size.height, alignment: .top)
