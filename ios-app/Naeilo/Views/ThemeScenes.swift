@@ -416,11 +416,9 @@ struct DoryScene: View {
             Canvas { ctx, _ in
                 let all = Path(CGRect(x: 0, y: 0, width: 300, height: 170))
                 ctx.fill(all, with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x0F1A35 : 0xB3D9F4), Color(hex: dk ? 0x26406F : 0xF4F9FE)]), startPoint: .zero, endPoint: pt(0, 170)))
+                // 낮 구름은 판 위쪽이 잘려 반만 보여 뺐다 (2026-10-28)
                 if dk {
                     for (x, y, r) in [(190, 20, 0.8), (230, 44, 0.6), (160, 36, 0.5)] as [(CGFloat, CGFloat, CGFloat)] { ctx.fill(circle(x, y, r), with: hex(0xC9D3EA)) }
-                } else {
-                    ctx.fill(Path(ellipseIn: CGRect(x: 182, y: 25, width: 36, height: 10)), with: hex(0xFFFFFF))
-                    ctx.fill(Path(ellipseIn: CGRect(x: 201, y: 21, width: 18, height: 10)), with: hex(0xFFFFFF))
                 }
                 var op = ctx; op.translateBy(x: 246, y: 60); ThemeArt.opera(op, dk: dk)
                 // 바다
@@ -1171,10 +1169,10 @@ struct SphereScene: View {
             ctx.fill(blob { core($0, 0.72 * (1 - u), 0.18 * (1 - u), off) }, with: .color(outC.opacity(0.8 * (1 - u))))
         }
 
-        // 진행률: 구 아래 짧은 막대 + 오른쪽 숫자 (둘을 묶어 구 가운데에 맞춤, 반환점을 지나면 안쪽 색)
+        // 진행률: 구 아래 짧은 막대 + 오른쪽 목표 금액 (2026-10-28) (둘을 묶어 구 가운데에 맞춤, 반환점을 지나면 안쪽 색)
         let barC = f < 0.5 ? outC : inC, x0: CGFloat = 182, w: CGFloat = 56
         ctx.fill(Path(roundedRect: CGRect(x: x0, y: 147, width: w, height: 5), cornerRadius: 2.5), with: hex(0xFFFFFF, dk ? 0.16 : 0.7))
         ctx.fill(Path(roundedRect: CGRect(x: x0, y: 147, width: w * CGFloat(f), height: 5), cornerRadius: 2.5), with: .color(barC))
-        Sk.text(ctx, AppModel.pct(f), x0 + w + 6, 149.5, Color(hex: dk ? 0xFFD98A : 0x2F5F59), size: 12, bold: true)
+        Sk.text(ctx, s.target, x0 + w + 6, 149.5, Color(hex: dk ? 0xFFD98A : 0x2F5F59), size: 12, bold: true)
     }
 }

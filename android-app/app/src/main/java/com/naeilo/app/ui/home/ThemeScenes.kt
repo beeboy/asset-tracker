@@ -455,8 +455,8 @@ internal fun DoryScene(s: BoxScene) {
     Plate {
         val all = Size(300f, 170f)
         drawRect(Brush.verticalGradient(listOf(c(dk, 0xB3D9F4, 0x0F1A35), c(dk, 0xF4F9FE, 0x26406F)), 0f, 170f), Offset.Zero, all)
+        // 낮 구름은 판 위쪽이 잘려 반만 보여 뺐다 (2026-10-28)
         if (dk) for ((x, y, r) in listOf(Triple(190f, 20f, 0.8f), Triple(230f, 44f, 0.6f), Triple(160f, 36f, 0.5f))) drawPath(oval(x, y, r), c(0xC9D3EA))
-        else { drawOval(Color.White, Offset(182f, 25f), Size(36f, 10f)); drawOval(Color.White, Offset(201f, 21f), Size(18f, 10f)) }
         translate(246f, 60f) { with(ThemeArt) { opera(dk) } }
         // 바다
         drawRect(Brush.verticalGradient(listOf(c(dk, 0x6FC0EA, 0x1F78B4), c(dk, 0x2F7FBF, 0x0A3560)), 82f, 170f), Offset(0f, 82f), Size(300f, 88f))
@@ -991,5 +991,5 @@ private fun DrawScope.sphereDraw(s: BoxScene, dk: Boolean, down: Boolean, p: Dou
     val barC = if (f < 0.5) outC else inC; val x0 = 182f; val w = 56f
     drawRoundRect(Color.White.copy(alpha = if (dk) 0.16f else 0.7f), Offset(x0, 147f), Size(w, 5f), CornerRadius(2.5f))
     drawRoundRect(barC, Offset(x0, 147f), Size(w * f.toFloat(), 5f), CornerRadius(2.5f))
-    Sk.text(this, tm, AppModel.pct(f), x0 + w + 6, 149.5f, c(dk, 0x2F5F59, 0xFFD98A), size = 12f, bold = true)
+    Sk.text(this, tm, s.target, x0 + w + 6, 149.5f, c(dk, 0x2F5F59, 0xFFD98A), size = 12f, bold = true)
 }
