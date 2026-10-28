@@ -225,28 +225,31 @@ private fun FillLast(minTotal: Dp, minLast: Dp, gap: Dp, content: @Composable ()
     }
 }
 
-/** 큰 흐름 박스 값: 종목마다 세 흐름 마지막 방향(+1·0·-1)을 출렁임에 반비례한 무게로 더해 점수를 내고, 종목 수로 나눈다 (평가액은 안 씀) */
+/** 큰 흐름 박스 값: 종목마다 세 흐름 마지막 방향(+1·0·-1)을 6:3:1 (작은·중간·큰) 무게로 더해 점수를 내고, 평가액 비중을 곱해 상승·하락 몫을 따로 쌓는다 */
 // ios: Views/FlowView.swift:39
-class Mood(val shares: List<Double> = listOf(0.0, 0.0, 0.0), val side: Int = 0, val strong: Boolean = false, val box: List<String> = emptyList(), val net: Double = 0.0)
+class Mood(val shares: List<Double> = listOf(0.0, 0.0, 0.0), val side: Int = 0, val strong: Boolean = false, val box: List<String> = emptyList(), val win: Double = 0.0)
 
 // ios: Views/FlowView.swift:40
-@Suppress("UNUSED_PARAMETER")
 private fun flowMood(byWeight: List<String>, weight: (String) -> Double, series: (String) -> FlowSeries?): Mood {
-    // 무게 = 작은 6% · 중간 12% · 큰 22% 의 역수 비율 (작은 56% · 중간 28% · 큰 15%)
-    val k = listOf(1 / 0.06, 1 / 0.12, 1 / 0.22); val ks = k.sum()   // ios: Views/FlowView.swift:42
-    // ios: Views/FlowView.swift:43,44,45,46
-    val items: List<Pair<String, Double>> = byWeight.mapNotNull { id ->
-        val d = (series(id)?.trends ?: emptyList()).mapNotNull { ts -> ts.lastOrNull()?.let { if (it.dir > 0) 1.0 else if (it.dir < 0) -1.0 else 0.0 } }
-        if (d.size == k.size) id to d.indices.sumOf { d[it] * k[it] } / ks else null
+    // 무게 = 작은(그날 등락) 6 · 중간(3%) 3 · 큰(6%) 1. 6 > 3 + 1 이라 서로 지워지지 않는다
+    val k = listOf(6.0, 3.0, 1.0); val ks = k.sum()
+    val all: List<Triple<String, Double, Boolean>> = byWeight.mapNotNull { id ->
+        val t = series(id)?.trends ?: emptyList()
+        val d = t.mapNotNull { ts -> ts.lastOrNull()?.let { if (it.dir > 0) 1.0 else if (it.dir < 0) -1.0 else 0.0 } }
+        if (d.size == k.size) Triple(id, d.indices.sumOf { d[it] * k[it] } / ks, t.drop(1).any { ts -> ts.any { it.dir != 0 } }) else null
     }
-    if (items.isEmpty()) return Mood()   // ios: Views/FlowView.swift:47
-    val n = items.size.toDouble(); val up = items.sumOf { maxOf(it.second, 0.0) } / n; val dn = items.sumOf { maxOf(-it.second, 0.0) } / n   // ios: Views/FlowView.swift:48
-    // 점수 평균이 0 에 가까우면 횡보. 박스 버튼 = 같은 쪽 점수 종목 (횡보면 전부)
-    val net = up - dn; val side = if (abs(net) < 0.005) 0 else if (net > 0) 1 else -1   // ios: Views/FlowView.swift:50
-    return Mood(listOf(up, maxOf(0.0, 1 - up - dn), dn), side, abs(net) > 0.5, items.filter { side == 0 || it.second * side > 0 }.map { it.first }, abs(net))   // ios: Views/FlowView.swift:51
+    // 3%·6% 띠가 처음부터 끝까지 회색인 종목(단기채 같은)은 뺀다. 모두 그렇다면 그대로 둔다
+    val items = if (all.any { it.third }) all.filter { it.third } else all
+    if (items.isEmpty()) return Mood()
+    val total = items.sumOf { weight(it.first) }
+    val v = items.map { if (total > 0) weight(it.first) / total else 1.0 / items.size }
+    val up = items.indices.sumOf { v[it] * maxOf(items[it].second, 0.0) }; val dn = items.indices.sumOf { v[it] * maxOf(-items[it].second, 0.0) }
+    // 상승·하락 몫을 서로 지우지 않고 따로 둔다. 큰 쪽이 머리글, 모든 종목 점수가 0 일 때만 횡보. 박스 버튼 = 같은 쪽 종목 (횡보면 전부)
+    val side = if (up == 0.0 && dn == 0.0) 0 else if (up >= dn) 1 else -1; val win = if (side > 0) up else if (side < 0) dn else maxOf(0.0, 1 - up - dn)
+    return Mood(listOf(up, maxOf(0.0, 1 - up - dn), dn), side, side != 0 && win > 0.5, items.filter { side == 0 || it.second * side > 0 }.map { it.first }, win)
 }
 
-// 맨 위 큰 흐름 박스: 홈에서 고른 박스 모양. 큰 글자 = 종목 점수 평균의 방향·크기 (절반 넘으면 강한), 버튼 = 그쪽 종목만
+// 맨 위 큰 흐름 박스: 홈에서 고른 박스 모양. 큰 글자 = 상승·하락 몫 중 큰 쪽 (절반 넘으면 강한), 버튼 = 그쪽 종목만
 // ios: Views/FlowView.swift:103
 @Composable
 private fun MoodBox(md: Mood, look: BoxLook, cur: String?, name: (String) -> String, onPick: (String) -> Unit) {
@@ -255,7 +258,7 @@ private fun MoodBox(md: Mood, look: BoxLook, cur: String?, name: (String) -> Str
     val head = if (md.side == 0) tr("횡보")
         else if (md.side > 0) (if (md.strong) tr("강한 상승") else tr("약한 상승"))
         else (if (md.strong) tr("강한 하락") else tr("약한 하락"))
-    val share = md.net   // ios: Views/FlowView.swift:109
+    val share = md.win   // ios: Views/FlowView.swift:109
     // ios: Views/FlowView.swift:110,123,124,125,126
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).moodBackdrop(look).padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 16.dp)) {
         // ios: Views/FlowView.swift:111
@@ -263,7 +266,7 @@ private fun MoodBox(md: Mood, look: BoxLook, cur: String?, name: (String) -> Str
         // ios: Views/FlowView.swift:112,113,114
         FitAnnotated(buildAnnotatedString {
             withStyle(SpanStyle(color = boxInk().ink)) { append("$head · ") }
-            withStyle(SpanStyle(color = c)) { append(AppModel.pct(share)) }
+            withStyle(SpanStyle(color = c)) { append((if (md.side > 0) "⇡" else if (md.side < 0) "⇣" else "") + (share * 100).roundToInt()) }
         }, TextStyle(fontSize = fx(30f), fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp), 0.6f, boxInk().ink, Modifier.padding(top = 6.dp))
         Box(Modifier.padding(top = 14.dp)) { MoodBand(look, md.shares, road = 10.dp, up = md.side >= 0) }   // ios: Views/FlowView.swift:115
         // ios: Views/FlowView.swift:116,117,118,119,120,121 (오른쪽 끝 16% 를 흐리게)
@@ -409,7 +412,7 @@ sealed class FlowTerm {   // ios: Views/FlowView.swift:171
     }
     val body: String get() = when (this) {   // ios: Views/FlowView.swift:192,193
         dots -> "고점·저점 표시 · 계단 위로 상승 · 아래로 하락 · 같은 높이 횡보"   // ios: Views/FlowView.swift:194
-        band -> "큰 흐름 · 22% 넘는 출렁임만 셈\n중간 흐름 · 12% 넘는 출렁임\n작은 흐름 · 6% 넘는 출렁임\n빨강 상승 · 파랑 하락 · 회색 횡보"   // ios: Views/FlowView.swift:195
+        band -> "큰 흐름 · 6% 넘는 출렁임만 셈\n중간 흐름 · 3% 넘는 출렁임\n작은 흐름 · 그날 등락 (전날 종가보다)\n빨강 상승 · 파랑 하락 · 회색 횡보"   // ios: Views/FlowView.swift:195
         support -> "여러 번 내려와 받친 가격 · 많이 닿을수록 진하게"   // ios: Views/FlowView.swift:196
         resistance -> "여러 번 올라와 막힌 가격 · 많이 닿을수록 진하게"   // ios: Views/FlowView.swift:197
         is pattern -> k.body   // ios: Views/FlowView.swift:198
@@ -662,7 +665,7 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, term: F
                     }
                 }
                 // 띠 이름: 오른쪽 눈금 칸에 아주 작게 (차트 폭은 그대로)
-                listOf("큰", "중간", "작은").forEachIndexed { row, t ->   // ios: Views/FlowView.swift:383
+                listOf("∿6%", "∿3%", "∿당일").forEachIndexed { row, t ->   // ios: Views/FlowView.swift:383
                     T(t, Modifier.centerAt(W + 4 + 12, topH + row * (bandH / 3) + bandH / 6), style = appFont(8f), color = Theme.muted, maxLines = 1)   // ios: Views/FlowView.swift:384,385
                 }
                 // 띠를 누르면 띠 설명

@@ -83,10 +83,12 @@ class FlowSeries(   // ios: Data/FlowData.swift:34
 
     init {
         val c = candles.map { it.c }   // ios: Data/FlowData.swift:51
-        val zz = listOf(0.06, 0.12, 0.22).map { FlowCalc.zigzag(c, it) }   // ios: Data/FlowData.swift:52
-        pivotSets = zz.map { z -> z.map { FlowPivot(i = it.i, price = if (it.high) candles[it.i].h else candles[it.i].l, high = it.high) } }   // ios: Data/FlowData.swift:53
-        pivots = pivotSets[0]   // ios: Data/FlowData.swift:54
-        trends = zz.map { FlowCalc.trends(it, c.size) }   // ios: Data/FlowData.swift:55
+        // 흐름 띠: 작은 = 그날 등락, 중간 = 3%, 큰 = 6% 넘는 출렁임 (2026-10-28 드링커님 결정). 지지·저항·패턴은 전처럼 6% 고점·저점
+        val zz = listOf(0.03, 0.06).map { FlowCalc.zigzag(c, it) }   // ios: Data/FlowData.swift:52
+        val ps = zz.map { z -> z.map { FlowPivot(i = it.i, price = if (it.high) candles[it.i].h else candles[it.i].l, high = it.high) } }   // ios: Data/FlowData.swift:53
+        pivotSets = listOf(ps[0], ps[1], ps[1])
+        pivots = ps[1]   // ios: Data/FlowData.swift:54
+        trends = listOf(FlowCalc.daily(c)) + zz.map { FlowCalc.trends(it, c.size) }   // ios: Data/FlowData.swift:55
         levels = FlowCalc.levels(pivots, last = c.lastOrNull() ?: 0.0)   // ios: Data/FlowData.swift:56
         val pts = FlowCalc.patterns(candles, pivots)   // ios: Data/FlowData.swift:57
         // 장중 오늘 캔들에 닿은 패턴은 아직 바뀔 수 있어 확정이 아니다 (마감 뒤 일봉으로 다시 정한다)
@@ -119,6 +121,18 @@ object FlowCalc {   // ios: Data/FlowData.swift:64
             }
         }
         return out   // ios: Data/FlowData.swift:84
+    }
+
+    /** 그날 등락 띠: 전날 종가보다 오르면 상승, 내리면 하락, 같으면 횡보. 같은 방향 날을 한 띠로 묶는다 */
+    fun daily(c: List<Double>): List<FlowTrend> {   // ios: Data/FlowData.swift:daily
+        if (c.isEmpty()) return emptyList()
+        val out = mutableListOf<FlowTrend>(); var start = 0; var dir = 0
+        for (i in 1 until c.size) {
+            val d = if (c[i] > c[i - 1]) 1 else if (c[i] < c[i - 1]) -1 else 0
+            if (d != dir) { if (i > start) out.add(FlowTrend(start, i - 1, dir)); start = i; dir = d }
+        }
+        out.add(FlowTrend(start, c.size - 1, dir))
+        return out
     }
 
     /** 고점·저점이 앞의 같은 종류보다 높은지로 추세: 둘 다 높으면 상승, 둘 다 낮으면 하락, 섞이면 횡보 */
@@ -577,17 +591,30 @@ object FlowStore {   // ios: Data/FlowData.swift:409,410,411
         return d to ((c.dayOfWeek.value % 7 + 1) in 2..6 && c.hour * 60 + c.minute >= (if (kr) 9 * 60 else 9 * 60 + 30))   // ios: Data/FlowData.swift:455
     }
 
-    /** 장중 오늘 캔들 (날짜, 캔들). 지금 가격이 없거나, 일봉에 오늘이 이미 있거나, 전일 종가 그대로면(휴장) 없음 */
+    /** 미국 장 밖(데이마켓·시간외) 캔들 날짜: 오늘부터 처음 오는 평일 중 마지막 일봉 뒤인 날. 미국 시간 금 20시~일 20시(거래 없음)면 null */
+    fun usNext(last: String): String? {   // ios: Data/FlowData.swift:usNext
+        val now = Instant.now().atZone(ZoneId.of("America/New_York"))
+        val w = now.dayOfWeek.value % 7 + 1; val h = now.hour
+        if (w == 7 || (w == 1 && h < 20) || (w == 6 && h >= 20)) return null
+        val f = { d: java.time.ZonedDateTime -> cformat("%04d-%02d-%02d", d.year, d.monthValue, d.dayOfMonth) }
+        var d = now
+        while ((d.dayOfWeek.value % 7 + 1) in listOf(1, 7) || f(d) <= last) d = d.plusDays(1)
+        return f(d)
+    }
+
+    /** 장중 오늘 캔들 (날짜, 캔들). 지금 가격이 없거나, 일봉에 그날이 이미 있거나, 전일 종가 그대로면(휴장) 없음
+     *  미국은 장 밖(토스 데이마켓·시간외)에도 지금 가격으로 다음 거래일 캔들을 붙인다 (장중 캔들처럼 흐리게) */
     private fun live(id: String, b: FlowBars.Series): Pair<String, Candle>? {   // ios: Data/FlowData.swift:459
         val s = Sample.symbol(id) ?: return null; val prev = b.c.lastOrNull() ?: return null; val last = b.d.lastOrNull() ?: return null   // ios: Data/FlowData.swift:460
-        val q = Market.shared.quote(s)   // ios: Data/FlowData.swift:461
-        val (md, open) = marketNow(isKR(id))   // ios: Data/FlowData.swift:462
-        if (!q.live || q.last <= 0 || !open || last >= md || abs(q.last - prev) <= 1e-9) return null   // ios: Data/FlowData.swift:463
+        val q = Market.shared.quote(s); val kr = isKR(id)   // ios: Data/FlowData.swift:461
+        val (md, open) = marketNow(kr)   // ios: Data/FlowData.swift:462
+        val day = (if (kr) (if (open) md else null) else usNext(last)) ?: return null
+        if (!q.live || q.last <= 0 || last >= day || abs(q.last - prev) <= 1e-9) return null   // ios: Data/FlowData.swift:463
         return synchronized(today) {
-            val k = today[id]?.takeIf { it.first == md }?.second?.copy() ?: Candle(o = prev, h = max(prev, q.last), l = min(prev, q.last), c = q.last, v = 0.0)   // ios: Data/FlowData.swift:464
+            val k = today[id]?.takeIf { it.first == day }?.second?.copy() ?: Candle(o = prev, h = max(prev, q.last), l = min(prev, q.last), c = q.last, v = 0.0)   // ios: Data/FlowData.swift:464
             k.c = q.last; k.h = max(k.h, q.last); k.l = min(k.l, q.last)   // ios: Data/FlowData.swift:465
-            today[id] = md to k   // ios: Data/FlowData.swift:466
-            md to k   // ios: Data/FlowData.swift:467
+            today[id] = day to k   // ios: Data/FlowData.swift:466
+            day to k   // ios: Data/FlowData.swift:467
         }
     }
 
