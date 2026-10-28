@@ -686,12 +686,15 @@ final class AppModel {
         // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (웹 buildModelNow 와 같다. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게).
         // 사이트에 없는 종목은 지금 가격
         // 사이트에 없는 종목은 전일 종가, 매매기준율이 없으면 전일 환율: 키가 1분마다 바뀌어 계산이 끝없이 다시 돌지 않게 (PR #115 발열)
+        // 동기화 계산 자료를 쓰면 그 기준 종가·환율로 (두 기기가 같은 입력으로 센다)
+        let calc = Market.shared.calcInUse
         let px = rs.map { r -> Double in
+            if !Sample.isVirtual(r.id), let c = calc?.px[SiteStats.key(r.id)], c > 0 { return c }
             if !Sample.isVirtual(r.id), let c = Market.shared.prices?.h[SiteStats.key(r.id)]?.closes.last, c > 0 { return c }
             let q = r.sym.quote
             return q.prevClose > 0 ? q.prevClose : q.last
         }
-        let fx0 = Market.shared.marRate ?? Market.shared.fx.prevClose
+        let fx0 = calc?.fx0 ?? Market.shared.marRate ?? Market.shared.fx.prevClose
         let hs = zip(rs, px).map { r, p in MC.Holding(key: SiteStats.mcKey(r.id), ccy: r.sym.currency == .usd ? "USD" : "KRW", valueKrw: r.h.qty * p * (r.sym.currency == .usd ? fx0 : 1), price0: p) }
         let st = inp.st, settings = inp.settings, events = inp.events
         let snap = zip(rs, px).map { "\(SiteStats.mcKey($0.id)):\($0.h.qty):\($1)" }.joined(separator: ",")
@@ -701,6 +704,40 @@ final class AppModel {
 
     /// 전망의 월 적립 (원): 웹처럼 목표의 매달 넣는 돈(monthly_contribution)을 넣는다. 목표 루트가 아니면 0. m.monthly 는 동기화 호환으로만 남긴다
     var fcMonthly: Double { isGoal ? gM * 1e4 : 0 }
+    /// 두 기기 숫자 비교용 전망 입력값 요약 (설정 > 시세 기준, 내부 베타). 안드로이드 calcDiag 와 같은 줄·같은 자릿수
+    var calcDiag: String {
+        let mk = Market.shared, f4 = { (x: Double) in String(format: "%.4f", x) }
+        var L: [String] = []
+        L.append("fx val \(f4(mk.valFx)) mar \(mk.marUse.map { f4($0.rate) + " " + $0.date } ?? "-") toss \(mk.tossFx.map { f4($0.rate) } ?? "-") prev \(f4(mk.fx.prevClose))")
+        L.append("calc own \(mk.ownAsOf) snap \(mk.calcSnap?.asOf ?? "-") use \(mk.calcInUse != nil ? 1 : 0)")
+        for r in rows {
+            let k = SiteStats.key(r.id), h = mk.prices?.h[k]
+            L.append("\(r.id) q \(f4(r.h.qty)) last \(f4(r.sym.last)) prev \(f4(r.sym.quote.prevClose)) nk \(mk.needsKey(r.sym) ? 1 : 0) bars \(h?.dates.count ?? 0) \(h?.dates.last ?? "-") \(f4(h?.closes.last ?? 0))")
+        }
+        if let fxh = mk.prices?.h["KRW=X"] { L.append("KRW=X bars \(fxh.dates.count) \(fxh.dates.last ?? "-") \(f4(fxh.closes.last ?? 0))") }
+        if let st = mk.stats {
+            L.append("st \(st.date) n \(st.tickers.count) fxvol \(f4(SiteStats.fx().1))")
+            for r in rows {
+                let k = SiteStats.mcKey(r.id), t = st.tickers[k]
+                L.append("  \(k) mu \(f4(t?.mu ?? -9)) tr \(f4(t?.trend ?? -9)) vol \(f4(t?.vol ?? -9)) n \(t?.n ?? -1) rate \(f4(st.betas?["rate"]?[k] ?? -9))")
+            }
+        } else { L.append("st -") }
+        if let inp = mcInputs(full: true) { L.append("sig \(inp.sig) ev \(inp.events.count) sc \(inp.settings.scenario ?? "-")") }
+        if let inp = mcInputs(full: true) {
+            let evs = inp.events.map { e in [e.id ?? "-", e.on ? "1" : "0", e.date ?? "-", e.target ?? "-", e.factor ?? "-", e.cat ?? "-", e.rep ?? "-", f4(e.prob), f4(e.mean), f4(e.sd), f4(e.volMult), f4(e.volDays)].joined(separator: "|") }
+            L.append("evfp \(ForecastEngine.fnv(evs.joined(separator: ";"))) on \(inp.events.filter(\.on).count)")
+        }
+        let job = forecastJob, run = ForecastEngine.shared.run
+        L.append("job \(job.map { ForecastEngine.fnv($0.key) } ?? "-") run \(run.map { ForecastEngine.fnv($0.key) } ?? "-")")
+        if let run {
+            L.append("run ev \(run.events) A \(run.ev.A) M \(run.ev.M) P \(run.ev.P) v0 \(f4(run.ev.v0.reduce(0, +))) mo \(run.ev.monthDates.first ?? "-")~\(run.ev.monthDates.last ?? "-") ms \(Int(run.ms))")
+            for f in run.factors { L.append("  \(f.key) v \(f4(f.vol)) b \(f4(f.base)) s \(f4(f.smooth)) bl \(f4(f.blend)) ev \(f4(f.evVar))") }
+        }
+        let fc = forecast
+        L.append("lens \(lens == .base ? "base" : lens == .smooth ? "smooth" : "mine") trust \(f4(trust)) shock \(shock ? 1 : 0)")
+        L.append("fc ex \(fc.exact ? 1 : 0) mu \(f4(fc.mu)) sg \(f4(fc.sigma)) pG \(f4(fc.pGoal)) goal \(f4(mcGoal)) cash \(f4(cashKrw)) mon \(f4(fcMonthly)) H \(forecastHorizon) V0 \(f4(trackValue)) K \(f4(keyValue))")
+        return L.joined(separator: "\n")
+    }
     var forecast: Forecast { forecast(lens) }
     /// 시나리오 하나의 전망. 같은 경로를 μ만 바꿔 다시 무게를 달아서(reweight) 셋을 같이 불러도 싸다
     func forecast(_ lens: Lens) -> Forecast {

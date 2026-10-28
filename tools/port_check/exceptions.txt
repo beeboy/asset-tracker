@@ -50,16 +50,16 @@ Data/Calm.swift:446 보간 안의 ?? "" 따옴표가 겹쳐 검사기가 조각�
 Data/StockSearch.swift:26 검사기 한계: 정규식 글자 \\( 를 보간 \( 으로 읽음 (옮김, StockSearch.kt KoreaEstimate.hedged 같은 글자)
 Data/StockSearch.swift:86 검사기 한계: 보간 속 따옴표 (옮김, StockSearch.kt KoreaEstimate.note)
 Data/StockSearch.swift:210 플랫폼: applicationSupportDirectory 대신 앱 내부 폴더 filesDir (StockSearch.kt CustomSymbols.file)
-Data/StockSearch.swift:373 검사기 한계: 보간 속 따옴표 ?? "" (옮김, StockSearch.kt krStamp)
+Data/StockSearch.swift:374 검사기 한계: 보간 속 따옴표 ?? "" (옮김, StockSearch.kt krStamp)
 Data/SiteStats.swift:7-10 플랫폼: Kotlin 은 object 안에 typealias 를 둘 수 없다. MC.Stats.Ticker·Defaults·Corr·MC.Stats 를 그대로 쓴다
-Data/Sync.swift:209 플랫폼: CryptoKit SealedBox 는 암호문·태그(16바이트)를 나눠 받고, javax.crypto GCM 은 붙인 채로 받는다 (Sync.kt open)
-Data/Sync.swift:485 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, Sync.kt apply skipped)
-Data/Sync.swift:522-524 검사기 한계: 보간 속 따옴표 ?? "" (옮김, Sync.kt signature)
-Data/Sync.swift:515 검사기 한계: 보간 속 따옴표 ?? "" (옮김, Sync.kt townStamp)
-Data/Sync.swift:545 키체인 접근성: KeyVault(Keystore) 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
-Data/Backup.swift:57 플랫폼: SwiftUI FileDocument 의 읽을 형식(.json). 안드로이드는 파일 고르기(SAF) 화면이 application/json 으로 연다 (설정 화면 단계)
-Data/Backup.swift:63-64 플랫폼: SwiftUI FileDocument 읽기·쓰기 틀. 안드로이드는 BackupFile.data·read 가 바이트를 주고받는다
-Data/Backup.swift:67-68 플랫폼: iOS 보안 범위 파일 접근. 안드로이드 SAF 는 받은 Uri 로 바로 읽는다
+Data/Sync.swift:217 플랫폼: CryptoKit SealedBox 는 암호문·태그(16바이트)를 나눠 받고, javax.crypto GCM 은 붙인 채로 받는다 (Sync.kt open)
+Data/Sync.swift:493 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, Sync.kt apply skipped)
+Data/Sync.swift:530-532 검사기 한계: 보간 속 따옴표 ?? "" (옮김, Sync.kt signature)
+Data/Sync.swift:523 검사기 한계: 보간 속 따옴표 ?? "" (옮김, Sync.kt townStamp)
+Data/Sync.swift:553 키체인 접근성: KeyVault(Keystore) 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
+Data/Backup.swift:67 플랫폼: SwiftUI FileDocument 의 읽을 형식(.json). 안드로이드는 파일 고르기(SAF) 화면이 application/json 으로 연다 (설정 화면 단계)
+Data/Backup.swift:73-74 플랫폼: SwiftUI FileDocument 읽기·쓰기 틀. 안드로이드는 BackupFile.data·read 가 바이트를 주고받는다
+Data/Backup.swift:77-78 플랫폼: iOS 보안 범위 파일 접근. 안드로이드 SAF 는 받은 Uri 로 바로 읽는다
 # E 단계 (홈·설정): Views/HomeView·SettingsView·SettingsDetail·StartView·Guide·MyRecordCard·ShareCard → ui/home·ui/settings·ui/start·ui/
 Views/HomeView.swift:191 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, HomeView.kt RecoverSummary 어제→오늘 줄)
 Views/HomeView.swift:295 검사기 한계: 보간 속 따옴표 ?? "" (옮김, HomeView.kt Reminder 일정 띠)
@@ -244,9 +244,9 @@ Views/EarningsRiver.swift:479 플랫폼: 282 과 같음 (지난 분기 눈금 �
 Views/EarningsRiver.swift:531-532 플랫폼: Xcode #Preview (안드로이드는 미리보기 없음)
 Views/ParallelView.swift:432 플랫폼: .lineLimit(1).minimumScaleFactor(0.8) = FitRow(0.8f) (한 줄 고정)
 Views/ParallelView.swift:439 플랫폼: 432 과 같음 (FitRow 한 줄 고정)
-Data/Sync.swift:296-297 플랫폼: beginBackgroundTask·번호 상자는 안드로이드에 없음 (Sync.kt flush 는 MainScope 로만)
-Data/Sync.swift:300 플랫폼: 288 과 같음 (endBackgroundTask)
-Data/Sync.swift:560 플랫폼: BGTaskBox(UIBackgroundTaskIdentifier 상자)는 안드로이드에 없음
+Data/Sync.swift:304-305 플랫폼: beginBackgroundTask·번호 상자는 안드로이드에 없음 (Sync.kt flush 는 MainScope 로만)
+Data/Sync.swift:308 플랫폼: 288 과 같음 (endBackgroundTask)
+Data/Sync.swift:568 플랫폼: BGTaskBox(UIBackgroundTaskIdentifier 상자)는 안드로이드에 없음
 Views/HomeView.swift:92 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, HomeView.kt sceneOf status "본전까지 +…%")
 Views/SettingsDetail.swift:383 플랫폼: 안드로이드 런처는 길게 누르면 '위젯' 단추 (SettingsDetail.kt AddStep 2 '"위젯" 누르기')
 Views/SettingsDetail.swift:385-386 플랫폼: 안드로이드는 '추가'로 넣고 위젯 길게 눌러 '설정'(reconfigurable)으로 인물을 바꾼다 (AddStep 4·5)

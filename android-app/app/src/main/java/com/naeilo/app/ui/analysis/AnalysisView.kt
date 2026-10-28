@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -469,7 +470,8 @@ private fun HabitChip(m: AppModel, open: (AnalysisRoute) -> Unit) {
         // ios: Views/AnalysisView.swift:297,298
         T("투자 습관", Modifier.background(Theme.yellow, CapsuleShape).padding(horizontal = 8.dp, vertical = 2.dp), style = appFont(11f, FontWeight.Bold), color = Theme.inkFixed, maxLines = 1)
         Spacer(Modifier.weight(1f).widthIn(min = 2.dp))   // ios: Views/AnalysisView.swift:299
-        FitText("$v ›", appFont(13f), 0.8f, color = Theme.ink)   // ios: Views/AnalysisView.swift:300
+        // 작은 폰에서도 숫자가 보이게 칸에는 숫자만 (2026-10-28)
+        T((if (done) "${s.index}" else "${s.n}/${Calm.minEvents}") + " ›", style = appFont(13f, FontWeight.Bold), color = Theme.ink, maxLines = 1)   // ios: Views/AnalysisView.swift:300
     }
 }
 
@@ -682,7 +684,7 @@ private fun EtaLine(name: String, desc: String, s: GoalSim, x: (Double) -> Doubl
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             // ios: Views/AnalysisView.swift:493,494,495
             Box(Modifier.width(84.dp), contentAlignment = Alignment.CenterStart) {
-                T(name, Modifier.background(Theme.yellow, CapsuleShape).padding(horizontal = 9.dp, vertical = 3.dp), style = appFont(12f, FontWeight.Bold), color = Theme.inkFixed, maxLines = 1)
+                T(name, Modifier.wrapContentWidth(Alignment.Start, unbounded = true).background(Theme.yellow, CapsuleShape).padding(horizontal = 9.dp, vertical = 3.dp), style = appFont(12f, FontWeight.Bold), color = Theme.inkFixed, maxLines = 1)   // .fixedSize(): 칸보다 길어도 자르지 않는다
             }
             // ios: Views/AnalysisView.swift:496,497,498,507
             BoxWithConstraints(Modifier.weight(1f).height(14.dp)) {

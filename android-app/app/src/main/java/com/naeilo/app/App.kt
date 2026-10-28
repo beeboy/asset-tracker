@@ -286,6 +286,7 @@ private fun AppHooks(model: AppModel) {
     }
     // ios: App.swift:66
     LaunchedEffect(Unit) { snapshotFlow { model.holdings }.drop(1).collect { if (model.persists) Sync.shared.changed(model) } }
+    LaunchedEffect(Unit) { snapshotFlow { Market.shared.ownAsOf }.drop(1).collect { if (model.persists) Sync.shared.calcChanged(model) } }   // ios: App.swift:111
     // 내 기록: 새 날 줄이 생기면 다른 기기로도 (같은 날 값 고침은 다음 변경 때 같이)
     // ios: App.swift:69
     LaunchedEffect(Unit) { snapshotFlow { model.myRecord.size }.drop(1).collect { if (model.persists) Sync.shared.changed(model) } }

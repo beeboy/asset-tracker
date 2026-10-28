@@ -108,6 +108,7 @@ struct RootView: View {
                 // 미션 진행: 바뀔 때마다 저장, 동기화가 켜져 있으면 다른 기기로도
                 .onChange(of: model.progress) { _, _ in model.saveProgress(); Remind.shared.refresh(model); if model.persists { Sync.shared.changed(model) } }
                 .onChange(of: model.holdings) { _, _ in if model.persists { Sync.shared.changed(model) } }
+                .onChange(of: Market.shared.ownAsOf) { _, _ in if model.persists { Sync.shared.calcChanged(model) } }
                 .modifier(KoreaSumHooks(model: model))
                 // 내 기록: 새 날 줄이 생기면 다른 기기로도 (같은 날 값 고침은 다음 변경 때 같이)
                 .onChange(of: model.myRecord.count) { _, _ in if model.persists { Sync.shared.changed(model) } }

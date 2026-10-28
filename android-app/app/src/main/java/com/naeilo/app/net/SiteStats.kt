@@ -237,9 +237,9 @@ class ExtraStats(initial: Map<String, Item>? = null) {   // ios: Data/SiteStats.
         }
     }
 
-    /** st 에 없는 keys 를 받은 종가로 계산해 더한 사본. 계산할 게 없으면 st 그대로 */
-    fun augment(st: MC.Stats, keys: List<String>, prices: Map<String, YahooSample.Hist>? = Market.shared.prices?.h): MC.Stats {   // ios: Data/SiteStats.swift:106
-        val hist = { k: String -> prices?.get(k) ?: items[k]?.hist }
+    /** st 에 없는 keys 를 받은 종가로 계산해 더한 사본. 계산할 게 없으면 st 그대로. hists 를 주면 그 종가가 먼저 (SiteStats.local) */
+    fun augment(st: MC.Stats, keys: List<String>, hists: Map<String, YahooSample.Hist>? = null): MC.Stats {   // ios: Data/SiteStats.swift:106
+        val hist = { k: String -> hists?.get(k) ?: items[k]?.hist }
         val add = keys.filter { st.tickers[it] == null && hist(it) != null }   // ios: Data/SiteStats.swift:107
         if (add.isEmpty()) return st   // ios: Data/SiteStats.swift:108
         val TD = MC.TD; val m = st.model   // ios: Data/SiteStats.swift:109
@@ -261,7 +261,7 @@ class ExtraStats(initial: Map<String, Item>? = null) {   // ios: Data/SiteStats.
         val tickers = st.tickers.toMutableMap()
         val keysAll = st.corr.keys.toMutableList(); val M = st.corr.m.map { it.toMutableList() }.toMutableList()   // ios: Data/SiteStats.swift:125
         val cash = st.tickers.mapValues { it.value.cash == true || it.value.fx == true }.toMutableMap()   // ios: Data/SiteStats.swift:126
-        val site = { k: String -> prices?.get(k)?.let { rets(it) } }   // ios: Data/SiteStats.swift:127
+        val site = { k: String -> (hists?.get(k) ?: Market.shared.prices?.h?.get(k))?.let { rets(it) } }   // ios: Data/SiteStats.swift:127
         for (k in add) {   // ios: Data/SiteStats.swift:128
             val hk = hist(k) ?: continue   // ios: Data/SiteStats.swift:129
             val rs = rets(hk); val r = rs.values.toList(); val n = r.size   // ios: Data/SiteStats.swift:130

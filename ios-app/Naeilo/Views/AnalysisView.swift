@@ -300,12 +300,13 @@ struct AnalysisView: View {
     private var habitChip: some View {
         let s = m.calm.stats(), done = s.n >= Calm.minEvents
         let v = done ? String(localized: "지수 \(String(describing: s.index))") : String(localized: "기록 \(String(describing: s.n))/\(String(describing: Calm.minEvents))")
+        let num = done ? "\(s.index)" : "\(s.n)/\(Calm.minEvents)"   // 작은 폰에서도 숫자가 보이게 칸에는 숫자만 (2026-10-28)
         return Button { sheet = .calm } label: {
             HStack(spacing: 6) {
                 Text("투자 습관").appFont(11, .bold).foregroundStyle(Theme.inkFixed).lineLimit(1).fixedSize()
                     .padding(.horizontal, 8).padding(.vertical, 2).background(Theme.yellow, in: Capsule())
                 Spacer(minLength: 2)
-                Text(v + " ›").appFont(13).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
+                Text(num + " ›").appFont(13, .bold).monospacedDigit().foregroundStyle(Theme.ink).lineLimit(1).fixedSize()
             }
             .padding(.horizontal, 10).frame(maxWidth: .infinity, minHeight: 44)
             .background(Theme.cream, in: RoundedRectangle(cornerRadius: 12))
