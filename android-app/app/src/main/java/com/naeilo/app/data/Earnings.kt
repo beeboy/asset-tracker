@@ -168,13 +168,17 @@ object Earnings {
     fun cached(sym: String): File? = if (sym == "DRNK") drnk else decode(Store.readData(cacheName(sym))?.decodeToString())   // ios: Data/Earnings.swift:136
 
     /** 앱 안 견본 (아이폰 Resources/earnings_seed.json 을 빌드 때 복사). none = 회사 실적이 없는 종목 */
-    // ios: Data/Earnings.swift:140,141,142
+    // ios: Data/Earnings.swift:140,142,143,144
     @Serializable data class Seed(val files: Map<String, File>, val none: List<String>)
-    val seed: Seed? by lazy { Defaults.asset("earnings_seed", "json")?.let { runCatching { NJson.decodeFromString(Seed.serializer(), it) }.getOrNull() } }
+    /** 견본의 '숫자 기다리는 중'은 만든 날 기준이라 버린다 (새로 깐 앱 홈에 잠깐 떴다 사라짐) */
+    val seed: Seed? by lazy {
+        Defaults.asset("earnings_seed", "json")?.let { runCatching { NJson.decodeFromString(Seed.serializer(), it) }.getOrNull() }
+            ?.let { s -> s.copy(files = s.files.mapValues { it.value.copy(pending = null) }) }
+    }
 
-    sealed class Got { class Ok(val f: File) : Got(); object None : Got(); object Failed : Got() }   // ios: Data/Earnings.swift:144
+    sealed class Got { class Ok(val f: File) : Got(); object None : Got(); object Failed : Got() }   // ios: Data/Earnings.swift:146
     /** naeilo.com/data/earnings/{종목}.json. 404 는 자료 없음(ETF·국내) */
-    // ios: Data/Earnings.swift:146,147,148,149,150,151,152,153,154,155
+    // ios: Data/Earnings.swift:148,149,150,151,152,153,154,155,156,157
     suspend fun fetch(sym: String): Got = withContext(Dispatchers.IO) {
         val (qn, qv) = "t" to (System.currentTimeMillis() / 1000 / 3600).toString()
         val url = URL(Config.data, "earnings/$sym.json").toString() + "?$qn=$qv"
@@ -189,7 +193,7 @@ object Earnings {
     }
 
     /** DRNK 견본: data/earnings/DRNK.json 과 같은 내용 (가상 종목이라 받지 않는다) */
-    // ios: Data/Earnings.swift:159,160,171
+    // ios: Data/Earnings.swift:161,162,173
     val drnk: File? by lazy { decode(drnkJSON) }
     const val drnkJSON = """
 {"symbol":"DRNK","name":"드링커 (가상 종목)","currency":"USD","pending":null,"quarters":[
