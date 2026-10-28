@@ -545,6 +545,9 @@ fun PriceBasisView(m: AppModel) {
                 Card {   // ios: Views/SettingsView.swift:369
                     ToggleRow(yahooOff, { if (!Config.myKey) { yahooOff = it; setYahooOff(it) } }) { T("Yahoo·사이트 시세 끄기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:370
                     T(if (Config.myKey) "내 키가 있으면 늘 꺼져요." else "시험용이에요. 켜면 내 키로 받은 시세만 보여요.", style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:371
+                    // 두 기기 숫자 비교용 (2026-10-28): 전망 입력값을 그대로 보여 준다
+                    androidx.compose.foundation.text.selection.SelectionContainer { T(m.calcDiag, style = appFont(10f).copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace), color = Theme.sub) }   // ios: Views/SettingsView.swift:373
+                    T("가능성 다시 계산", Modifier.clickable { com.naeilo.app.core.calc.ForecastEngine.shared.rerun() }.padding(vertical = 6.dp), style = appFont(13f, FontWeight.Bold), color = Theme.sub)
                     if (TossKeys.stored) ToggleRow(tossPause, { tossPause = it; setPause("toss", it) }) { T("토스 키 멈추기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:372,373
                     if (AlpacaKeys.stored) ToggleRow(alpacaPause, { alpacaPause = it; setPause("alpaca", it) }) { T("Alpaca 키 멈추기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:375,376
                     if (LongbridgeKeys.stored) ToggleRow(lbPause, { lbPause = it; setPause("longbridge", it) }) { T("Longbridge 키 멈추기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:378,379

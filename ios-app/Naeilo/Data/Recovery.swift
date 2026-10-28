@@ -144,7 +144,7 @@ extension AppModel {
         let events = site.events ?? st.events ?? []
         let enc = JSONEncoder(); enc.outputFormatting = .sortedKeys
         let evSig = ForecastEngine.fnv(String(data: (try? enc.encode(events)) ?? Data(), encoding: .utf8) ?? "")
-        return (st, settings, events, [st.date, evSig, "\(settings.nPaths)|\(settings.seedU32)|\(settings.dof)|\(settings.earnings_adjust ?? true)"].joined(separator: "|"))
+        return (st, settings, events, [st.date, Market.shared.statsSig, evSig, "\(settings.nPaths)|\(settings.seedU32)|\(settings.dof)|\(settings.earnings_adjust ?? true)"].joined(separator: "|"))
     }
     /// 웹 '경로' 선택지의 최대
     static let webPathMax = 10_000

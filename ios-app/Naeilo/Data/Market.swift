@@ -43,8 +43,51 @@ final class Market {
         let u = MarFeed.started(m.date) ? (m.rate, m.date) : (m.prev.map { ($0.rate, $0.date) } ?? (m.rate, m.date))
         return u.0 > 0 && Day.dday(u.1) >= -5 ? (u.0, u.1) : nil
     }
-    /// 종목별 전망 입력값 (사이트가 매일 만든다). 없으면 빌드 때 넣은 파일
-    var stats: SiteStats.File? = Config.yahooOff ? SiteStats.local(AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached()))) : SiteStats.load()
+    /// 이 기기가 센 종목별 전망 입력값 (사이트가 매일 만든다. 내 키가 있으면 키 일봉으로 앱에서 센다). 없으면 빌드 때 넣은 파일
+    var ownStats: SiteStats.File? = Config.yahooOff ? SiteStats.local(AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached()))) : SiteStats.load() {
+        didSet { pickCalc() }
+    }
+    /// 동기화로 받은 계산 자료 (다른 기기가 센 전망 입력값). 기기마다 받은 시각이 달라도 같은 숫자가 나오게 둘 중 더 새 한 벌만 쓴다
+    var calcSnap: CalcSnap? = CalcSnap.cached() { didSet { pickCalc() } }
+    /// 계산에 쓰는 동기화 계산 자료 (이 기기 값이 더 새면 nil)
+    private(set) var calcInUse: CalcSnap? = nil
+    /// 계산에 쓰는 종목별 전망 입력값: 이 기기 값(ownStats)과 동기화 계산 자료(calcSnap) 중 더 새 한 벌
+    private(set) var stats: SiteStats.File? = nil
+    private init() { pickCalc() }
+    /// 동기화 계산 자료가 이 기기 값보다 새거나 같고, 이 기기 값의 종목을 다 담고 있으면 그것을 쓴다 (같으면 받은 쪽: 두 기기가 한 벌로 모인다)
+    private func pickCalc() {
+        let own = ownStats
+        if let s = calcSnap, own == nil || (Set(own!.tickers.keys).isSubset(of: s.stats.tickers.keys) && s.asOf >= ownAsOf) {
+            calcInUse = s; stats = s.stats
+        } else { calcInUse = nil; stats = own }
+        statsSig = Self.sig(stats)
+    }
+    /// 계산에 쓰는 전망 입력값의 지문. 전망 계산 키(mcInputs)에 넣어, 날짜가 같아도 값이 바뀌면 다시 센다 (예전엔 날짜만 봐서 묵은 계산이 남았다)
+    @ObservationIgnored private(set) var statsSig = "-"
+    private static func sig(_ s: SiteStats.File?) -> String {
+        guard let s else { return "-" }
+        let enc = JSONEncoder(); enc.outputFormatting = .sortedKeys
+        return ForecastEngine.fnv(String(data: (try? enc.encode(s)) ?? Data(), encoding: .utf8) ?? "")
+    }
+    /// 이 기기 전망 입력값의 기준일: 그 값을 센 일봉의 마지막 날 (원/달러는 오늘 값이 늘 붙어 뺀다). 일봉이 없으면 표 날짜
+    var ownAsOf: String {
+        guard let own = ownStats else { return "" }
+        return own.tickers.keys.filter { $0 != "KRW=X" }.compactMap { prices?.h[$0]?.dates.last }.max() ?? own.date
+    }
+    /// 동기화로 보낼 계산 자료: 쓰고 있는 받은 자료, 아니면 이 기기 값
+    var calcOut: CalcSnap? {
+        if let c = calcInUse { return c }
+        guard let own = ownStats else { return nil }
+        var px: [String: Double] = [:]
+        for (k, h) in prices?.h ?? [:] where k != "KRW=X" { if let c = h.closes.last, c > 0 { px[k] = c } }
+        return CalcSnap(asOf: ownAsOf, stats: own, px: px, fx0: marRate ?? fx.prevClose)
+    }
+    /// 동기화로 받은 계산 자료를 넣는다. 지금 것보다 새거나 같을 때만 (같으면 받은 쪽)
+    func takeCalc(_ c: CalcSnap) {
+        if let o = calcSnap, o.asOf > c.asOf { return }
+        calcSnap = c
+        c.save()
+    }
     /// 내 토스 키로 받은 지난 종가(일봉)·원/달러. 키를 넣은 기기만
     var tossHist: TossHistory.File? = TossHistory.cached()
     /// 토스 원/달러 (하루 안에 받은 값만)
@@ -53,7 +96,7 @@ final class Market {
     /// 내 토스 키로 받은 종목은 토스 일봉으로 바꿔 둔다 (TossHistory.merged)
     var prices: SitePrices.File? = AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached())) {
         // 내 키가 있으면 전망 입력값도 키로 받은 일봉으로 다시 센다
-        didSet { if Config.yahooOff { stats = SiteStats.local(prices) } }
+        didSet { if Config.yahooOff { ownStats = SiteStats.local(prices) } else { pickCalc() } }
     }
     /// 공개 베타·출시 번들의 자료는 가상 샘플이라 '예시 값'
     var source: String { site != nil ? String(localized: "naeilo 사이트") : YahooSample.quotes.isEmpty || !Config.usesCollectedData ? String(localized: "예시 값") : String(localized: "Yahoo 중계 (테스트)") }
@@ -254,7 +297,7 @@ final class Market {
         if let f = await siteNew { site = f }
         if let r = await marNew { mar = r }
         if let p = await pricesNew { prices = AlpacaHistory.merged(TossHistory.merged(p, tossHist)) }
-        if let s = await statsNew { stats = s }
+        if let s = await statsNew { ownStats = s }
         await customDone
         await extraDone
         await earnDone
@@ -689,6 +732,17 @@ enum TossHistory {
         Store.write(f, name)
         return f
     }
+}
+
+/// 동기화로 옮기는 계산 자료: 전망 입력값(stats)·전망 기준 종가(px, 사이트 티커)·기준 환율(fx0). asOf = 그 값을 센 일봉의 마지막 날
+struct CalcSnap: Codable {
+    var asOf: String
+    var stats: MC.Stats
+    var px: [String: Double]
+    var fx0: Double
+    static let name = "calc_snap.json"
+    static func cached() -> CalcSnap? { Store.readData(name).flatMap { try? JSONDecoder().decode(CalcSnap.self, from: $0) } }
+    func save() { if let d = try? JSONEncoder().encode(self) { Store.writeData(d, Self.name) } }
 }
 
 /// 매매기준율: 사이트가 하루 한 번 저장하는 data/mar.json ({"USD": {"rate", "date"}}). 웹 평가액과 같은 값

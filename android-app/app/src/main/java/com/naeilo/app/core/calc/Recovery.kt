@@ -188,7 +188,7 @@ fun AppModel.mcInputs(full: Boolean): McInputs? {   // ios: Data/Recovery.swift:
     // 같은 사건 목록이면 사인을 다시 만들지 않는다 (화면을 그릴 때마다 불려, 매번 JSON 으로 바꾸면 숫자마다 정규식이 돌아 메모리가 튄다)
     val evSig = evSigMemo?.takeIf { it.first === events }?.second
         ?: ForecastEngine.fnv(NJson.encodeToString(kotlinx.serialization.builtins.ListSerializer(MC.Event.serializer()), events)).also { evSigMemo = events to it }   // ios: Data/Recovery.swift:146
-    return McInputs(st, settings, events, listOf(st.date, evSig, "${settings.nPaths}|${settings.seedU32}|${settings.dof}|${settings.earnings_adjust ?: true}").joinToString("|"))   // ios: Data/Recovery.swift:147
+    return McInputs(st, settings, events, listOf(st.date, Market.shared.statsSig, evSig, "${settings.nPaths}|${settings.seedU32}|${settings.dof}|${settings.earnings_adjust ?: true}").joinToString("|"))   // ios: Data/Recovery.swift:147
 }
 @Volatile private var evSigMemo: Pair<List<MC.Event>, String>? = null
 /** 웹 '경로' 선택지의 최대 */

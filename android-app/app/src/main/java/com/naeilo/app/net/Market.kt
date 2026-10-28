@@ -21,6 +21,8 @@ import com.naeilo.app.core.TossDaily
 import com.naeilo.app.core.TossFeed
 import com.naeilo.app.core.TossKeys
 import com.naeilo.app.core.USSession
+import com.naeilo.app.core.calc.ForecastEngine
+import com.naeilo.app.core.calc.MC
 import com.naeilo.app.core.calc.Parallel
 import com.naeilo.app.core.feedJson
 import com.naeilo.app.core.jArr
@@ -127,7 +129,51 @@ class Market {   // ios: Data/Market.swift:13,14
         return if (u.rate > 0 && Day.dday(u.date) >= -5) MarUse(u.rate, u.date) else null   // ios: Data/Market.swift:44
     }
     /** 종목별 전망 입력값 (사이트가 매일 만든다). 없으면 빌드 때 넣은 파일 */
-    var stats by mutableStateOf(if (Config.yahooOff) SiteStats.local(AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached()))) else SiteStats.load())   // ios: Data/Market.swift:47
+    private var ownState by mutableStateOf(if (Config.yahooOff) SiteStats.local(AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached()))) else SiteStats.load())   // ios: Data/Market.swift:47
+    /** 이 기기가 센 종목별 전망 입력값 (사이트가 매일 만든다. 내 키가 있으면 키 일봉으로 앱에서 센다). 없으면 빌드 때 넣은 파일 */
+    var ownStats: MC.Stats?
+        get() = ownState
+        set(v) { ownState = v; pickCalc() }
+    /** 동기화로 받은 계산 자료 (다른 기기가 센 전망 입력값). 기기마다 받은 시각이 달라도 같은 숫자가 나오게 둘 중 더 새 한 벌만 쓴다 */
+    private var snapState by mutableStateOf(CalcSnap.cached())
+    var calcSnap: CalcSnap?
+        get() = snapState
+        set(v) { snapState = v; pickCalc() }
+    /** 계산에 쓰는 동기화 계산 자료 (이 기기 값이 더 새면 null) */
+    var calcInUse by mutableStateOf<CalcSnap?>(null)
+        private set
+    /** 계산에 쓰는 종목별 전망 입력값: 이 기기 값(ownStats)과 동기화 계산 자료(calcSnap) 중 더 새 한 벌 */
+    var stats by mutableStateOf<MC.Stats?>(null)
+        private set
+    /** 동기화 계산 자료가 이 기기 값보다 새거나 같고, 이 기기 값의 종목을 다 담고 있으면 그것을 쓴다 (같으면 받은 쪽: 두 기기가 한 벌로 모인다) */
+    private fun pickCalc() {
+        val own = ownState; val s = snapState
+        if (s != null && (own == null || (s.stats.tickers.keys.containsAll(own.tickers.keys) && s.asOf >= ownAsOf))) { calcInUse = s; stats = s.stats }
+        else { calcInUse = null; stats = own }
+        statsSig = stats?.let { ForecastEngine.fnv(com.naeilo.app.core.NJson.encodeToString(MC.Stats.serializer(), it)) } ?: "-"
+    }
+    /** 계산에 쓰는 전망 입력값의 지문. 전망 계산 키(mcInputs)에 넣어, 날짜가 같아도 값이 바뀌면 다시 센다 (예전엔 날짜만 봐서 묵은 계산이 남았다) */
+    var statsSig = "-"
+        private set
+    /** 이 기기 전망 입력값의 기준일: 그 값을 센 일봉의 마지막 날 (원/달러는 오늘 값이 늘 붙어 뺀다). 일봉이 없으면 표 날짜 */
+    val ownAsOf: String get() {
+        val own = ownState ?: return ""
+        return own.tickers.keys.filter { it != "KRW=X" }.mapNotNull { prices?.h?.get(it)?.dates?.lastOrNull() }.maxOrNull() ?: own.date
+    }
+    /** 동기화로 보낼 계산 자료: 쓰고 있는 받은 자료, 아니면 이 기기 값 */
+    val calcOut: CalcSnap? get() {
+        calcInUse?.let { return it }
+        val own = ownState ?: return null
+        val px = LinkedHashMap<String, Double>()
+        for ((k, h) in prices?.h ?: emptyMap()) { if (k == "KRW=X") continue; val c = h.closes.lastOrNull(); if (c != null && c > 0) px[k] = c }
+        return CalcSnap(asOf = ownAsOf, stats = own, px = px, fx0 = marRate ?: fx.prevClose)
+    }
+    /** 동기화로 받은 계산 자료를 넣는다. 지금 것보다 새거나 같을 때만 (같으면 받은 쪽) */
+    fun takeCalc(c: CalcSnap) {
+        val o = snapState; if (o != null && o.asOf > c.asOf) return
+        calcSnap = c
+        c.save()
+    }
     /** 내 토스 키로 받은 지난 종가(일봉)·원/달러. 키를 넣은 기기만 */
     var tossHist by mutableStateOf(TossHistory.cached())   // ios: Data/Market.swift:49
     /** 토스 원/달러 (하루 안에 받은 값만) */
@@ -138,7 +184,8 @@ class Market {   // ios: Data/Market.swift:13,14
     var prices: SitePrices.File?   // ios: Data/Market.swift:54
         get() = pricesState
         // 내 키가 있으면 전망 입력값도 키로 받은 일봉으로 다시 센다
-        set(v) { pricesState = v; if (Config.yahooOff) stats = SiteStats.local(v) }   // ios: Data/Market.swift:56
+        set(v) { pricesState = v; if (Config.yahooOff) ownStats = SiteStats.local(v) else pickCalc() }   // ios: Data/Market.swift:56
+    init { pickCalc() }   // 받은 계산 자료와 이 기기 값 중 고르기 (prices 가 생긴 뒤)
     /** 공개 베타·출시 번들의 자료는 가상 샘플이라 '예시 값' */
     val source: String get() = if (site != null) "naeilo 사이트" else if (YahooSample.quotes.isEmpty() || !Config.usesCollectedData) "예시 값" else "Yahoo 중계 (테스트)"   // ios: Data/Market.swift:55
 
@@ -334,7 +381,7 @@ class Market {   // ios: Data/Market.swift:13,14
         siteNew.await()?.let { site = it }   // ios: Data/Market.swift:215
         marNew.await()?.let { mar = it }   // ios: Data/Market.swift:216
         pricesNew.await()?.let { p -> prices = AlpacaHistory.merged(TossHistory.merged(p, tossHist)) }   // ios: Data/Market.swift:227
-        statsNew.await()?.let { stats = it }   // ios: Data/Market.swift:218
+        statsNew.await()?.let { ownStats = it }   // ios: Data/Market.swift:218
         customDone.await()   // ios: Data/Market.swift:219
         extraDone.await()   // ios: Data/Market.swift:220
         earnDone.await()
@@ -774,6 +821,15 @@ object TossHistory {   // ios: Data/Market.swift:439
         Store.write(File.serializer(), f, name)   // ios: Data/Market.swift:535
         f   // ios: Data/Market.swift:536
     }
+}
+
+/** 동기화로 옮기는 계산 자료: 전망 입력값(stats)·전망 기준 종가(px, 사이트 티커)·기준 환율(fx0). asOf = 그 값을 센 일봉의 마지막 날 */
+@Serializable data class CalcSnap(var asOf: String, var stats: MC.Stats, var px: Map<String, Double>, var fx0: Double) {
+    companion object {
+        const val name = "calc_snap.json"
+        fun cached(): CalcSnap? = Store.read(serializer(), name)
+    }
+    fun save() { Store.write(serializer(), this, name) }
 }
 
 /** 매매기준율: 사이트가 하루 한 번 저장하는 data/mar.json ({"USD": {"rate", "date"}}). 웹 평가액과 같은 값 */

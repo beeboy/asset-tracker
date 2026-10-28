@@ -369,6 +369,8 @@ struct PriceBasisView: View {
                     Card {
                         Toggle(isOn: Binding(get: { yahooOff }, set: { v in yahooOff = v; setYahooOff(v) })) { Text("Yahoo·사이트 시세 끄기").appFont(15, .bold) }.tint(Theme.teal).disabled(Config.myKey)
                         Text(Config.myKey ? "내 키가 있으면 늘 꺼져요." : "시험용이에요. 켜면 내 키로 받은 시세만 보여요.").appFont(13).foregroundStyle(Theme.sub)
+                        // 두 기기 숫자 비교용 (2026-10-28): 전망 입력값을 그대로 보여 준다
+                        Text(m.calcDiag).font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.sub).textSelection(.enabled)
                         if TossKeys.stored {
                             Toggle(isOn: Binding(get: { tossPause }, set: { v in tossPause = v; setPause("toss", v) })) { Text("토스 키 멈추기").appFont(15, .bold) }.tint(Theme.teal)
                         }

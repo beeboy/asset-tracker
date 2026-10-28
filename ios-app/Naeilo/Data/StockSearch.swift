@@ -253,9 +253,10 @@ final class CustomSymbols {
         if krLog.isEmpty, let s = items.first(where: { $0.id == KoreaEstimate.sumId }), let p = s.kp, p > 0 { krLog = [.init(d: s.kd ?? Day.today, v: p)] }
     }
     /// 내 폰에 저장한 파일에서 불러오기: 같은 종목은 파일 값으로
-    func restore(_ new: [Saved], _ h: [String: Hist]) {
+    func restore(_ new: [Saved], _ h: [String: Hist], kr: [MC.KrDay]? = nil) {
         items = items.filter { s in !new.contains { $0.id == s.id } } + new
         hist.merge(h) { _, b in b }
+        if let kr, !kr.isEmpty { krLog = MC.krNorm(kr) }   // 국내 주식 합계 기록도 파일 값으로 (이 기기가 새로 시작한 기록을 덮는다)
         save()
     }
     private func save() {

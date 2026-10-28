@@ -45,10 +45,10 @@ final class Sync {
         get { (d.data(forKey: "sync.site")).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:] }
         set { d.set(try? JSONSerialization.data(withJSONObject: newValue), forKey: "sync.site"); siteFc = nil; cashC = nil }
     }
-    /// 사이트 입력값의 사건 목록·전망 설정. 앱 전망(ForecastEngine)이 그 사람의 웹과 같은 사건으로 계산한다. 동기화를 안 켰으면 nil
+    /// 사이트 입력값의 사건 목록·전망 설정. 앱 전망(ForecastEngine)이 그 사람의 웹과 같은 사건으로 계산한다. 받은 적이 없으면 nil.
+    /// 동기화를 켰는지는 보지 않는다: 동기화는 값을 옮기기만 하고, 같은 값이면 켜든 끄든 같은 숫자가 나와야 한다 (저장 파일도 이 칸을 옮긴다)
     @ObservationIgnored private var siteFc: (events: [MC.Event]?, model: MC.Settings?)? = nil
     var siteForecast: (events: [MC.Event]?, model: MC.Settings?) {
-        guard isOn else { return (nil, nil) }
         if let c = siteFc { return c }
         let st = siteState
         func dec<T: Decodable>(_ v: Any?, _ t: T.Type) -> T? {
@@ -59,15 +59,23 @@ final class Sync {
         siteFc = c
         return c
     }
-    /// 사이트 입력값의 현금 (원화, 달러). 앱은 입력 칸 없이 받은 값만 쓴다 (내 길·전망에 웹과 같은 식으로). 동기화를 안 켰으면 0
+    /// 사이트 입력값의 현금 (원화, 달러). 앱은 입력 칸 없이 받은 값만 쓴다 (내 길·전망에 웹과 같은 식으로). 받은 적이 없으면 0
     @ObservationIgnored private var cashC: (krw: Double, usd: Double)? = nil
     var siteCash: (krw: Double, usd: Double) {
-        guard isOn else { return (0, 0) }
         if let c = cashC { return c }
         let o = siteState["cash"] as? [String: Any]
         let c = (krw: Self.num(o?["krw"]), usd: Self.num(o?["usd"]))
         cashC = c
         return c
+    }
+    /// 저장 파일로 옮기는 계산 칸 (사건·전망 설정·현금). 받은 적이 없으면 빈 묶음이라 불러온 폰도 비운다
+    static let calcKeys = ["events", "model", "cash"]
+    var calcSite: Data? { try? JSONSerialization.data(withJSONObject: siteState.filter { Self.calcKeys.contains($0.key) }) }
+    func restoreCalcSite(_ data: Data) {
+        guard let o = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return }
+        var st = siteState
+        for k in Self.calcKeys { st[k] = o[k] }
+        siteState = st
     }
     /// 받을 때 들여오지 않은 사이트 줄 (보낼 때 그대로 돌려보낸다)
     private var keepTickers: Set<String> {
@@ -236,6 +244,10 @@ final class Sync {
                 let mc = Calm.merge(m.calm, c)
                 if mc != m.calm { m.calm = mc }
             }
+            // 계산 자료(전망 입력값)는 언제나 더 새 한 벌로 (어느 쪽이 더 새것이든 두 기기가 같은 입력으로 센다)
+            let rc = ((r.state?["app"] as? [String: Any])?["calc"]).flatMap { try? JSONSerialization.data(withJSONObject: $0) }.flatMap { try? JSONDecoder().decode(CalcSnap.self, from: $0) }
+            if let rc { Market.shared.takeCalc(rc) }
+            let sendCalc = Self.ownCalcNewer(than: rc?.asOf)
             if let st = r.state, r.at > localAt {
                 if localAt == 0 && hasLocalData(m) {
                     // 처음 켤 때 양쪽 다 값이 있으면 묻는다 (사이트와 같은 동작)
@@ -252,8 +264,24 @@ final class Sync {
                 return
             }
             pulledOnce = true
+            // 이 기기 계산 자료가 더 새면 바로 올린다 (다른 기기가 이 한 벌로 센다)
+            if sendCalc, conflict == nil { localAt = Date().timeIntervalSince1970 * 1000; try await push(m); return }
             state = .ok(Date())
         } catch { state = .failed(error.localizedDescription) }
+    }
+
+    /// 이 기기가 센 계산 자료가 받은 것(asOf)보다 새로운지
+    @MainActor
+    static func ownCalcNewer(than asOf: String?) -> Bool {
+        let mk = Market.shared
+        return mk.calcInUse == nil && mk.ownStats != nil && mk.ownAsOf > (asOf ?? "")
+    }
+    /// 이 기기 일봉이 새로 들어와 계산 자료가 더 새졌을 때 (App.swift): 바로 올린다
+    @MainActor
+    func calcChanged(_ m: AppModel) {
+        guard isOn, conflict == nil, pulledOnce, Self.ownCalcNewer(than: Market.shared.calcSnap?.asOf) else { return }
+        localAt = Date().timeIntervalSince1970 * 1000
+        Task { @MainActor in do { try await push(m) } catch { dirty = true; state = .failed(error.localizedDescription) } }
     }
 
     /// 처음 켤 때 고른 쪽으로
@@ -374,6 +402,12 @@ final class Sync {
         // 내 투자 습관 기록: 두 기기가 같은 지수를 내도록 (홈 소식은 기기마다 따로라 빼고)
         var cm = m.calm; cm.notes = nil
         if let d = try? JSONEncoder().encode(cm), let j = try? JSONSerialization.jsonObject(with: d) { app["calm"] = j }
+        // 계산 자료(전망 입력값): 기기마다 받은 시각이 달라도 같은 숫자가 나오게 둘 중 더 새 한 벌을 함께 쓴다
+        if let c = Market.shared.calcOut, let d = try? JSONEncoder().encode(c), let j = try? JSONSerialization.jsonObject(with: d) {
+            app["calc"] = j
+            // 올린 한 벌을 이 기기도 쓴다 (이 기기 값은 원/달러 오늘 값 등으로 계속 바뀌어, 받은 기기와 다시 갈라지지 않게)
+            if Market.shared.calcInUse == nil { Market.shared.takeCalc(c) }
+        }
         st["app"] = app
         // 목표는 사이트와 같은 칸(goal)에. 회복 루트(본전 기준)와 사이트 샘플 중에는 사이트 목표를 그대로 둔다
         if m.isGoal, (st["sample"] as? Bool) != true { st["goal"] = m.siteGoal(st["goal"] as? [String: Any]) }

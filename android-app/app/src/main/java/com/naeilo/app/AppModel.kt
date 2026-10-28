@@ -683,13 +683,17 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
         val inp = mcInputs(true); if (bare || rs.isEmpty() || H <= today || inp == null) return null   // ios: Data/AppModel.swift:684 full
         // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (웹 buildModelNow 와 같다. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게).
         // 사이트에 없는 종목은 전일 종가, 매매기준율이 없으면 전일 환율: 키가 1분마다 바뀌어 계산이 끝없이 다시 돌지 않게 (PR #115 발열)
+        // 동기화 계산 자료를 쓰면 그 기준 종가·환율로 (두 기기가 같은 입력으로 센다)
+        val                                                                                                                calc = Market.shared.calcInUse
         val px = rs.map { r ->   // ios: Data/AppModel.swift:688
+            val sp = if (!Sample.isVirtual(r.id)) calc?.px?.get(SiteStats.key(r.id)) else null
+            if (sp != null && sp > 0) return@map sp
             val c = if (!Sample.isVirtual(r.id)) Market.shared.prices?.h?.get(SiteStats.key(r.id))?.closes?.lastOrNull() else null   // ios: Data/AppModel.swift:689
             if (c != null && c > 0) return@map c
             val q = r.sym.quote   // ios: Data/AppModel.swift:690
             if (q.prevClose > 0) q.prevClose else q.last   // ios: Data/AppModel.swift:691
         }
-        val fx0 = Market.shared.marRate ?: Market.shared.fx.prevClose   // ios: Data/AppModel.swift:693
+        val fx0 = calc?.fx0 ?: Market.shared.marRate ?: Market.shared.fx.prevClose   // ios: Data/AppModel.swift:693
         val hs = rs.zip(px).map { (r, p) -> MC.Holding(key = SiteStats.mcKey(r.id), ccy = if (r.sym.currency == Currency.usd) "USD" else "KRW", valueKrw = r.h.qty * p * (if (r.sym.currency == Currency.usd) fx0 else 1.0), price0 = p) }   // ios: Data/AppModel.swift:694
         val st = inp.st; val settings = inp.settings; val events = inp.events   // ios: Data/AppModel.swift:695
         val snap = rs.zip(px).joinToString(",") { (r, p) -> "${SiteStats.mcKey(r.id)}:${r.h.qty}:${p}" }   // ios: Data/AppModel.swift:696
@@ -699,6 +703,41 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
 
     /** 전망의 월 적립 (원): 웹처럼 목표의 매달 넣는 돈(monthly_contribution)을 넣는다. 목표 루트가 아니면 0. monthly 는 동기화 호환으로만 남긴다 */
     val fcMonthly: Double get() = if (isGoal) gM * 1e4 else 0.0   // ios: Data/AppModel.swift:702
+    /** 두 기기 숫자 비교용 전망 입력값 요약 (설정 > 시세 기준, 내부 베타). 아이폰 calcDiag 와 같은 줄·같은 자릿수 */
+    val calcDiag: String get() {
+        val mk = Market.shared; val f4 = { x: Double -> String.format(java.util.Locale.US, "%.4f", x) }
+        val L = ArrayList<String>()
+        L.add("fx val ${f4(mk.valFx)} mar ${mk.marUse?.let { f4(it.rate) + " " + it.date } ?: "-"} toss ${mk.tossFx?.let { f4(it.rate) } ?: "-"} prev ${f4(mk.fx.prevClose)}")
+        L.add("calc own ${mk.ownAsOf} snap ${mk.calcSnap?.asOf ?: "-"} use ${if (mk.calcInUse != null) 1 else 0}")
+        for (r in rows) {
+            val k = SiteStats.key(r.id); val h = mk.prices?.h?.get(k)
+            L.add("${r.id} q ${f4(r.h.qty)} last ${f4(r.sym.last)} prev ${f4(r.sym.quote.prevClose)} nk ${if (mk.needsKey(r.sym)) 1 else 0} bars ${h?.dates?.size ?: 0} ${h?.dates?.lastOrNull() ?: "-"} ${f4(h?.closes?.lastOrNull() ?: 0.0)}")
+        }
+        mk.prices?.h?.get("KRW=X")?.let { fxh -> L.add("KRW=X bars ${fxh.dates.size} ${fxh.dates.lastOrNull() ?: "-"} ${f4(fxh.closes.lastOrNull() ?: 0.0)}") }
+        val st = mk.stats
+        if (st != null) {
+            L.add("st ${st.date} n ${st.tickers.size} fxvol ${f4(SiteStats.fx().second)}")
+            for (r in rows) {
+                val k = SiteStats.mcKey(r.id); val t = st.tickers[k]
+                L.add("  $k mu ${f4(t?.mu ?: -9.0)} tr ${f4(t?.trend ?: -9.0)} vol ${f4(t?.vol ?: -9.0)} n ${t?.n ?: -1} rate ${f4(st.betas?.get("rate")?.get(k) ?: -9.0)}")
+            }
+        } else L.add("st -")
+        mcInputs(true)?.let { inp -> L.add("sig ${inp.sig} ev ${inp.events.size} sc ${inp.settings.scenario ?: "-"}") }
+        mcInputs(true)?.let { inp ->
+            val evs = inp.events.map { e -> listOf(e.id ?: "-", if (e.on) "1" else "0", e.date ?: "-", e.target ?: "-", e.factor ?: "-", e.cat ?: "-", e.rep ?: "-", f4(e.prob), f4(e.mean), f4(e.sd), f4(e.volMult), f4(e.volDays)).joinToString("|") }
+            L.add("evfp ${ForecastEngine.fnv(evs.joinToString(";"))} on ${inp.events.count { it.on }}")
+        }
+        val job = forecastJob; val run = ForecastEngine.shared.run
+        L.add("job ${job?.let { ForecastEngine.fnv(it.key) } ?: "-"} run ${run?.let { ForecastEngine.fnv(it.key) } ?: "-"}")
+        if (run != null) {
+            L.add("run ev ${run.events} A ${run.ev.A} M ${run.ev.M} P ${run.ev.P} v0 ${f4(run.ev.v0.sum())} mo ${run.ev.monthDates.firstOrNull() ?: "-"}~${run.ev.monthDates.lastOrNull() ?: "-"} ms ${run.ms.toInt()}")
+            for (f in run.factors) L.add("  ${f.key} v ${f4(f.vol)} b ${f4(f.base)} s ${f4(f.smooth)} bl ${f4(f.blend)} ev ${f4(f.evVar)}")
+        }
+        val fc = forecast
+        L.add("lens ${if (lens == Lens.base) "base" else if (lens == Lens.smooth) "smooth" else "mine"} trust ${f4(trust)} shock ${if (shock) 1 else 0}")
+        L.add("fc ex ${if (fc.exact) 1 else 0} mu ${f4(fc.mu)} sg ${f4(fc.sigma)} pG ${f4(fc.pGoal)} goal ${f4(mcGoal)} cash ${f4(cashKrw)} mon ${f4(fcMonthly)} H $forecastHorizon V0 ${f4(trackValue)} K ${f4(keyValue)}")
+        return L.joinToString("\n")
+    }
     val forecast: Forecast get() = forecast(lens)   // ios: Data/AppModel.swift:703
     /** 시나리오 하나의 전망. 같은 경로를 μ만 바꿔 다시 무게를 달아서(reweight) 셋을 같이 불러도 싸다 */
     fun forecast(lens: Lens): Forecast {   // ios: Data/AppModel.swift:705

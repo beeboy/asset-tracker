@@ -176,7 +176,9 @@ class ForecastEngine private constructor() {   // ios: Data/ForecastEngine.swift
         }
     }
     /** 앱이 다시 화면에 뜨면 멈춘 계산을 이어 간다 */
-    fun resume() { val w = waiting ?: return; waiting = null; ensure(w) }   // ios: Data/ForecastEngine.swift:90
+    fun resume() { val w = waiting ?: return; waiting = null; ensure(w) }
+    /** 속도 재기용 (내부 베타): 저장된 경로를 버리고 다시 계산한다. 화면이 run 을 다시 읽으며 ensure 가 새로 돈다 */
+    fun rerun() { if (pending != null) return; disk = null; views.clear(); lastView = null; run = null }   // ios: Data/ForecastEngine.swift:90
 
     /** 렌즈(base·smooth·mine)와 추세 신뢰로 본 결과. withEvents 가 거짓이면 사건 없는 경로 (웹 '미반영').
      *  Swift 는 그 자리에서 reweight 하지만 여기서는 화면 밖에서 계산하고, 끝날 때까지 같은 경로의 마지막 결과(없으면 null)를 준다 */
