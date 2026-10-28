@@ -225,27 +225,28 @@ private fun FillLast(minTotal: Dp, minLast: Dp, gap: Dp, content: @Composable ()
     }
 }
 
-/** 큰 흐름 박스 값: 일봉이 있는 종목의 작은 흐름(6% 넘는 출렁임 띠) 마지막 방향을 평가액 몫으로 쌓는다 */
+/** 큰 흐름 박스 값: 종목마다 세 흐름 마지막 방향(+1·0·-1)을 출렁임에 반비례한 무게로 더해 점수를 내고, 종목 수로 나눈다 (평가액은 안 씀) */
 // ios: Views/FlowView.swift:39
-class Mood(val shares: List<Double> = listOf(0.0, 0.0, 0.0), val side: Int = 0, val strong: Boolean = false, val box: List<String> = emptyList())
+class Mood(val shares: List<Double> = listOf(0.0, 0.0, 0.0), val side: Int = 0, val strong: Boolean = false, val box: List<String> = emptyList(), val net: Double = 0.0)
 
 // ios: Views/FlowView.swift:40
+@Suppress("UNUSED_PARAMETER")
 private fun flowMood(byWeight: List<String>, weight: (String) -> Double, series: (String) -> FlowSeries?): Mood {
-    // ios: Views/FlowView.swift:41,42,43
-    val items: List<Triple<String, Int, Double>> = byWeight.mapNotNull { id ->
-        series(id)?.trends?.getOrNull(0)?.lastOrNull()?.let { Triple(id, if (it.dir > 0) 1 else if (it.dir < 0) -1 else 0, weight(id)) }
+    // 무게 = 작은 6% · 중간 12% · 큰 22% 의 역수 비율 (작은 56% · 중간 28% · 큰 15%)
+    val k = listOf(1 / 0.06, 1 / 0.12, 1 / 0.22); val ks = k.sum()   // ios: Views/FlowView.swift:42
+    // ios: Views/FlowView.swift:43,44,45,46
+    val items: List<Pair<String, Double>> = byWeight.mapNotNull { id ->
+        val d = (series(id)?.trends ?: emptyList()).mapNotNull { ts -> ts.lastOrNull()?.let { if (it.dir > 0) 1.0 else if (it.dir < 0) -1.0 else 0.0 } }
+        if (d.size == k.size) id to d.indices.sumOf { d[it] * k[it] } / ks else null
     }
-    if (items.isEmpty()) return Mood()   // ios: Views/FlowView.swift:44
-    val total = items.sumOf { it.third }   // ios: Views/FlowView.swift:45
-    val w = { d: Int -> items.filter { it.second == d }.sumOf { if (total > 0) it.third / total else 1.0 / items.size } }   // ios: Views/FlowView.swift:46
-    val sh = listOf(w(1), w(0), w(-1))   // ios: Views/FlowView.swift:47
-    // 횡보는 빼고 상승·하락 중 큰 쪽. 둘 다 없으면 횡보
-    val side = if (sh[0] == 0.0 && sh[2] == 0.0) 0 else if (sh[0] >= sh[2]) 1 else -1   // ios: Views/FlowView.swift:49
-    val win = if (side > 0) sh[0] else if (side < 0) sh[2] else sh[1]   // ios: Views/FlowView.swift:50
-    return Mood(sh, side, win > 0.5, items.filter { it.second == side }.map { it.first })   // ios: Views/FlowView.swift:51
+    if (items.isEmpty()) return Mood()   // ios: Views/FlowView.swift:47
+    val n = items.size.toDouble(); val up = items.sumOf { maxOf(it.second, 0.0) } / n; val dn = items.sumOf { maxOf(-it.second, 0.0) } / n   // ios: Views/FlowView.swift:48
+    // 점수 평균이 0 에 가까우면 횡보. 박스 버튼 = 같은 쪽 점수 종목 (횡보면 전부)
+    val net = up - dn; val side = if (abs(net) < 0.005) 0 else if (net > 0) 1 else -1   // ios: Views/FlowView.swift:50
+    return Mood(listOf(up, maxOf(0.0, 1 - up - dn), dn), side, abs(net) > 0.5, items.filter { side == 0 || it.second * side > 0 }.map { it.first }, abs(net))   // ios: Views/FlowView.swift:51
 }
 
-// 맨 위 큰 흐름 박스: 홈에서 고른 박스 모양. 큰 글자 = 상승·하락 중 큰 쪽 (절반 넘으면 강한), 버튼 = 그쪽 종목만
+// 맨 위 큰 흐름 박스: 홈에서 고른 박스 모양. 큰 글자 = 종목 점수 평균의 방향·크기 (절반 넘으면 강한), 버튼 = 그쪽 종목만
 // ios: Views/FlowView.swift:103
 @Composable
 private fun MoodBox(md: Mood, look: BoxLook, cur: String?, name: (String) -> String, onPick: (String) -> Unit) {
@@ -254,7 +255,7 @@ private fun MoodBox(md: Mood, look: BoxLook, cur: String?, name: (String) -> Str
     val head = if (md.side == 0) tr("횡보")
         else if (md.side > 0) (if (md.strong) tr("강한 상승") else tr("약한 상승"))
         else (if (md.strong) tr("강한 하락") else tr("약한 하락"))
-    val share = if (md.side > 0) md.shares[0] else if (md.side < 0) md.shares[2] else md.shares[1]   // ios: Views/FlowView.swift:109
+    val share = md.net   // ios: Views/FlowView.swift:109
     // ios: Views/FlowView.swift:110,123,124,125,126
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).moodBackdrop(look).padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 16.dp)) {
         // ios: Views/FlowView.swift:111

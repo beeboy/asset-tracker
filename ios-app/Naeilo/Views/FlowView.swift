@@ -35,20 +35,20 @@ struct FlowView: View {
     /// 아래 칩 줄: 큰 흐름 박스에 없는 종목만 비중 순
     private var restIds: [String] { let b = Set(mood.box); return byWeight.filter { !b.contains($0) } }
 
-    /// 큰 흐름 박스 값: 일봉이 있는 종목의 작은 흐름(6% 넘는 출렁임 띠) 마지막 방향을 평가액 몫으로 쌓는다
-    struct Mood { var shares: [Double] = [0, 0, 0]; var side = 0; var strong = false; var box: [String] = [] }
+    /// 큰 흐름 박스 값: 종목마다 세 흐름 마지막 방향(+1·0·-1)을 출렁임에 반비례한 무게로 더해 점수를 내고, 종목 수로 나눈다 (평가액은 안 씀)
+    struct Mood { var shares: [Double] = [0, 0, 0]; var side = 0; var strong = false; var box: [String] = []; var net = 0.0 }
     private var mood: Mood {
-        let items: [(String, Int, Double)] = byWeight.compactMap { id in
-            store.series(id)?.trends[0].last.map { (id, $0.dir > 0 ? 1 : $0.dir < 0 ? -1 : 0, weight(id)) }
+        // 무게 = 작은 6% · 중간 12% · 큰 22% 의 역수 비율 (작은 56% · 중간 28% · 큰 15%)
+        let k = [1 / 0.06, 1 / 0.12, 1 / 0.22], ks = k.reduce(0, +)
+        let items: [(String, Double)] = byWeight.compactMap { id in
+            let d = (store.series(id)?.trends ?? []).compactMap { $0.last.map { Double($0.dir.signum()) } }
+            return d.count == k.count ? (id, zip(d, k).reduce(0) { $0 + $1.0 * $1.1 } / ks) : nil
         }
         guard !items.isEmpty else { return Mood() }
-        let total = items.reduce(0) { $0 + $1.2 }
-        let w = { (d: Int) in items.filter { $0.1 == d }.reduce(0) { $0 + (total > 0 ? $1.2 / total : 1 / Double(items.count)) } }
-        let sh = [w(1), w(0), w(-1)]
-        // 횡보는 빼고 상승·하락 중 큰 쪽. 둘 다 없으면 횡보
-        let side = sh[0] == 0 && sh[2] == 0 ? 0 : sh[0] >= sh[2] ? 1 : -1
-        let win = side > 0 ? sh[0] : side < 0 ? sh[2] : sh[1]
-        return Mood(shares: sh, side: side, strong: win > 0.5, box: items.filter { $0.1 == side }.map(\.0))
+        let n = Double(items.count), up = items.reduce(0) { $0 + max($1.1, 0) } / n, dn = items.reduce(0) { $0 + max(-$1.1, 0) } / n
+        // 점수 평균이 0 에 가까우면 횡보. 박스 버튼 = 같은 쪽 점수 종목 (횡보면 전부)
+        let net = up - dn, side = abs(net) < 0.005 ? 0 : net > 0 ? 1 : -1
+        return Mood(shares: [up, max(0, 1 - up - dn), dn], side: side, strong: abs(net) > 0.5, box: items.filter { side == 0 || $0.1 * Double(side) > 0 }.map(\.0), net: abs(net))
     }
     private func name(_ id: String) -> String { Sample.symbol(id)?.name ?? id }
     private var store: FlowStore { FlowStore.shared }
@@ -99,14 +99,14 @@ struct FlowView: View {
         .refreshable { await Market.shared.pullRefresh(model); await store.ensure(ids) }
     }
 
-    // 맨 위 큰 흐름 박스: 홈에서 고른 박스 모양. 큰 글자 = 상승·하락 중 큰 쪽 (절반 넘으면 강한), 버튼 = 그쪽 종목만
+    // 맨 위 큰 흐름 박스: 홈에서 고른 박스 모양. 큰 글자 = 종목 점수 평균의 방향·크기 (절반 넘으면 강한), 버튼 = 그쪽 종목만
     private var moodBox: some View {
         let md = mood, look = BoxLook(rawValue: lookRaw) ?? .jump
         let c = md.side > 0 ? TodayBox.upC : md.side < 0 ? TodayBox.downC : TodayBox.dim
         let head = md.side == 0 ? String(localized: "횡보")
             : md.side > 0 ? (md.strong ? String(localized: "강한 상승") : String(localized: "약한 상승"))
             : (md.strong ? String(localized: "강한 하락") : String(localized: "약한 하락"))
-        let share = md.side > 0 ? md.shares[0] : md.side < 0 ? md.shares[2] : md.shares[1]
+        let share = md.net
         return VStack(alignment: .leading, spacing: 0) {
             HStack { Text("내 종목 · 최근 흐름"); Spacer(); FreshLabel() }.appFont(13).foregroundStyle(TodayBox.dim)
             (Text(head + " · ").foregroundColor(BoxInk.ink) + Text(AppModel.pct(share)).foregroundColor(c))
