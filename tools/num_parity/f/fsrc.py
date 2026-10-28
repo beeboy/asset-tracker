@@ -47,6 +47,9 @@ final class AppModel {{
 }}
 {span("Views/HoldingsView.swift", "enum HoldingEdit {", "    }", 1, 2)}
 }}
+extension Double {{
+{find("Data/AppModel.swift", "    func usdText(_ f: ClosedRange<Int>", 3)}
+}}
 
 let dir = URL(fileURLWithPath: CommandLine.arguments[1])
 let inp = try! JSONSerialization.jsonObject(with: Data(contentsOf: dir.appendingPathComponent("input.json"))) as! [String: Any]

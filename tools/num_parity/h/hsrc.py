@@ -41,7 +41,8 @@ enum Remind {{
 {span("Data/Remind.swift", "    static func week(_ d: Date) -> String {", "    }")}
 }}
 enum MarketEvents {{
-{span("Data/Remind.swift", "    struct Rule { let id: String; let target: String; let kind: String; let date: String; let rep: String }", "    }", 1, 2)}
+{span("Data/Remind.swift", "    struct Rule { let id: String; let target: String; let kind: String; let date: String; let rep: String }", "    ]")}
+{span("Data/Remind.swift", "    static func dates(_ r: Rule, from: String, until: String) -> [String] {", "    }", 1, 2)}
 }}
 {span("Data/Remind.swift", "struct BlogFile: Codable {", "}")}
 

@@ -21,6 +21,8 @@ TOL = 1e-12
 TOL_KEYS = {"bands", "terminal", "mdd_median", "blend", "fxAt", "factorMove", "replay"}
 # D 단계 augment: 아이폰은 날짜→수익률을 사전(순서 없음)에 담아 더하는 순서가 실행마다 달라 끝자리가 흔들린다. 같은 상대 1e-12
 TOL_KEYS |= {"augment"}
+# 전망 요인 smooth: exp(g + ½·Δσ²) − 1 을 거친다 (Darwin libm 과 JVM exp 끝자리). 같은 상대 1e-12
+TOL_KEYS |= {"smooth"}
 # E 단계 첫 질문 예보 카드: value = exp(g·t + z·σ·√t) 금액, fanStart = 그 금액으로 정한 화면 자리. 같은 상대 1e-12
 TOL_KEYS |= {"value", "fanStart"}
 # G2 내 길: 목표 길(need)은 pow 를 거친다 (Darwin libm 과 Java pow 끝자리)
