@@ -50,8 +50,8 @@ val copyIosAssets by tasks.registering(Sync::class) {
     // 아이폰 번들과 같은 시세 자료 ('시세 자료 넣기'). 내부 베타는 사이트가 모은 data/, 공개 베타·출시는 가상 샘플 data/sample/
     val internal = providers.gradleProperty("naeilo.channel").getOrElse("internalBeta") == "internalBeta"
     val dataDir = if (internal) "../../data" else "../../data/sample"
-    // 공개 베타·출시는 가상 샘플의 배당·환율 값(calc.json)도 넣는다. 내부 베타는 지금처럼 받은 값만
-    from(dataDir) { if (internal) include("quotes.json", "stats.json") else include("quotes.json", "stats.json", "calc.json") }
+    // 배당·환율 값(calc.json)도 아이폰처럼 늘 넣는다. 내부 베타에서 내 키를 켜면(usesCollectedData 꺼짐) 번들 값만 읽기 때문
+    from(dataDir) { include("quotes.json", "stats.json", "calc.json") }
     from("$dataDir/prices") { include("*.json"); into("prices") }
     into(layout.buildDirectory.dir("iosAssets"))
 }

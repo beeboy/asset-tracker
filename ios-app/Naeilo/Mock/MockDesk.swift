@@ -591,12 +591,12 @@ final class MockDesk {
             return false
         }
         let today = MockFmt.day(Date())
-        // 거래대금 바닥 (MockClock.amountFloor 억) · 장중이면 15분 재확인 (처음 걸린 뒤 recheck 지난 훑기에서 다시 걸린 종목만)
+        // 거래대금 바닥 (MockClock.amountFloor 억, 지난 20일 하루 평균. 옛 훑기 결과는 오늘 누적) · 장중이면 15분 재확인 (처음 걸린 뒤 recheck 지난 훑기에서 다시 걸린 종목만)
         let floor = MockClock.amountFloor, first = s.firstHitDay == today ? (s.firstHit ?? [:]) : [:]
         sc.hits = sc.hits.filter { h in
-            let amt = h.amount ?? 0
+            let amt = h.amt20 ?? h.amount ?? 0
             if amt < floor {
-                capped.append(MockCalc.Skip(code: h.code, name: h.name, why: "거래대금 바닥 · \(MockFmt.num((amt * 10).rounded() / 10))억 < \(MockFmt.num(floor))억"))
+                capped.append(MockCalc.Skip(code: h.code, name: h.name, why: "거래대금 바닥 · 20일 평균 \(MockFmt.num((amt * 10).rounded() / 10))억 < \(MockFmt.num(floor))억"))
                 return false
             }
             guard phase == .open else { return true }

@@ -42,8 +42,8 @@ import org.robolectric.annotation.GraphicsMode
 class TopBoxShot {
     @get:Rule val rule = createComposeRule()
 
-    private val goal = BoxScene(label = "평가액", amount = 4.9782e8, f = 0.5, plan = 0.55, ticks = listOf("1년" to 0.62, "2년" to 0.8),
-        target = "10억", half = "5억", today = -0.043, ret = 0.703, status = "조금 늦어요")
+    private val goal = BoxScene(label = "평가액", amount = 4.9782e8, f = 0.5, plan = 0.55,
+        target = "10억", today = -0.043, ret = 0.703, status = "조금 늦어요")
     private val chance = ChanceBox.Data(head = "10억 · 2029.10 · 3.0년 남음", verdict = "낮음", pct = "33%", status = "", now = 0.42, goal = 0.83,
         dots = listOf(0.5, 0.58, 0.92), goalLabel = "10억", foot = "셋 중 하나만 선을 넘음", nowText = "지금 5.04억")
 

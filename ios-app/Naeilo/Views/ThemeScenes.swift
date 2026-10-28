@@ -3,7 +3,7 @@ import UIKit
 
 // MARK: 새 테마 셋 (2026-10-24): 도리와 문어 · 피노키오와 새 · 철수와 영희(비튼 무궁화)
 // 홈 장면(300×170 판) + 종목·흐름 띠·바탕 + 분석 막대 + 작은 등장인물. 기준 시안: 새 홈 3장, 종목·흐름·분석 다크 18장
-// 공통: 등장인물 자리 = 목표 대비 지금, 50% 자리에 '계획' 눈금, 끝점 = 목표 금액.
+// 공통: 등장인물 자리 = 목표 대비 지금, 25·50·75% 눈금, 끝점 = 목표 금액.
 // 장면 그림은 값이 바뀔 때만 다시 그리고, 움직임은 작은 조각만 정해진 박자에 짧게 (화면 밖·동작 줄이기면 멈춘다)
 
 /// 오른 날·떨어진 날 (오늘 등락이 없으면 오른 날처럼 차분하게)
@@ -416,14 +416,11 @@ struct DoryScene: View {
             Canvas { ctx, _ in
                 let all = Path(CGRect(x: 0, y: 0, width: 300, height: 170))
                 ctx.fill(all, with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x0F1A35 : 0xB3D9F4), Color(hex: dk ? 0x26406F : 0xF4F9FE)]), startPoint: .zero, endPoint: pt(0, 170)))
+                // 낮 구름은 판 위쪽이 잘려 반만 보여 뺐다 (2026-10-28)
                 if dk {
                     for (x, y, r) in [(190, 20, 0.8), (230, 44, 0.6), (160, 36, 0.5)] as [(CGFloat, CGFloat, CGFloat)] { ctx.fill(circle(x, y, r), with: hex(0xC9D3EA)) }
-                } else {
-                    ctx.fill(Path(ellipseIn: CGRect(x: 182, y: 25, width: 36, height: 10)), with: hex(0xFFFFFF))
-                    ctx.fill(Path(ellipseIn: CGRect(x: 201, y: 21, width: 18, height: 10)), with: hex(0xFFFFFF))
                 }
                 var op = ctx; op.translateBy(x: 246, y: 60); ThemeArt.opera(op, dk: dk)
-                Sk.text(ctx, s.target, 270, 50.5, Color(hex: dk ? 0xFFD98A : 0x9A6A00), size: 9.5, bold: true, anchor: .center)
                 // 바다
                 let sea = Path(CGRect(x: 0, y: 82, width: 300, height: 88))
                 ctx.fill(sea, with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x1F78B4 : 0x6FC0EA), Color(hex: dk ? 0x0A3560 : 0x2F7FBF)]), startPoint: pt(0, 82), endPoint: pt(0, 170)))
@@ -442,20 +439,31 @@ struct DoryScene: View {
                     var p = Path(); p.move(to: pt(a.0, a.1)); p.addQuadCurve(to: pt(b.0, b.1), control: pt(c1.0, c1.1)); p.addQuadCurve(to: pt(e.0, e.1), control: pt(c2.0, c2.1)); p.closeSubpath()
                     ctx.fill(p, with: hex(dk, 0x3A9A6A, 0x3FAE7A))
                 }
-                // 계획 눈금 (50%)
-                ctx.stroke(Sk.line(pt(165, 150), pt(165, 160)), with: hex(dk, 0x8A5A00, 0xFFD98A), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
-                Sk.text(ctx, String(localized: "계획"), 165, 165.5, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 8, bold: !dk, anchor: .center)
-                // 수족관
-                let tank = Path(roundedRect: CGRect(x: 6, y: 90, width: 44, height: 66), cornerRadius: 3)
-                ctx.fill(tank, with: dk ? hex(0x9FD6EE, 0.18) : hex(0xFFFFFF, 0.28)); ctx.stroke(tank, with: hex(dk, 0xFFFFFF, 0xCFEFFF), lineWidth: 1.5)
-                ctx.fill(Path(CGRect(x: 6, y: 90, width: 44, height: 6)), with: dk ? hex(0xCFEFFF, 0.35) : hex(0xFFFFFF, 0.5))
-                for (x, y, r) in [(14, 153, 2.5), (20, 154, 2), (40, 153, 3)] as [(CGFloat, CGFloat, CGFloat)] { ctx.fill(circle(x, y, r), with: hex(dk, 0x8A94A8, 0x7F8AA3)) }
-                var pl = Path(); pl.move(to: pt(44, 153)); pl.addQuadCurve(to: pt(46, 129), control: pt(42, 139)); pl.addQuadCurve(to: pt(44, 153), control: pt(48, 139)); pl.closeSubpath()
-                ctx.fill(pl, with: hex(dk, 0x3A9A6A, 0x3FAE7A))
+                // 25·50·75% 눈금 (도리 자리와 같은 축)
+                for (t, f) in Sk.pctTicks {
+                    let x = 62 + 206 * CGFloat(f)
+                    ctx.stroke(Sk.line(pt(x, 150), pt(x, 160)), with: hex(dk, 0x8A5A00, 0xFFD98A), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
+                    Sk.text(ctx, t, x, 165.5, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 8, bold: !dk, anchor: .center)
+                }
+                Sk.text(ctx, String(localized: "출발"), 62, 165.5, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 8, bold: !dk, anchor: .center)
+                Sk.text(ctx, s.target, 268, 165.5, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 8.5, bold: true, anchor: .center)
             }
-            Octopus(down: down).position(x: 25, y: 132)
+            // 수족관: 판 위쪽 30을 잘라 내므로 0.7배로 줄여 글 아래로 내린다 (바닥 왼쪽 모서리 기준, 2026-10-27)
+            ZStack(alignment: .topLeading) {
+                Canvas { ctx, _ in
+                    let tank = Path(roundedRect: CGRect(x: 6, y: 90, width: 44, height: 66), cornerRadius: 3)
+                    ctx.fill(tank, with: dk ? hex(0x9FD6EE, 0.18) : hex(0xFFFFFF, 0.28)); ctx.stroke(tank, with: hex(dk, 0xFFFFFF, 0xCFEFFF), lineWidth: 1.5)
+                    ctx.fill(Path(CGRect(x: 6, y: 90, width: 44, height: 6)), with: dk ? hex(0xCFEFFF, 0.35) : hex(0xFFFFFF, 0.5))
+                    for (x, y, r) in [(14, 153, 2.5), (20, 154, 2), (40, 153, 3)] as [(CGFloat, CGFloat, CGFloat)] { ctx.fill(circle(x, y, r), with: hex(dk, 0x8A94A8, 0x7F8AA3)) }
+                    var pl = Path(); pl.move(to: pt(44, 153)); pl.addQuadCurve(to: pt(46, 129), control: pt(42, 139)); pl.addQuadCurve(to: pt(44, 153), control: pt(48, 139)); pl.closeSubpath()
+                    ctx.fill(pl, with: hex(dk, 0x3A9A6A, 0x3FAE7A))
+                }
+                Octopus(down: down).position(x: 25, y: 132)
+            }
+            .frame(width: 300, height: 170, alignment: .topLeading)
+            .scaleEffect(0.7, anchor: UnitPoint(x: 6.0 / 300, y: 156.0 / 170))
             DoryFish(down: down)
-                .position(x: dx, y: 124)
+                .position(x: dx, y: 130)
                 .animation(.easeInOut(duration: 1.2), value: dx)
         }
     }
@@ -568,16 +576,20 @@ struct PinoScene: View {
                 ctx.stroke(circle(198, 48, 6), with: .color(tool), lineWidth: 2)
                 let lamp = Color(hex: dk ? 0xFFD58A : 0xFFCE78)
                 ctx.fill(all, with: .radialGradient(Gradient(colors: [lamp.opacity(dk ? 0.34 : 0.45), lamp.opacity(0)]), center: pt(42, 119), startRadius: 0, endRadius: 150))
-                ctx.fill(Path(CGRect(x: 0, y: 152, width: 300, height: 18)), with: hex(dk, 0xD2AE7E, 0x2C1D10))
-                ctx.fill(Path(CGRect(x: 0, y: 152, width: 300, height: 1.5)), with: hex(dk, 0xB58D5C, 0x5A3E22))
-                // 계획 눈금 (50%) · 끝 = 목표
+                // 바닥 띠는 뺀다 (2026-10-27)
+                // 25·50·75% 눈금 (코끝 자리와 같은 축) · 끝 = 목표
                 let mark = dk ? 0xFFD98A : 0x8A5A00 as UInt32, label = Color(hex: dk ? 0xFFD98A : 0x6E4600)
-                ctx.stroke(Sk.line(pt(177, 146), pt(177, 158)), with: hex(mark), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
-                Sk.text(ctx, String(localized: "계획"), 177, 164.5, label, size: 8, bold: !dk, anchor: .center)
+                for (t, f) in Sk.pctTicks {
+                    let x = 64 + 226 * CGFloat(f)
+                    ctx.stroke(Sk.line(pt(x, 146), pt(x, 158)), with: hex(mark), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
+                    Sk.text(ctx, t, x, 164.5, label, size: 8, bold: !dk, anchor: .center)
+                }
+                Sk.text(ctx, String(localized: "출발"), 64, 164.5, label, size: 8, bold: !dk, anchor: .center)
                 ctx.stroke(Sk.line(pt(290, 146), pt(290, 158)), with: hex(mark), lineWidth: 1.5)
                 Sk.text(ctx, s.target, 290, 164, label, size: 8.5, bold: true, anchor: .trailing)
             }
-            PinoRig(up: up, tip: tip)
+            // 바닥 띠를 뺀 만큼 내려 발끝을 판 아래 끝에 둔다 (2026-10-27)
+            PinoRig(up: up, tip: tip).offset(y: 16)
         }
     }
 }
@@ -695,9 +707,14 @@ struct MugScene: View {
                     ctx.fill(Path(ellipseIn: CGRect(x: x - rx, y: y - ry, width: rx * 2, height: ry * 2)), with: dk ? hex(0xE9F3FB, 0.6) : hex(0xFFFFFF))
                 }
                 for r in [CGRect(x: 96, y: 150, width: 3, height: 1.5), CGRect(x: 180, y: 158, width: 4, height: 1.5), CGRect(x: 236, y: 147, width: 2, height: 1.5)] { ctx.fill(Path(r), with: hex(dk, 0xC9A673, 0x6E583A, 0.8)) }
-                // 계획 눈금 (50%). 다크 흙 위에선 금색으로 (다른 새 테마 다크와 같은 색)
-                ctx.stroke(Sk.line(pt(174, 140), pt(174, 152)), with: hex(dk, 0x7A4A10, 0xFFD98A), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
-                Sk.text(ctx, String(localized: "계획"), 174, 159.5, Color(hex: dk ? 0xFFD98A : 0x7A4A10), size: 8, bold: !dk, anchor: .center)
+                // 25·50·75% 눈금 (기훈 자리와 같은 축). 다크 흙 위에선 금색으로 (다른 새 테마 다크와 같은 색)
+                for (t, f) in Sk.pctTicks {
+                    let x = 68 + 212 * CGFloat(f)
+                    ctx.stroke(Sk.line(pt(x, 140), pt(x, 152)), with: hex(dk, 0x7A4A10, 0xFFD98A), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
+                    Sk.text(ctx, t, x, 159.5, Color(hex: dk ? 0xFFD98A : 0x7A4A10), size: 8, bold: !dk, anchor: .center)
+                }
+                Sk.text(ctx, String(localized: "출발"), 68, 159.5, Color(hex: dk ? 0xFFD98A : 0x7A4A10), size: 8, bold: !dk, anchor: .center)
+                Sk.text(ctx, s.target, 280, 159.5, Color(hex: dk ? 0xFFD98A : 0x7A4A10), size: 8.5, bold: true, anchor: .center)
                 // 영희 앞 분필 선 (사선)
                 ctx.stroke(Sk.line(pt(64, 137.5), pt(50, 170)), with: dk ? hex(0xFBF6EA, 0.9) : hex(0xFFFFFF), style: StrokeStyle(lineWidth: 2.6, lineCap: .square))
                 // 왼쪽 끝 나무
@@ -720,8 +737,6 @@ struct MugScene: View {
                 Sk.text(ctx, "EXIT", 282, 88.5, Color(hex: 0x7DFFAE), size: 7, bold: true, anchor: .center)
             }
             .colorMultiply(dim)
-            Canvas { ctx, _ in Sk.text(ctx, s.target, 282, 75, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 9.5, bold: true, anchor: .center) }
-                .colorMultiply(dim)
             Dot(img: MugArt.younghi(eyes), w: 45, h: 52.5).colorMultiply(dim).position(x: 30.5, y: 122.25)
             if eyes == .closed && !still {
                 // 눈 감은 동안 노래한다 (무궁화 꽃이 피었습니다)
@@ -814,7 +829,7 @@ struct BandBuddy: View {
             switch look {
             case .dory: if up { m.dory } else { m.octo }
             case .pino: if up { m.leaf; m.bird(false) } else { m.note; m.bird(true) }
-            case .mug: if up { m.gihun; m.exit } else { Dot(img: MugArt.younghi(.open), w: 21, h: 24.5) }
+            case .mug: m.sphere(ripple: !up)
             case .jump: if up { m.fire; m.car } else { m.car }
             case .horizon: if up { m.glow } else { m.wave; m.glow }
             case .tub: if up { m.duck } else { m.splash; m.duck }
@@ -836,7 +851,7 @@ struct TrackBuddy: View {
             if goal {
                 switch look {
                 case .dory: m.opera
-                case .mug: m.exit
+                case .mug: m.sphere(inside: true)
                 case .jump: m.portal
                 case .horizon: m.sun
                 case .tub: m.foam
@@ -846,7 +861,7 @@ struct TrackBuddy: View {
                 switch look {
                 case .dory: m.dory
                 case .pino: m.bird(false)
-                case .mug: m.gihun
+                case .mug: m.sphere()
                 case .jump: m.car
                 case .horizon: m.glow
                 case .tub: m.duck
@@ -886,6 +901,22 @@ private struct Mini {
     }
     var exit: some View { Canvas { c, _ in ThemeArt.miniExit(c) }.frame(width: 18, height: 22) }
     var gihun: some View { Dot(img: MugArt.gihun(MeChar.current ?? MeChar()), w: 16, h: 24) }
+    /// 구면 뒤집기: 작은 구. ripple = 떨어진 날 테두리 물결, inside = 안쪽 면 색(목표 자리)
+    func sphere(ripple: Bool = false, inside: Bool = false) -> some View {
+        Canvas { [dk] c, _ in
+            let col: UInt32 = inside ? (dk ? 0xE9C46A : 0xE2B44A) : (dk ? 0x4FB3A5 : 0x3E9C8F)
+            var p = Path()
+            for i in 0..<48 {
+                let t = 2 * Double.pi * Double(i) / 48, r = 8 * (1 + (ripple ? 0.1 * sin(6 * t) : 0))
+                let q = pt(9 + CGFloat(r * cos(t)), 9 + CGFloat(r * sin(t)))
+                i == 0 ? p.move(to: q) : p.addLine(to: q)
+            }
+            p.closeSubpath()
+            c.fill(p, with: hex(col))
+            c.fill(circle(6.5, 6, 2.2), with: .color(.white.opacity(0.25)))
+        }
+        .frame(width: 18, height: 18)
+    }
     var car: some View { Car().frame(width: 95, height: 35).scaleEffect(36.0 / 95).frame(width: 36, height: 13.3) }
     var fire: some View {
         VStack(alignment: .trailing, spacing: 1.6) {
@@ -967,6 +998,9 @@ struct ThemeBackdrop: View {
                     }
                 }
                 .overlay { RadialGradient(colors: [bx(0xFFCE78, 0.4, 0xFFD58A, 0.28), bx(0xFFCE78, 0, 0xFFD58A, 0)], center: UnitPoint(x: 0.1, y: 0.8), startRadius: 0, endRadius: 200) }
+        case .mug:
+            // 구면 뒤집기: 홈 박스와 같은 바탕 (소품 없이 고요하게)
+            LinearGradient(colors: [bx(0xC9E3DF, 0x123A44), bx(0xF1E7CC, 0x4A3F24)], startPoint: .top, endPoint: .bottom)
         default:
             LinearGradient(colors: [bx(0xBCE0F8, 0x14304F), bx(0xE8F5FD, 0x2C5F8F)], startPoint: .top, endPoint: .bottom)
                 .overlay(alignment: .bottom) { bx(0xE2C595, 0x8F7550).frame(height: 12) }
@@ -983,6 +1017,7 @@ enum ThemeBand {
     static let chalk = bx(0xFFFFFF, 0xFBF6EA), dirt = bx(0xD9BB8C, 0x8F7550)
     static let dirtRim = bx(0xC4A374, 1, 0xC4A374, 0)
     static let noseDash = bx(0xB47B44, 0.6, 0xECBC82, 0.45)
+    static let sphereTrack = bx(0xFFFFFF, 0.7, 0xFFFFFF, 0.16)
 }
 
 /// 분석 막대 (새 테마). fill = 지금 자리 0~1, 채운 만큼 노랑 (피노키오는 나무 코)
@@ -1006,6 +1041,12 @@ struct ThemeTrack: View {
                     ThemeBand.pinoShape.fill(ThemeBand.wood).frame(width: max(0, w * f))
                 }
                 .frame(height: 10).padding(.vertical, 2)
+            case .mug:
+                ZStack(alignment: .leading) {
+                    Capsule().fill(ThemeBand.sphereTrack)
+                    Capsule().fill(on).frame(width: max(0, w * f))
+                }
+                .frame(height: 8).padding(.vertical, 3)
             default:
                 VStack(spacing: 0) {
                     ThemeBand.chalk.frame(height: 2)
@@ -1016,5 +1057,122 @@ struct ThemeTrack: View {
                 .overlay(Rectangle().stroke(ThemeBand.dirtRim, lineWidth: 1))
             }
         }
+    }
+}
+
+// MARK: 홈 장면 3 구면 뒤집기 (2026-10-27, 철수와 영희 자리): 10권 P6. 큰 구 하나가 진행률만큼 안과 밖이 바뀐다
+// 바깥 면 = 청록, 안쪽 면 = 호박색. 단계(E4): ① 굽이 ② 두 면이 서로를 통과 ③ 반환점(안도 밖도 아닌 네 잎) ④ 비틀리며 돌아 나옴 ⑤ 같은 구, 다른 면
+// 0~5% 는 매끈한 구, 그 뒤 구간은 임시값 (나머지의 20 · 45 · 55 · 100%). 단계 안에서도 진행률 따라 조금씩 바뀐다. 움직임: 몇 초에 한 번 천천히, 지금 단계 안에서 뒤집기가 살짝 나아갔다 돌아온다 (회전 없음)
+struct SphereScene: View {
+    let s: BoxScene
+    @State private var start: Date?
+    @Environment(\.accessibilityReduceMotion) private var still
+    @Environment(\.colorScheme) private var cs
+    private static let cx: CGFloat = 225, cy: CGFloat = 86, R: CGFloat = 40
+
+    var body: some View {
+        let dk = cs == .dark, down = ThemeMood(s.today) == .down
+        let dur = down ? 6.0 : 4.5
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: start == nil)) { tl in
+            let p = start.map { min(1, max(0, tl.date.timeIntervalSince($0) / dur)) } ?? 0
+            Canvas { ctx, _ in draw(ctx, dk: dk, down: down, p: p) }
+        }
+        .task(id: still) {
+            start = nil
+            guard !still else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(down ? 5 : 3.5))
+                if Task.isCancelled { break }
+                start = .now
+                try? await Task.sleep(for: .seconds(dur))
+                start = nil
+            }
+        }
+    }
+
+    /// p: 이번 움직임의 0~1 (쉬는 동안 0)
+    private func draw(_ ctx: GraphicsContext, dk: Bool, down: Bool, p: Double) {
+        let cx = Self.cx, cy = Self.cy, R = Self.R
+        let f = min(1, max(0, s.f))
+        let e = p * p * (3 - 2 * p)                 // 부드럽게 출발·정지
+        let phi = 0.0                               // 돌리지 않는다. 움직임은 뒤집기 자체 (아래 g)
+        let k: Double = down ? 0.85 : 1             // 떨어진 날은 덜 출렁인다
+        let outC = Color(hex: dk ? 0x4FB3A5 : 0x3E9C8F), inC = Color(hex: dk ? 0xE9C46A : 0xE2B44A)
+        let bg0 = Color(hex: dk ? 0x123A44 : 0xC9E3DF), bg1 = Color(hex: dk ? 0x4A3F24 : 0xF1E7CC)
+        ctx.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .linearGradient(Gradient(colors: [bg0, bg1]), startPoint: .zero, endPoint: pt(0, 170)))
+
+        func blob(_ r: (Double) -> Double) -> Path {
+            var path = Path()
+            for i in 0..<96 {
+                let t = 2 * Double.pi * Double(i) / 96, rr = R * CGFloat(r(t))
+                let q = pt(cx + rr * CGFloat(cos(t)), cy + rr * CGFloat(sin(t)))
+                i == 0 ? path.move(to: q) : path.addLine(to: q)
+            }
+            path.closeSubpath()
+            return path
+        }
+        func shine(_ o: Double = 0.22) { ctx.fill(circle(cx - 0.3 * R, cy - 0.34 * R, 0.24 * R), with: .color(.white.opacity(o))) }
+        // 처음 무늬 'ㄴ'. 다 뒤집히면 거울로 보인다 (바깥에서 뒷면을 보는 셈)
+        func mark(_ mirror: Bool, _ o: Double = 1) {
+            let sx: CGFloat = mirror ? -1 : 1, x0 = cx + sx * 0.14 * R, y0 = cy - 0.32 * R
+            var m = Path(); m.move(to: pt(x0, y0)); m.addLine(to: pt(x0, y0 + 0.24 * R)); m.addLine(to: pt(x0 + sx * 0.2 * R, y0 + 0.24 * R))
+            ctx.stroke(m, with: hex(0x14303A, o), style: StrokeStyle(lineWidth: 3.2, lineCap: .round, lineJoin: .round))
+        }
+
+        // 0~5% 는 매끈한 구. 그 뒤로는 진행률(g)에 따라 조금씩 이어서 바뀐다 (단계 사이 끊김 없음)
+        // 움직일 때는 지금 단계 안에서만 뒤집기가 살짝 나아갔다가 돌아온다 (단계 폭의 15%, 다음 단계로 넘어가지 않음. 0~5% 매끈한 구는 그대로)
+        let g0 = max(0, (f - 0.05) / 0.95)
+        let hi = [0.2, 0.45, 0.55, 1].first { g0 < $0 } ?? 1, lo = [0, 0.2, 0.45, 0.55].last { g0 >= $0 } ?? 0
+        let g = g0 > 0 ? min(hi - 0.001, g0 + 0.15 * (hi - lo) * sin(Double.pi * e)) : 0
+        func sm(_ x: Double) -> Double { let c = min(1, max(0, x)); return c * c * (3 - 2 * c) }
+        func mix(_ a: Double, _ b: Double, _ m: Double) -> Double { a + (b - a) * m }
+        func wavy(_ t: Double, _ amp: Double, _ off: Double) -> Double { 1 + amp * k * sin(6 * t + phi + off) }
+        func core(_ t: Double, _ base: Double, _ amp: Double, _ off: Double) -> Double { base + amp * k * sin(6 * t + Double.pi + off - phi) }
+        func lobe(_ t: Double, _ sg: Double) -> Double { 0.4 + 0.6 * k * max(0, sg * cos(2 * t)) }
+
+        if f >= 1 {
+            // ⑤ 같은 구: 모양은 처음과 같고 향하는 면만 다르다
+            ctx.fill(circle(cx, cy, R), with: .color(inC))
+            shine(0.22 + 0.12 * sin(Double.pi * p)); mark(true)
+        } else if g < 0.2 {
+            // ① 굽이: 물결이 0에서 점점 커지고 조금씩 비틀린다. 안쪽 색이 스쳤다가 겹치기 직전 사라진다 (E5)
+            let u = g / 0.2, off = u * Double.pi / 3
+            ctx.fill(blob { wavy($0, 0.12 * u, off) }, with: .color(outC))
+            if p > 0 && g > 0 {
+                var gh = Path(); gh.move(to: pt(cx - 0.4 * R, cy - 0.56 * R)); gh.addQuadCurve(to: pt(cx - 0.12 * R, cy + 0.64 * R), control: pt(cx + 0.16 * R, cy - 0.2 * R))
+                ctx.stroke(gh, with: .color(inC.opacity((0.15 + 0.3 * u) * sin(Double.pi * p))), style: StrokeStyle(lineWidth: 0.2 * R, lineCap: .round))
+            }
+            shine(0.22 * (1 - u)); mark(false, 1 - u)
+        } else if g < 0.45 {
+            // ② 통과: 안쪽 면이 가운데서 자라며 바깥 면과 반대로 돌아 지나간다
+            let u = (g - 0.2) / 0.25, off = Double.pi / 3 + u * Double.pi / 6
+            ctx.fill(blob { wavy($0, 0.12, off) }, with: .color(outC))
+            ctx.fill(blob { core($0, 0.72 * u, 0.18 * u, off) }, with: .color(inC.opacity(0.8 * u)))
+        } else if g < 0.55 {
+            // ③ 반환점: ②의 끝 → 안도 밖도 아닌 네 잎 → ④의 시작(색만 바뀐 같은 꼴)
+            let u = (g - 0.45) / 0.1, off = Double.pi / 2
+            if u < 0.5 {
+                let m = sm(u * 2)
+                ctx.fill(blob { mix(wavy($0, 0.12, off), lobe($0, 1), m) }, with: .color(outC))
+                ctx.fill(blob { mix(core($0, 0.72, 0.18, off), lobe($0, -1), m) }, with: .color(inC.opacity(mix(0.8, 1, m))))
+            } else {
+                let m = sm((u - 0.5) * 2)
+                ctx.fill(blob { mix(lobe($0, -1), wavy($0, 0.12, off), m) }, with: .color(inC))
+                ctx.fill(blob { mix(lobe($0, 1), core($0, 0.72, 0.18, off), m) }, with: .color(outC.opacity(mix(1, 0.8, m))))
+            }
+            let hole = 0.25 * R * CGFloat(sin(Double.pi * u))
+            ctx.fill(circle(cx, cy, hole), with: .linearGradient(Gradient(colors: [bg0, bg1]), startPoint: pt(0, cy - hole), endPoint: pt(0, cy + hole)))
+        } else {
+            // ④ 돌아 나옴: 겉은 안쪽 색. 바깥 색 굽이가 비틀리며 줄어 100%에서 사라진다
+            let u = (g - 0.55) / 0.45, off = Double.pi / 2 + u * Double.pi / 3
+            ctx.fill(blob { wavy($0, 0.12 * (1 - u), off) }, with: .color(inC))
+            ctx.fill(blob { core($0, 0.72 * (1 - u), 0.18 * (1 - u), off) }, with: .color(outC.opacity(0.8 * (1 - u))))
+        }
+
+        // 진행률: 구 아래 짧은 막대 + 오른쪽 목표 금액 (2026-10-28) (둘을 묶어 구 가운데에 맞춤, 반환점을 지나면 안쪽 색)
+        let barC = f < 0.5 ? outC : inC, x0: CGFloat = 182, w: CGFloat = 56
+        ctx.fill(Path(roundedRect: CGRect(x: x0, y: 147, width: w, height: 5), cornerRadius: 2.5), with: hex(0xFFFFFF, dk ? 0.16 : 0.7))
+        ctx.fill(Path(roundedRect: CGRect(x: x0, y: 147, width: w * CGFloat(f), height: 5), cornerRadius: 2.5), with: .color(barC))
+        Sk.text(ctx, s.target, x0 + w + 6, 149.5, Color(hex: dk ? 0xFFD98A : 0x2F5F59), size: 12, bold: true)
     }
 }

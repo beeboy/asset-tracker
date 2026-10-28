@@ -267,8 +267,8 @@ struct MockJournalView: View {
             ForEach(rows) { h in
                 if h.outside {
                     MockStockRow(code: h.code, name: h.name, mid: MockFmt.small(h.avg), pct: h.r,
-                                 price: MockFmt.man(h.value), band: mx > 0 ? abs(h.r) / mx : 0, filled: false, colW: colW) {
-                        MockTag(text: "외부", color: Theme.muted)
+                                 price: MockFmt.man(h.value), band: mx > 0 ? abs(h.r) / mx : 0, outside: true, colW: colW) {
+                        if anyPill { Color.clear.frame(width: colW[3] ?? 0, height: 1) }
                     }
                 } else {
                 Button { info = MockStockRef(code: h.code, name: h.name) } label: {
@@ -682,8 +682,6 @@ struct MockSettingsView: View {
     @State private var fees = MockDesk.shared.s.fees
     @State private var auto = MockDesk.shared.s.auto
     @State private var guards = MockDesk.shared.guards
-    @State private var liveAsk = false
-    @State private var liveNote: String?
 
     var body: some View {
         let d = MockDesk.shared
@@ -695,7 +693,7 @@ struct MockSettingsView: View {
                     ledgerCard(d)
                     runCard
                     guardCard(d)
-                    liveCard(d)
+                    startCard(d)
                 }
                 .padding(16)
             }
@@ -810,31 +808,13 @@ struct MockSettingsView: View {
         }
     }
 
-    // 예전 설정 화면의 돌리기 값 (AI 칸은 뺐다)
-    /// 실전 스위치: 기본 끔. 켤 때는 확인을 한 번 더 받는다 (개발자 서버의 실전 스위치·계좌·키가 준비돼야 켜진다)
-    private func liveCard(_ d: MockDesk) -> some View {
+    /// 앱을 켤 때 시작 칸 (기본 모의). 실주문 켜고 끄기는 계좌 탭 불빛에서
+    private func startCard(_ d: MockDesk) -> some View {
         Card {
-            Toggle(isOn: Binding(get: { d.live }, set: { v in if v { liveAsk = true } else { liveNote = d.setLive(false) } })) {
-                VStack(alignment: .leading, spacing: 1) {
-                    mt("실전 (토스 주문)").appFont(16, .bold)
-                    mt(d.live ? "켜짐 · 실제 돈으로 주문해요" : "꺼짐 · 모의 브로커").appFont(12).foregroundStyle(d.live ? Theme.up : Theme.muted)
-                }
-            }
-            .tint(Theme.up)
-            // 앱을 켤 때 시작 칸 (기본 모의)
             Toggle(isOn: Binding(get: { d.s.startReal == true }, set: { v in d.setView { $0.startReal = v ? true : nil } })) {
-                mt("시작 실전").appFont(14)
+                mt("시작 실전").appFont(16, .bold)
             }
             .tint(Theme.up)
-            mt("서버 " + (d.liveBlock ?? "실전 준비됨")).appFont(12).foregroundStyle(Theme.muted)
-            if let liveNote { mt(liveNote).appFont(12).foregroundStyle(Theme.up) }
-        }
-        .task { await d.checkLive() }
-        .confirmationDialog(Text(verbatim: "실전을 켤까요?"), isPresented: $liveAsk, titleVisibility: .visible) {
-            Button(role: .destructive) { liveNote = d.setLive(true) } label: { mt("실전 켜기 (실제 주문)") }
-            Button(role: .cancel) {} label: { mt("그만두기") }
-        } message: {
-            mt("토스 계좌로 실제 돈이 오가는 주문이 나가요. 장중에만, 안전장치 안에서 주문해요.")
         }
     }
 

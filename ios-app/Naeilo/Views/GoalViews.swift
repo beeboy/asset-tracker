@@ -141,11 +141,11 @@ struct GoalCellsCard: View {
             Text("내 자산 게임").appFont(18, .bold)
             HStack(spacing: 10) {
                 gameTile(.brick, String(localized: "채운 칸을 부시자"), String(localized: "벽돌깨기")) { showGame = true }
-                gameTile(.wave, String(localized: "내 흐름을 타자"), String(localized: "파도타기")) { showWave = true }
+                gameTile(.wave, String(localized: "내 흐름을 즐기자"), String(localized: "파도타기")) { showWave = true }
             }
         }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
+        // 바탕 카드는 뺀다. 100칸 카드와 같은 색이 이어져 어색하다 (2026-10-27)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
     private func gameTile(_ k: GameThumb.Kind, _ say: String, _ name: String, _ go: @escaping () -> Void) -> some View {
         VStack(spacing: 0) {
@@ -443,74 +443,73 @@ struct GoalSetView: View {
     @State private var a = ""
     @State private var mo = ""
 
+    @State private var put: Task<Void, Never>?
+    private var editing: Bool { fromSettings || m.gDone.contains("goal") }
+
+    /// 고친 숫자는 손을 멈추고 0.35초 뒤에 넣는다 (넣을 때마다 위 그래프를 다시 세니, 한 글자마다 세지 않게)
+    private func later() {
+        put?.cancel()
+        put = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            if !Task.isCancelled { putAll() }
+        }
+    }
+    private func putAll() {
+        put?.cancel()
+        if let d = Double(k.replacingOccurrences(of: ",", with: "")), d > 0 { m.gK = d }
+        if let d = Int(y.replacingOccurrences(of: ",", with: "")) { m.gY = min(30, max(1, d)) }
+        if m.bare { m.gA = max(0, Double(a) ?? 0) } else { m.gM = max(0, Double(mo.replacingOccurrences(of: ",", with: "")) ?? 0) }
+    }
+
     var body: some View {
-        // 플러스: 내가 매달 넣을 돈(gM)으로 닿을 확률. 시작 전: 보통의 경우로 맞춘 월 적립으로
-        let plus = !m.bare
-        let need = m.neededMonthly(), path = m.simulate(plus ? m.mineMix : AppModel.mixes[0], monthly: plus ? m.gM : need)
-        let start = m.goalStart, cagr = start > 0 ? pow(m.gK / start, 1 / Double(m.gY)) - 1 : 0
+        let start = m.goalStart
         let ok = m.gK > 0 && m.gY >= 1
         PinnedLayout {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(fromSettings || m.gDone.contains("goal") ? String(localized: "목표 고치기") : String(localized: "미션 \(String(describing: m.goalNo("goal"))) / \(String(describing: m.goalTotal))")).appFont(14, .semibold).foregroundStyle(Theme.teal)
-                Text("언제까지, 얼마나?").appFont(22, .bold)
-                HStack(alignment: .firstTextBaseline) {
-                    Text("\(m.gY)년 뒤 \(noWon(AppModel.wonK(m.gK)))").appFont(17, .bold)
-                    Spacer()
-                    (Text("닿을 확률 ") + Text(AppModel.pct(path.prob)).bold().foregroundColor(Theme.teal)).appFont(14)
-                }
-                if plus {
-                    Text(String(localized: "월 \(String(describing: noWon(AppModel.wonK(m.gM)))) · ") + (need > 0 ? String(localized: "맞추려면 월 \(String(describing: noWon(AppModel.wonK(need))))") : String(localized: "이미 충분"))).appFont(14, .semibold)
-                } else {
-                    Text((need > 0 ? String(localized: "월 ") + noWon(AppModel.wonK(need)) : String(localized: "이미 충분")) + String(localized: " · 1년 \(String(describing: noWon(AppModel.wonK(need * 12))))")).appFont(14, .semibold)
-                }
-                Text(m.bare ? (m.gK <= 1000 ? String(localized: "첫 목표 · 적립 습관") : String(localized: "연 7%면 해마다 +\(String(describing: noWon(AppModel.wonK(m.gK * 0.07))))"))
-                     : String(localized: "지금의 \(String(describing: String(format: "%.1f", m.gK / max(1, start))))배 · 적립 없이 연 +\(String(describing: Int((cagr * 100).rounded())))%"))
-                    .appFont(13).foregroundStyle(Theme.sub)
-                GoalPathChart(sims: [(path, Theme.teal, true)], goal: m.gK).frame(height: 80)
-                HStack { Text("지금"); Spacer(); Text("┅ 목표 · ┈ 원금"); Spacer(); Text("\(m.gY)년") }.appFont(11).foregroundStyle(Theme.muted)
-            }
-            .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
+            GoalSetHead(mission: !editing)
         } content: {
             VStack(alignment: .leading, spacing: 12) {
-                if fromSettings || m.gDone.contains("goal") {
-                    GuideBubble(pose: .point, text: String(localized: "카드를 누르거나 숫자를 고치면 위 그래프와 확률이 바로 바뀌어요. 저장하면 미션 진행은 그대로 두고 목표만 바꿔요."))
+                if editing {
+                    GuideBubble(pose: .point, text: String(localized: "저장해도 미션 진행은 그대로예요."))
                 } else if m.bare {
                     GuideBubble(pose: .wave, text: String(localized: "처음 시작하시는군요. …… 첫 목표부터 정해요. 지금 모아 둔 투자금이 없으면 0을 넣으세요."))
                 } else {
                     GuideBubble(pose: .think, text: String(localized: "언제까지, 얼마를 모으고 싶나요? …… 카드는 매달 넣는 돈으로 닿을 확률이 반반쯤인 금액이에요. 모두 지금 \(String(describing: AppModel.wonK(start)))에서 출발한 계산이에요."))
                 }
                 if !m.bare {
-                    Text((m.gM > 0 ? String(localized: "월 \(String(describing: noWon(AppModel.wonK(m.gM))))씩 넣으면") : String(localized: "적립 없이")) + String(localized: " 확률 50%인 목표")).appFont(13, .semibold).foregroundStyle(Theme.sub)
+                    Text(m.gM > 0 ? String(localized: "확률 50%인 목표") : String(localized: "적립 없이") + String(localized: " 확률 50%인 목표")).appFont(13, .semibold).foregroundStyle(Theme.sub)
                 }
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                HStack(spacing: 8) {   // 가로 한 줄에 넷
                     ForEach(m.goalPresets) { p in
                         let on = m.gK == p.k && m.gY == p.y
-                        Button { m.gK = p.k; m.gY = p.y; k = String(Int(p.k)); y = String(p.y) } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack(alignment: .firstTextBaseline) { Text(p.name).appFont(15, .bold); Text("\(p.y)년").appFont(12).foregroundStyle(Theme.sub) }
-                                if !p.mean.isEmpty { Text(p.mean).appFont(12).foregroundStyle(Theme.sub).multilineTextAlignment(.leading) }
-                                Text(p.need).appFont(13, .bold).foregroundStyle(Theme.teal)
+                        Button { put?.cancel(); m.gK = p.k; m.gY = p.y; k = String(Int(p.k)); y = String(p.y) } label: {
+                            VStack(spacing: 2) {
+                                Text(p.name).appFont(15, .bold).lineLimit(1).minimumScaleFactor(0.7)
+                                Text("\(p.y)년").appFont(12).foregroundStyle(Theme.sub)
+                                if !p.need.isEmpty { Text(p.need).appFont(13, .bold).foregroundStyle(Theme.teal).lineLimit(1).minimumScaleFactor(0.7) }
                             }
-                            .padding(12).frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+                            .padding(.horizontal, 4).padding(.vertical, 10).frame(maxWidth: .infinity, minHeight: 64)
                             .background(on ? Theme.mintBg : Theme.card, in: RoundedRectangle(cornerRadius: 14))
                             .overlay(RoundedRectangle(cornerRadius: 14).stroke(on ? Theme.teal : Theme.border, lineWidth: 2))
                         }.buttonStyle(.plain)
                     }
                 }
-                inputField(String(localized: "목표 (만원)"), $k).focused($focus).onChange(of: k) { _, v in if let d = Double(v.replacingOccurrences(of: ",", with: "")), d > 0 { m.gK = d } }
-                inputField(String(localized: "기간 (년)"), $y).focused($focus).onChange(of: y) { _, v in if let d = Int(v.replacingOccurrences(of: ",", with: "")) { m.gY = min(30, max(1, d)) } }
-                if m.bare {
-                    inputField(String(localized: "모아 둔 돈 (만원)"), $a).focused($focus).onChange(of: a) { _, v in m.gA = max(0, Double(v) ?? 0) }
-                } else {
-                    inputField(String(localized: "월 적립 (만원)"), $mo).focused($focus).onChange(of: mo) { _, v in m.gM = max(0, Double(v.replacingOccurrences(of: ",", with: "")) ?? 0) }
-                    Button("50%로 맞추기") { focus = false; m.gK = m.autoGoal(years: m.gY); k = String(Int(m.gK)) }
-                        .appFont(15, .semibold).foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 44)
+                HStack(alignment: .top, spacing: 8) {   // 가로 한 줄에 셋
+                    inputField(String(localized: "목표 (만원)"), $k).focused($focus).onChange(of: k) { later() }.frame(maxWidth: .infinity)
+                    inputField(String(localized: "기간 (년)"), $y).focused($focus).onChange(of: y) { later() }.frame(maxWidth: .infinity)
+                    if m.bare {
+                        inputField(String(localized: "모아 둔 돈 (만원)"), $a).focused($focus).onChange(of: a) { later() }.frame(maxWidth: .infinity)
+                    } else {
+                        inputField(String(localized: "월 적립 (만원)"), $mo).focused($focus).onChange(of: mo) { later() }.frame(maxWidth: .infinity)
+                    }
+                }
+                if !m.bare {
                     Text("출발 \(noWon(AppModel.wonK(start))) · 목표일 \(m.goalToShort)").appFont(13).foregroundStyle(Theme.sub)
                 }
-                PrimaryButton(title: fromSettings || m.gDone.contains("goal") ? String(localized: "저장") : String(localized: "길 보기"), color: ok ? Theme.teal : Theme.muted) {
+                PrimaryButton(title: editing ? String(localized: "저장") : String(localized: "길 보기"), color: ok ? Theme.teal : Theme.muted) {
                     guard ok else { return }
                     focus = false
-                    if m.bare { m.gM = max(5, (need / 5).rounded() * 5) }
+                    putAll()
+                    if m.bare { m.gM = max(5, (m.neededMonthly() / 5).rounded() * 5) }
                     if fromSettings { dismiss(); return }
                     if m.gDone.contains("goal") { m.boardPath.removeLast(); return }   // 고치기: 미션 판으로 돌아간다
                     m.gDone.insert("goal"); m.boardPath.append(.g1r)
@@ -523,6 +522,36 @@ struct GoalSetView: View {
         .onAppear { k = String(Int(m.gK)); y = String(m.gY); a = String(Int(m.gA)); mo = String(Int(m.gM)) }
         .scrollDismissesKeyboard(.interactively)
         .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { focus = false } } }
+    }
+}
+
+// 목표 정하기 위 칸. 따로 두어 자판을 칠 때는 다시 세지 않고, 넣은 값이 바뀔 때만 그래프·확률을 다시 센다
+private struct GoalSetHead: View {
+    @Environment(AppModel.self) private var m
+    let mission: Bool
+
+    var body: some View {
+        // 플러스: 내가 매달 넣을 돈(gM)으로 닿을 확률. 시작 전: 보통의 경우로 맞춘 월 적립으로
+        let plus = !m.bare
+        let need = m.neededMonthly(), path = m.simulate(plus ? m.mineMix : AppModel.mixes[0], monthly: plus ? m.gM : need)
+        VStack(alignment: .leading, spacing: 8) {
+            if mission { Text(String(localized: "미션 \(String(describing: m.goalNo("goal"))) / \(String(describing: m.goalTotal))")).appFont(14, .semibold).foregroundStyle(Theme.teal) }
+            Text("언제까지, 얼마나?").appFont(22, .bold)
+            HStack(alignment: .firstTextBaseline) {
+                Text("\(m.gY)년 뒤 \(noWon(AppModel.wonK(m.gK)))").appFont(17, .bold)
+                Spacer()
+                (Text("닿을 확률 ") + Text(AppModel.pct(path.prob)).bold().foregroundColor(Theme.teal)).appFont(14)
+            }
+            if plus {
+                Text(need > 0 ? String(localized: "맞추려면 월 \(String(describing: noWon(AppModel.wonK(need))))") : String(localized: "이미 충분")).appFont(14, .semibold)
+            } else {
+                Text((need > 0 ? String(localized: "월 ") + noWon(AppModel.wonK(need)) : String(localized: "이미 충분")) + String(localized: " · 1년 \(String(describing: noWon(AppModel.wonK(need * 12))))")).appFont(14, .semibold)
+                Text(m.gK <= 1000 ? String(localized: "첫 목표 · 적립 습관") : String(localized: "연 7%면 해마다 +\(String(describing: noWon(AppModel.wonK(m.gK * 0.07))))")).appFont(13).foregroundStyle(Theme.sub)
+            }
+            GoalPathChart(sims: [(path, Theme.teal, true)], goal: m.gK).frame(height: 80)
+            HStack { Text("지금"); Spacer(); Text("\(m.gY)년") }.appFont(11).foregroundStyle(Theme.muted)
+        }
+        .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
     }
 }
 
@@ -727,7 +756,7 @@ private struct GameThumb: View {
     var body: some View {
         Canvas { ctx, sz in
             let W = sz.width, H = sz.height
-            ctx.fill(Path(CGRect(origin: .zero, size: sz)), with: .color(Theme.mintBg))
+            // 바탕·벽돌·파도는 외곽선만. 채우는 것은 졸라맨·패들·공 / 졸라맨·보드·별 (2026-10-27)
             if kind == .brick { brick(ctx, W, H) } else { wave(ctx, W, H) }
         }
         .accessibilityHidden(true)
@@ -747,8 +776,8 @@ private struct GameThumb: View {
             // 깨진 자리: 공은 위에서 오니 위 칸이 깨진 곳만 아래도 깨진다. 공 밑 칸과 그 오른쪽 칸도 비운다
             if (r == 0 && (k % 5 == 2 || k == kb || k == kb + 1)) || (r == 1 && k == 2) { continue }
             let y = H - 8 - CGFloat(rows - r) * (ch + gap)
-            c.fill(Path(roundedRect: CGRect(x: 8 + CGFloat(k) * (cw + gap), y: y, width: cw, height: ch), cornerRadius: 2),
-                   with: .color(r < 2 ? Theme.teal : GoalCellsCard.mintC))
+            c.stroke(Path(roundedRect: CGRect(x: 8 + CGFloat(k) * (cw + gap), y: y, width: cw, height: ch), cornerRadius: 2),
+                     with: .color(Theme.muted), lineWidth: 1)
         } }
         let px = W * 0.38, pw = W * 0.24, py: CGFloat = 30
         c.fill(Path(roundedRect: CGRect(x: px, y: py, width: pw, height: 6), cornerRadius: 3), with: .color(Theme.ink))
@@ -768,9 +797,7 @@ private struct GameThumb: View {
             return CGPoint(x: t * W, y: H * 0.62 - sin(t * 6.5) * H * 0.14 - t * H * 0.22 + sin(t * 19) * 3)
         }
         var top = Path(); top.addLines(pts)
-        var fill = top; fill.addLine(to: CGPoint(x: W, y: H)); fill.addLine(to: CGPoint(x: 0, y: H)); fill.closeSubpath()
-        c.fill(fill, with: .color(GoalCellsCard.mintC))
-        c.stroke(top, with: .color(Theme.teal), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+        c.stroke(top, with: .color(Theme.muted), style: StrokeStyle(lineWidth: 2, lineCap: .round))
         // 졸라맨: 무릎 굽혀 보드 위에, 두 팔을 넓게
         var s = c
         s.translateBy(x: pts[17].x, y: pts[17].y - 3); s.rotate(by: .radians(-0.35))

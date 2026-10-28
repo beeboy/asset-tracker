@@ -201,12 +201,11 @@ fun HoldingsView(m: AppModel) {
                     }
                     val us = sorted.filter { it.sym.currency == Currency.usd }   // ios: Views/HoldingsView.swift:34
                     val kr = sorted.filter { it.sym.currency != Currency.usd }   // ios: Views/HoldingsView.swift:35
-                    val mx = rows.maxOfOrNull { abs(move(m, it)) } ?: 0.0   // ios: Views/HoldingsView.swift:36
+                    val mx = rows.maxOfOrNull { abs(dayPct(it)) } ?: 0.0   // ios: Views/HoldingsView.swift:36
                     val earn = rows.any { EarningsFeed.shared.summary(it.sym, it.h.qty) != null }   // ios: Views/HoldingsView.swift:37
                     // ios: Views/HoldingsView.swift:39
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Box(Modifier.outset(16.dp)) { AppHeader(tab = "종목") }   // ios: Views/HoldingsView.swift:40 (-16)
-                        SampleNote(m)   // ios: Views/HoldingsView.swift:41
                         TodayBoxFor(m, rows, lookRaw)   // ios: Views/HoldingsView.swift:42
                         TotalChart(m, rows, period) { period = it }   // ios: Views/HoldingsView.swift:43
                         ListBar(downFirst, { downFirst = !downFirst }, valueMode, { valueMode = it }, inUsd) { inUsd = it }   // ios: Views/HoldingsView.swift:44
@@ -231,6 +230,7 @@ fun HoldingsView(m: AppModel) {
                             }
                         }
                         if (adding) AddHoldingView(m, inline = true, close = { adding = false })   // ios: Views/HoldingsView.swift:70
+                        SampleNote(m)   // ios: Views/HoldingsView.swift:69 샘플 안내는 맨 아래 (2026-10-28)
                         Spacer(Modifier.height(24.dp))   // ios: Views/HoldingsView.swift:64 아래 탭바가 마지막 카드를 가리지 않게
                     }
                 }
@@ -427,10 +427,13 @@ private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, mx: Double
     }
 }
 
-/** 줄 배경: 왼쪽부터 오늘 움직인 금액 몫만큼 옅게 (오른 산호 · 그대로 회색 · 내린 하늘). 상한은 카드 폭의 34% (보기를 바꿔도 같다) */
+/** 줄 막대가 재는 값: 오늘 등락률 (줄에 보이는 %와 같다). 국내 주식 합계는 뺀다 */
+private fun dayPct(r: AppModel.Row): Double = if (r.id == KoreaEstimate.sumId) 0.0 else r.sym.quote.change   // ios: Views/HoldingsView.swift:109
+
+/** 줄 배경: 왼쪽부터 오늘 등락률 크기만큼 옅게 (오른 산호 · 그대로 회색 · 내린 하늘). 상한은 카드 폭의 34% (보기를 바꿔도 같다) */
 // ios: Views/HoldingsView.swift:217
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.tint(m: AppModel, r: AppModel.Row, mx: Double, dark: Boolean) {
-    val v = move(m, r)   // ios: Views/HoldingsView.swift:218
+    val v = dayPct(r)   // ios: Views/HoldingsView.swift:218
     val f = if (v != 0.0 && mx > 0) max(0.12, abs(v) / mx) else 0.12   // ios: Views/HoldingsView.swift:219
     val c = if (v > 0) hex(0xFF8A80) else if (v < 0) hex(0x8CC4F2) else if (dark) hex(0x4A5672) else hex(0xAAB2BE)   // ios: Views/HoldingsView.swift:220
     // ios: Views/HoldingsView.swift:221,222,224 (읽어 주기는 그림이라 없다)
@@ -445,7 +448,7 @@ private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, v: Boolean, bi
     val es = EarningsFeed.shared.summary(r.sym, r.h.qty)   // ios: Views/HoldingsView.swift:230
     val day = r.sym.quote.change   // ios: Views/HoldingsView.swift:231
     val bp = if (r.cost > 0) r.value / r.cost - 1 else 0.0   // ios: Views/HoldingsView.swift:232
-    val small = if (v) 13f else 14f   // ios: Views/HoldingsView.swift:233
+    val small = 14f   // ios: Views/HoldingsView.swift:233
     // ios: Views/HoldingsView.swift:234
     @Composable fun Name(mod: Modifier) = Row(mod, horizontalArrangement = Arrangement.spacedBy(if (v) 6.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
         // 글자 로고는 쓰지 않는다 (그림 로고만). 오늘 실적 금색 점은 이름 오른쪽 위
@@ -462,11 +465,8 @@ private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, v: Boolean, bi
     val pctC = if (v) (if (bp > 0) Theme.up else if (bp < 0) Theme.down else Theme.sub) else (if (day > 0) Theme.up else if (day < 0) Theme.down else Theme.sub)   // ios: Views/HoldingsView.swift:248
     // ios: Views/HoldingsView.swift:246,247,249
     @Composable fun Pct() = TA(
-        if (v) buildAnnotatedString {
-            append(AppModel.sgn(bp))
-            withStyle(SpanStyle(fontSize = fx(10.5f), fontWeight = FontWeight.SemiBold)) { append("(" + amt(inUsd, r, krw = r.value - r.cost, native = r.h.qty * (r.sym.last - r.h.avg)) + ")") }
-        } else AnnotatedString(AppModel.sgn2(day)),
-        Modifier.holdCol(1, colW), style = appFont(if (v) 12.5f else 14f, FontWeight.Bold).tnum(), color = pctC, maxLines = 1)
+        AnnotatedString(if (v) AppModel.sgn(bp) else AppModel.sgn2(day)),   // 평가금 보기 괄호 금액은 뺐다 (2026-10-27)
+        Modifier.holdCol(1, colW), style = appFont(14f, FontWeight.Bold).tnum(), color = pctC, maxLines = 1)
     // ios: Views/HoldingsView.swift:250,251,252,253,254,255
     @Composable fun Pill(mod: Modifier = Modifier) = Box(mod.holdCol(2, colW), contentAlignment = Alignment.CenterEnd) {
         T(if (v) amt(inUsd, r, krw = r.value, native = r.h.qty * r.sym.last) else px(inUsd, r, r.sym.last),
@@ -695,7 +695,10 @@ internal fun FitAnnotated(text: AnnotatedString, style: TextStyle, minScale: Flo
         val w = measurer.measure(t, style, maxLines = 1, softWrap = false).size.width
         val k = if (c.hasBoundedWidth && w > c.maxWidth) maxOf(minScale, c.maxWidth.toFloat() / w) else 1f
         val st = if (k < 1f) style.copy(fontSize = style.fontSize * k, letterSpacing = style.letterSpacing * k) else style
-        val p = subcompose(k) { com.naeilo.app.ui.TA(t, style = st, color = color, maxLines = maxLines) }.first().measure(c.copy(minWidth = 0))
+        val p = subcompose(Unit) {   // 칸 이름을 고정해야 글자 크기가 바뀌어도 플립이 이어진다
+            if (roll != null) com.naeilo.app.ui.RollText(t, roll, style = st.copy(color = color))
+            else com.naeilo.app.ui.TA(t, style = st, color = color, maxLines = maxLines)
+        }.first().measure(c.copy(minWidth = 0))
         val b = p[androidx.compose.ui.layout.FirstBaseline]
         layout(p.width, p.height, if (b != androidx.compose.ui.layout.AlignmentLine.Unspecified) mapOf(androidx.compose.ui.layout.FirstBaseline to b) else emptyMap()) { p.place(0, 0) }
     }
@@ -869,7 +872,7 @@ fun TagChart(
 // ios: Views/HoldingsView.swift:515 (struct TagChart 의 static·Tag)
 object TagChart {
     data class Tag(val at: Double, val dy: Dp = 0.dp, val text: String, val bg: Color, val fg: Color = Color.Black)   // ios: Views/HoldingsView.swift:516
-    val gray = hex(0x8A949E)   // ios: Views/HoldingsView.swift:517
+    val gray: Color @Composable get() = if (LocalPal.current.isDark) hex(0x8A949E) else hex(0xD3D9DF)   // ios: Views/HoldingsView.swift:576 (라이트 옅은 회색)
 
     /** 꼬리표 높이(px): 값 자리에서 시작해 가까우면 20씩 벌리고, 위·아래로 넘치면 안으로 민다 */
     // ios: Views/HoldingsView.swift:561
@@ -1053,7 +1056,9 @@ private fun MoversCard(m: AppModel, rows: List<AppModel.Row>) {
         if (top.isEmpty()) T("종목을 넣으면 보여요", style = appFont(13f), color = Theme.sub)   // ios: Views/HoldingsView.swift:1254
         // ios: Views/HoldingsView.swift:1255
         top.forEach { (r, w, d) ->   // ios: Views/HoldingsView.swift:1379
-            Line(m, r, AppModel.sgn2(d) + " · " + AppModel.eokS(w), Theme.change(d))   // ios: Views/HoldingsView.swift:1257
+            // 등락률·금액을 두 칸으로 오른쪽 줄맞춤. 부호는 앞 칸에 한 번만 (금액 부호가 다를 때만 금액에도)
+            val amt = if ((d >= 0) == (w >= 0)) AppModel.eok(abs(w)) else AppModel.eokS(w)
+            Line(m, r, AppModel.sgn2(d), Theme.change(d), amt)   // ios: Views/HoldingsView.swift:1399
         }
     }
 }
@@ -1085,13 +1090,18 @@ private fun NearCard(m: AppModel, ks: List<Pair<AppModel.Row, AppModel.HoldMetri
 
 // ios: Views/HoldingsView.swift:1280
 @Composable
-private fun Line(m: AppModel, r: AppModel.Row, right: String, color: Color) {
+private fun Line(m: AppModel, r: AppModel.Row, right: String, color: Color, right2: String? = null) {
     // ios: Views/HoldingsView.swift:1281,1282,1288,1290
     val open = openDetail(m)   // ios: Views/HoldingsView.swift:1403 (DetailLink)
     Row(Modifier.fillMaxWidth().plainClickable { open(r.sym) }.defaultMinSize(minHeight = 44.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
         if (LogoTile.has(r.id)) LogoTile(symbol = r.id, size = 28.dp)   // ios: Views/HoldingsView.swift:1421
         T(r.sym.name, Modifier.weight(1f).padding(end = 4.dp), style = appFont(14f, FontWeight.SemiBold), maxLines = 1)   // ios: Views/HoldingsView.swift:1284,1285
-        T(right, style = appFont(14f, FontWeight.Bold).tnum(), color = color)   // ios: Views/HoldingsView.swift:1286
+        if (right2 == null) T(right, style = appFont(14f, FontWeight.Bold).tnum(), color = color)   // ios: Views/HoldingsView.swift:1286
+        else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {   // ios: Views/HoldingsView.swift:1402
+            val st = appFont(14f, FontWeight.Bold).tnum().copy(textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            T(right, Modifier.widthIn(min = 64.dp), style = st, color = color, maxLines = 1)
+            T(right2, Modifier.widthIn(min = 60.dp), style = st, color = color, maxLines = 1)
+        }
     }
 }
 

@@ -7,6 +7,8 @@ struct BoardView: View {
     @Environment(AppModel.self) private var m
     @AppStorage(BoxLook.key) private var lookRaw = BoxLook.jump.rawValue
     @State private var openDone = false
+    @State private var checkInOpen = false
+    @State private var rec = GameRecord.load()
 
     var body: some View {
         let steps = m.boardSteps, starts = steps.filter { !$0.inter }
@@ -14,17 +16,17 @@ struct BoardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 AppHeader(tab: String(localized: "미션")).padding(.horizontal, -16)
-                SampleNote()
-                // 맨 위는 인터미션 카드 (목표 카드·제목은 뺌)
-                if let inter = steps.first(where: \.inter) { interCard(inter) }
-                if !m.interDone && m.playOn { checkIn }
-                startList(starts)
+                // 맨 위는 미션 요약 박스: 진행 막대(시작 미션 + 체크인 칸), 누르면 체크인 팝업, 아래 게임 최고 점수 (2026-10-27)
+                if let inter = steps.first(where: \.inter) { summaryBox(inter, starts: starts) }
+                // 시작 미션을 다 끝내면 접힌 줄은 미션 판에서 뺀다
+                if !starts.allSatisfy(\.ok) { startList(starts) }
                 reachedCard
                 if let next = steps.first(where: { !$0.ok && $0.avail }), !next.inter {
                     nextCard(next, steps: starts)
                 }
                 // 100칸 카드(패들까지) · 게임 박스 · 맨 아래 캐릭터 말풍선
                 if m.playUnlocked { GoalCellsCard().frame(maxHeight: .infinity) } else { lockedPlay }
+                SampleNote()   // 샘플 안내는 맨 아래 (2026-10-28)
             }
             .screen()
             .frame(minHeight: geo.size.height, alignment: .top)
@@ -33,6 +35,13 @@ struct BoardView: View {
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: MissionRoute.self) { MissionScreen(route: $0) }
+        .sheet(isPresented: $checkInOpen) {
+            NavigationStack {
+                if m.isGoal { GoalIntermissionView() }
+                else { ScrollView { checkIn.padding(16) }.background(Theme.bg) }
+            }
+            .environment(m)
+        }
     }
 
     /// 목표 도달 / 본전 도달
@@ -76,52 +85,67 @@ struct BoardView: View {
         .background(Theme.missionGreen, in: RoundedRectangle(cornerRadius: 20))
     }
 
-    /// 인터미션 카드: 목표 = 달마다 계획대로 넣었나(3달), 회복 = 주마다 비중을 지켰나(4주)
-    private func interCard(_ b: AppModel.BoardStep) -> some View {
-        let goal = m.isGoal, done = b.ok, avail = b.avail
-        // 열린 카드는 홈에서 고른 박스 모양의 바탕·글자색을 따른다 (2026-10-25)
-        let look = BoxLook(rawValue: lookRaw) ?? .jump, on = done || avail
-        let n = goal ? m.gWeeks.count : m.weeks.count, total = goal ? 3 : 4
-        let picks: [(String, Color)] = goal ? m.gWeeks.map { ($0.label, $0.color) } : m.weeks.map { ($0.label, $0.color) }
-        let tap = done || avail ? b.to : nil
-        return Button { if let tap { m.boardPath.append(tap) } } label: {
-            VStack(alignment: .leading, spacing: 10) {
+    /// 미션 요약 박스: 홈에서 고른 박스 모양의 바탕·글자색. 진행 = 끝낸 시작 미션 + 채운 체크인 칸
+    private func summaryBox(_ b: AppModel.BoardStep, starts: [AppModel.BoardStep]) -> some View {
+        let goal = m.isGoal, look = BoxLook(rawValue: lookRaw) ?? .jump
+        let total = goal ? 3 : 4, n = min(total, goal ? m.gWeeks.count : m.weeks.count)
+        let done = starts.filter(\.ok).count + n, all = starts.count + total
+        let f = Double(done) / Double(max(1, all))
+        // 체크인 팝업: 열린 뒤에만 (회복은 끝나면 판 위 체크인이 없어 닫는다)
+        let tap = goal ? b.avail || b.ok : !m.interDone && m.playOn
+        return Button { checkInOpen = true } label: {
+            VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text(goal ? String(localized: "석 달 체크인") : String(localized: "처음 4주 체크인")).appFont(12, .bold).foregroundStyle(on ? BoxInk.good : Theme.mint)
+                    Text("미션 · \(done)/\(all)")
                     Spacer()
-                    if done { Text("완료 ✓").appFont(12, .bold).foregroundStyle(BoxInk.gold) }
-                    else if !avail { Image(systemName: "lock").appFont(12) }
+                    Text(b.ok ? String(localized: "체크인 완료 ✓") : b.avail ? String(localized: "체크인 \(n)/\(total) ›") : String(localized: "체크인은 시작 미션 뒤"))
+                        .foregroundStyle(b.ok ? BoxInk.gold : BoxInk.dim)
                 }
-                if !(done || n >= total) {
-                    Text(!avail ? String(localized: "시작 미션 뒤 열림")
-                         : goal ? String(localized: "월 1회 계획대로 체크 · \(String(describing: n))/3달")
-                         : String(localized: "주 1회 비중 체크 · \(String(describing: n))/4주"))
-                        .appFont(16, .bold).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                .appFont(13).foregroundStyle(BoxInk.dim)
+                (Text(String(localized: "진행 · ")).foregroundColor(BoxInk.ink) + Text(AppModel.pct(f)).foregroundColor(BoxInk.gold))
+                    .font(.system(size: 30, weight: .heavy)).tracking(-0.5).lineLimit(1).minimumScaleFactor(0.6)
+                    .padding(.top, 6)
+                ProgressTrack(look: look, fill: f).frame(height: 14).padding(.top, 10)
+                HStack(alignment: .top, spacing: 12) {
+                    gameBest(String(localized: "벽돌깨기"), brickBest)
+                    gameBest(String(localized: "파도타기"), waveBest)
                 }
-                HStack(spacing: 6) {
-                    ForEach(0..<total, id: \.self) { i in
-                        let pick = i < picks.count ? picks[i] : nil, cur = avail && !done && i == n
-                        VStack(spacing: 2) {
-                            Text(goal ? String(localized: "\(String(describing: i + 1))달") : String(localized: "\(i + 1)주째")).appFont(11)
-                            Text(pick?.0 ?? (cur ? (goal ? String(localized: "이번 달") : String(localized: "이번 주")) : "–")).appFont(13, .bold)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 60)
-                        // 고른 칸: 테마 바탕이 비치는 반투명 칸 + 결과 색 테두리 (계획대로·더·덜 구분은 테두리 색으로)
-                        .foregroundStyle(pick != nil ? BoxInk.ink : cur ? BoxInk.gold : BoxInk.dim)
-                        .background(pick != nil ? bx(0xFFFFFF, 0.72, 0xFFFFFF, 0.10) : .clear, in: RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(pick?.1 ?? (cur ? BoxInk.gold : BoxInk.flatF),
-                                                                          style: StrokeStyle(lineWidth: 2, dash: pick == nil ? [5, 4] : [])))
-                    }
-                }
+                .padding(.top, 12)
             }
-            .foregroundStyle(on ? BoxInk.ink : Theme.sub2)
-            .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-            .background { if on { MoodBackdrop(look: look) } else { Theme.track } }
-            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background { MoodBackdrop(look: look) }
+            .clipShape(RoundedRectangle(cornerRadius: 20))
             .boxScheme()
         }
-        .buttonStyle(.plain).disabled(tap == nil)
-        .accessibilityLabel(goal ? String(localized: "처음 석 달 체크인, \(n)/3달") : String(localized: "처음 4주 체크인, \(n)/4주"))
+        .buttonStyle(.plain).disabled(!tap)
+        .onAppear { rec = GameRecord.load() }   // 게임을 하고 돌아오면 최고 점수를 다시 읽는다
+        .accessibilityLabel(String(localized: "미션 \(done)/\(all), 진행 \(AppModel.pct(f))"))
+    }
+
+    /// 게임 한 칸: 이름 · 최고 점수 / 그 점수를 낸 단계
+    private func gameBest(_ name: String, _ best: (score: Int, stage: String)?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(best.map { String(localized: "\(name) 최고 \($0.score.formatted())점") } ?? String(localized: "\(name) 기록 없음"))
+                .appFont(13, .semibold).foregroundStyle(BoxInk.ink)
+            Text(best?.stage ?? " ").appFont(12).foregroundStyle(BoxInk.dim)
+        }
+        .lineLimit(1).minimumScaleFactor(0.8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// 벽돌깨기 최고 점수: 모든 난이도·단계 중 가장 높은 판 ("난이도.단계" 키)
+    private var brickBest: (score: Int, stage: String)? {
+        guard let top = rec.best.max(by: { $0.value < $1.value }), top.value > 0 else { return nil }
+        let k = top.key.split(separator: "."), lv = k.first.flatMap { GameLevel(rawValue: String($0)) }
+        let st = k.last.flatMap { Int($0) }.flatMap { n in GameStage.all.first { $0.n == n } }
+        return (top.value, [lv?.title, st.map { "\($0.bg.volume) \($0.bg.name)" }].compactMap { $0 }.joined(separator: " · "))
+    }
+
+    /// 파도타기 최고 점수: 섬마다 최고 중 가장 높은 섬
+    private var waveBest: (score: Int, stage: String)? {
+        guard let i = WaveMap.order.max(by: { WaveMap.best($0) < WaveMap.best($1) }), WaveMap.best(i) > 0 else { return nil }
+        return (WaveMap.best(i), i.name)
     }
 
     /// 시작 미션: 접힌 한 줄, 펼치면 번호 목록. 끝냈거나 열린 미션은 눌러서 들어간다

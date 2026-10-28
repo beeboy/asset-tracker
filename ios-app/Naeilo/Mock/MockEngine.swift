@@ -12,7 +12,7 @@ enum MockClock {
     static let closeAt = 15 * 60 + 30        // 15:30 마감
     static let fullEvery: TimeInterval = 60 * 60   // 전체 훑기 간격 (그 사이엔 가까운 종목만)
     static let nearMin = 0.5                 // 가까운 종목: 조건 문턱의 50% 이상
-    static let amountFloor = 10.0            // 거래대금 바닥 (억원). 미만이면 고르지 않음
+    static let amountFloor = 10.0            // 거래대금 바닥 (억원, 지난 20일 하루 평균). 미만이면 고르지 않음
     static let recheck: TimeInterval = 15 * 60     // 처음 걸린 뒤 이만큼 지나 다시 걸려야 고름
     static let curveUntil = 8 * 60 + 30      // 거래량 곡선은 이 전이나
     static let curveFrom = 15 * 60 + 45      // 이 뒤에 받는다
@@ -125,12 +125,19 @@ enum MockCalc {
                                 why: why.isEmpty ? "조각 없음 · 전부" : MockFmt.uniq(why.joined(separator: " · ")),
                                 vol: value(MockPiece(kind: .volume, days: 20), bs), rise5: value(MockPiece(kind: .rise, days: 5), bs),
                                 volNew: f.flatMap { f in value(MockPiece(kind: .volume, days: 20), bs).map { $0 / f } },
-                                amount: value(MockPiece(kind: .amount), bs)))
+                                amount: value(MockPiece(kind: .amount), bs), amt20: avgAmount(bs)))
         }
         hits.sort { $0.score != $1.score ? $0.score > $1.score : $0.code < $1.code }
         return MockScan(at: at, bundleId: b.id, bundleName: b.name, pieceTexts: b.pieces.map(\.text), barDay: barDay,
                         total: list.count, hits: hits, dropped: dropped, excluded: ex, seconds: seconds,
                         frac: f, newHits: f == nil ? nil : newHits)
+    }
+
+    /// 지난 20일 하루 평균 거래대금 (억원). 오늘 봉은 빼서 시각과 상관없다. 봉이 없으면 nil
+    static func avgAmount(_ bs: [MockBar]) -> Double? {
+        let past = bs.dropLast().suffix(20)
+        guard !past.isEmpty else { return nil }
+        return past.reduce(0) { $0 + $1.c * $1.v } / Double(past.count) / 1e8
     }
 
     /// 새 배수: 거래량·거래대금은 아직 쌓이는 중이라 이 시각 누적 비율로 나눈다. 가격 조각은 그대로

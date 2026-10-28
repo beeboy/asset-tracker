@@ -64,13 +64,13 @@ final class SiteCalc {
         let p = s.split(separator: "-").compactMap { Int($0) }
         guard p.count == 3 else { return s }
         let m0 = p[0] * 12 + (p[1] - 1) + n, y = Int((Double(m0) / 12).rounded(.down)), mo = m0 - y * 12 + 1
-        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "UTC")!
-        let last = cal.range(of: .day, in: .month, for: cal.date(from: DateComponents(year: y, month: mo, day: 1))!)?.count ?? 28
+        let last = utcCal.range(of: .day, in: .month, for: utcCal.date(from: DateComponents(year: y, month: mo, day: 1))!)?.count ?? 28
         return String(format: "%04d-%02d-%02d", y, mo, min(p[2], last))
     }
-    static func today(_ d: Date = Date()) -> String {
-        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"; return f.string(from: d)
-    }
+    static func today(_ d: Date = Date()) -> String { dayFmt.string(from: d) }
+    /// 달력·날짜 틀은 만들 때 비싸서 한 번만 만든다 (배당 계산이 종목마다 수십 번 부른다)
+    private static let utcCal: Calendar = { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "UTC")!; return c }()
+    private static let dayFmt: DateFormatter = { let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"; return f }()
     /// web/app.js divGrowth: 지난 12개월 합 ÷ 24~36개월 전 12개월 합 의 제곱근 − 1 (0~15%)
     static func divGrowth(_ ev: [Ev], today t: String) -> Double {
         let a = addMonths(t, -12), b = addMonths(t, -24), c = addMonths(t, -36)

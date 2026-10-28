@@ -417,11 +417,12 @@ fun GoalCellsCard(m: AppModel, minHeight: Dp = 0.dp) {   // minHeight: 미션 �
         }
         // 내 자산 게임 (2026-10-25 시안 A안): 100칸 바로 아래, 벽돌깨기·파도타기 두 칸 나란히
         // ios: Views/GoalViews.swift:150
-        Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(20.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // 바탕 카드는 뺀다. 100칸 카드와 같은 색이 이어져 어색하다 (2026-10-27)
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/GoalViews.swift:147
             T("내 자산 게임", style = appFont(18f, FontWeight.Bold))   // ios: Views/GoalViews.swift:152
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/GoalViews.swift:153
                 GameTile(GameThumbKind.brick, "채운 칸을 부시자", "벽돌깨기", Modifier.weight(1f)) { showGame = true }   // ios: Views/GoalViews.swift:154
-                GameTile(GameThumbKind.wave, "내 흐름을 타자", "파도타기", Modifier.weight(1f)) { showWave = true }   // ios: Views/GoalViews.swift:155
+                GameTile(GameThumbKind.wave, "내 흐름을 즐기자", "파도타기", Modifier.weight(1f)) { showWave = true }   // ios: Views/GoalViews.swift:155
             }
         }
         // 캐릭터·말풍선은 화면 맨 아래(탭 위)
@@ -466,11 +467,11 @@ enum class GameThumbKind { brick, wave }
 // ios: Views/GoalViews.swift:723
 @Composable
 private fun GameThumb(kind: GameThumbKind, modifier: Modifier) {
-    val bg = Theme.mintBg; val ink = Theme.ink; val teal = Theme.teal; val mint = GoalCellsCard.mintC; val gold = Theme.gold; val muted = Theme.muted
+    val ink = Theme.ink; val gold = Theme.gold; val muted = Theme.muted
     Canvas(modifier.clearAndSetSemantics {}) {   // ios: Views/GoalViews.swift:727,732
         val d = density; val W = size.width / d; val H = size.height / d   // 아이폰과 같은 pt 좌표로 그린다
         scale(d, d, pivot = Offset.Zero) {
-            drawRect(bg, size = Size(W, H))
+            // 바탕·벽돌·파도는 외곽선만. 채우는 것은 졸라맨·패들·공 / 졸라맨·보드·별 (2026-10-27)   // ios: Views/GoalViews.swift:181
             fun line(ls: List<FloatArray>) = ls.forEach { drawLine(ink, Offset(it[0], it[1]), Offset(it[2], it[3]), strokeWidth = 2f, cap = StrokeCap.Round) }   // ios: Views/GoalViews.swift:734
             fun head(x: Float, y: Float) = drawCircle(ink, 4f, Offset(x, y))   // ios: Views/GoalViews.swift:739
             if (kind == GameThumbKind.brick) {
@@ -481,7 +482,7 @@ private fun GameThumb(kind: GameThumbKind, modifier: Modifier) {
                     // 깨진 자리: 공은 위에서 오니 위 칸이 깨진 곳만 아래도 깨진다. 공 밑 칸과 그 오른쪽 칸도 비운다
                     if ((r == 0 && (k % 5 == 2 || k == kb || k == kb + 1)) || (r == 1 && k == 2)) continue
                     val y = H - 8 - (rows - r) * (ch + gap)
-                    drawRoundRect(if (r < 2) teal else mint, Offset(8 + k * (cw + gap), y), Size(cw, ch), CornerRadius(2f))
+                    drawRoundRect(muted, Offset(8 + k * (cw + gap), y), Size(cw, ch), CornerRadius(2f), style = Stroke(1f))   // ios: Views/GoalViews.swift:196
                 }
                 val px = W * 0.38f; val pw = W * 0.24f; val py = 30f
                 drawRoundRect(ink, Offset(px, py), Size(pw, 6f), CornerRadius(3f))
@@ -497,9 +498,7 @@ private fun GameThumb(kind: GameThumbKind, modifier: Modifier) {
                 // ios: Views/GoalViews.swift:775
                 val pts = (0..40).map { i -> val t = i / 40f; Offset(t * W, H * 0.62f - sin(t * 6.5f) * H * 0.14f - t * H * 0.22f + sin(t * 19f) * 3f) }
                 val top = Path().apply { moveTo(pts[0].x, pts[0].y); pts.drop(1).forEach { lineTo(it.x, it.y) } }
-                val fill = Path().apply { addPath(top); lineTo(W, H); lineTo(0f, H); close() }
-                drawPath(fill, mint)
-                drawPath(top, teal, style = Stroke(2.5f, cap = StrokeCap.Round))
+                drawPath(top, muted, style = Stroke(2f, cap = StrokeCap.Round))   // ios: Views/GoalViews.swift:221
                 // 졸라맨: 무릎 굽혀 보드 위에, 두 팔을 넓게
                 translate(pts[17].x, pts[17].y - 3) { rotate(-0.35f * 180f / PI.toFloat(), pivot = Offset.Zero) {
                     drawOval(gold, Offset(-14f, -3f), Size(28f, 6f))
@@ -820,8 +819,16 @@ fun GoalSetView(m: AppModel, fromSettings: Boolean = false) {
     val plus = !m.bare   // ios: Views/GoalViews.swift:424
     // ios: Views/GoalViews.swift:425 (경로 계산은 읽은 값이 바뀔 때만 다시)
     val need by remember(m) { derivedStateOf { m.neededMonthly() } }; val path by remember(m) { derivedStateOf { m.simulate(if (!m.bare) m.mineMix else AppModel.mixes[0], monthly = if (!m.bare) m.gM else m.neededMonthly()) } }
-    val start = m.goalStart; val cagr = if (start > 0) (m.gK / start).pow(1 / m.gY.toDouble()) - 1 else 0.0   // ios: Views/GoalViews.swift:426
+    val start = m.goalStart
     val ok = m.gK > 0 && m.gY >= 1   // ios: Views/GoalViews.swift:427
+    val editing = fromSettings || m.gDone.contains("goal")
+    // 고친 숫자는 손을 멈추고 0.35초 뒤에 넣는다 (넣을 때마다 위 그래프를 다시 세니, 한 글자마다 세지 않게)
+    fun putAll() {
+        k.replace(",", "").toDoubleOrNull()?.let { d -> if (d > 0) m.gK = d }
+        y.replace(",", "").toIntOrNull()?.let { d -> m.gY = min(30, max(1, d)) }
+        if (m.bare) m.gA = max(0.0, a.toDoubleOrNull() ?: 0.0) else m.gM = max(0.0, mo.replace(",", "").toDoubleOrNull() ?: 0.0)
+    }
+    LaunchedEffect(k, y, a, mo) { delay(350); putAll() }
     val teal = Theme.teal; val line = Theme.line
     // 위로 끌면 자판을 내린다 (scrollDismissesKeyboard(.interactively))
     Box(Modifier.fillMaxSize().background(Theme.bg).hideKeyboardOnDrag(focus)) {   // ios: Views/GoalViews.swift:497,498,500 (inline 제목 막대는 NavStack 몫)
@@ -830,7 +837,7 @@ fun GoalSetView(m: AppModel, fromSettings: Boolean = false) {
             Column(Modifier.fillMaxWidth().background(Theme.card).bottomLine(line).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val gNo = m.goalNo("goal")
                 // Views/GoalViews.swift:630 (검사 예외: 보간 속 따옴표, 같은 글)
-                T(if (fromSettings || m.gDone.contains("goal")) "목표 고치기" else "미션 ${gNo} / ${m.goalTotal}", style = appFont(14f, FontWeight.SemiBold), color = Theme.teal)
+                if (!editing) T("미션 ${gNo} / ${m.goalTotal}", style = appFont(14f, FontWeight.SemiBold), color = Theme.teal)
                 T("언제까지, 얼마나?", style = appFont(22f, FontWeight.Bold))   // ios: Views/GoalViews.swift:431
                 Row(Modifier.fillMaxWidth()) {   // ios: Views/GoalViews.swift:432
                     T("${m.gY}년 뒤 ${noWon(AppModel.wonK(m.gK))}", Modifier.alignByBaseline(), style = appFont(17f, FontWeight.Bold))   // ios: Views/GoalViews.swift:433
@@ -838,63 +845,53 @@ fun GoalSetView(m: AppModel, fromSettings: Boolean = false) {
                     TA(buildAnnotatedString { append("닿을 확률 "); withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = teal)) { append(AppModel.pct(path.prob)) } }, Modifier.alignByBaseline(), style = appFont(14f))   // ios: Views/GoalViews.swift:435
                 }
                 if (plus) {   // ios: Views/GoalViews.swift:437
-                    T("월 ${noWon(AppModel.wonK(m.gM))} · " + (if (need > 0) "맞추려면 월 ${noWon(AppModel.wonK(need))}" else "이미 충분"), style = appFont(14f, FontWeight.SemiBold))   // ios: Views/GoalViews.swift:438
+                    T(if (need > 0) "맞추려면 월 ${noWon(AppModel.wonK(need))}" else "이미 충분", style = appFont(14f, FontWeight.SemiBold))   // ios: Views/GoalViews.swift:438
                 } else {   // ios: Views/GoalViews.swift:439
                     T((if (need > 0) "월 " + noWon(AppModel.wonK(need)) else "이미 충분") + " · 1년 ${noWon(AppModel.wonK(need * 12))}", style = appFont(14f, FontWeight.SemiBold))   // ios: Views/GoalViews.swift:440
+                    T(if (m.gK <= 1000) "첫 목표 · 적립 습관" else "연 7%면 해마다 +${noWon(AppModel.wonK(m.gK * 0.07))}", style = appFont(13f), color = Theme.sub)   // ios: Views/GoalViews.swift:442
                 }
-                val x1 = cformat("%.1f", m.gK / max(1.0, start))
-                // ios: Views/GoalViews.swift:442
-                val sub = if (m.bare) (if (m.gK <= 1000) "첫 목표 · 적립 습관" else "연 7%면 해마다 +${noWon(AppModel.wonK(m.gK * 0.07))}")
-                    else "지금의 ${x1}배 · 적립 없이 연 +${(cagr * 100).swRound().toInt()}%"   // Views/GoalViews.swift:643 (검사 예외: 보간 속 따옴표, 같은 글)
-                T(sub, style = appFont(13f), color = Theme.sub)   // ios: Views/GoalViews.swift:444
                 GoalPathChart(listOf(Triple(path, Theme.teal, true)), goal = m.gK, modifier = Modifier.fillMaxWidth().height(80.dp))   // ios: Views/GoalViews.swift:445
                 val st11 = appFont(11f); val mu = Theme.muted   // ios: Views/GoalViews.swift:446
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("지금", style = st11, color = mu); Spacer(Modifier.weight(1f)); T("┅ 목표 · ┈ 원금", style = st11, color = mu); Spacer(Modifier.weight(1f)); T("${m.gY}년", style = st11, color = mu) }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("지금", style = st11, color = mu); Spacer(Modifier.weight(1f)); T("${m.gY}년", style = st11, color = mu) }
             }
         }, content = {   // ios: Views/GoalViews.swift:449
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {   // ios: Views/GoalViews.swift:450,495
-                if (fromSettings || m.gDone.contains("goal")) {   // ios: Views/GoalViews.swift:451
-                    GuideBubble(m, Pose.point, "카드를 누르거나 숫자를 고치면 위 그래프와 확률이 바로 바뀌어요. 저장하면 미션 진행은 그대로 두고 목표만 바꿔요.")   // ios: Views/GoalViews.swift:452
+                if (editing) {   // ios: Views/GoalViews.swift:451
+                    GuideBubble(m, Pose.point, "저장해도 미션 진행은 그대로예요.")   // ios: Views/GoalViews.swift:452
                 } else if (m.bare) {   // ios: Views/GoalViews.swift:453
                     GuideBubble(m, Pose.wave, "처음 시작하시는군요. …… 첫 목표부터 정해요. 지금 모아 둔 투자금이 없으면 0을 넣으세요.")   // ios: Views/GoalViews.swift:454
                 } else {   // ios: Views/GoalViews.swift:455
                     GuideBubble(m, Pose.think, "언제까지, 얼마를 모으고 싶나요? …… 카드는 매달 넣는 돈으로 닿을 확률이 반반쯤인 금액이에요. 모두 지금 ${AppModel.wonK(start)}에서 출발한 계산이에요.")   // ios: Views/GoalViews.swift:456
                 }
                 if (!m.bare) {   // ios: Views/GoalViews.swift:458
-                    T((if (m.gM > 0) "월 ${noWon(AppModel.wonK(m.gM))}씩 넣으면" else "적립 없이") + " 확률 50%인 목표", style = appFont(13f, FontWeight.SemiBold), color = Theme.sub)   // ios: Views/GoalViews.swift:459
+                    T(if (m.gM > 0) "확률 50%인 목표" else "적립 없이" + " 확률 50%인 목표", style = appFont(13f, FontWeight.SemiBold), color = Theme.sub)   // ios: Views/GoalViews.swift:459
                 }
                 val presets by remember(m) { derivedStateOf { m.goalPresets } }   // ios: Views/GoalViews.swift:462 (목표 카드: 경로 계산이라 값이 바뀔 때만)
-                // ios: Views/GoalViews.swift:461 두 열 격자: 열 사이 8 (GridItem spacing 8·8), 줄 사이 8
-                val gridItems = listOf(8.dp, 8.dp); Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { presets.chunked(2).forEach { pair -> Row(horizontalArrangement = Arrangement.spacedBy(gridItems[0])) {
-                    pair.forEach { p ->
-                        val on = m.gK == p.k && m.gY == p.y   // ios: Views/GoalViews.swift:463
-                        val tap = Modifier.plainClickable { m.gK = p.k; m.gY = p.y; k = p.k.toInt().toString(); y = p.y.toString() }   // ios: Views/GoalViews.swift:464,473
-                        // ios: Views/GoalViews.swift:471,472
-                        val card = Modifier.defaultMinSize(minHeight = 96.dp).background(if (on) Theme.mintBg else Theme.card, RoundedCornerShape(14.dp)).strokeR(if (on) Theme.teal else Theme.border, 14f, 2f).padding(12.dp)
-                        Column(Modifier.weight(1f).then(tap).then(card), verticalArrangement = Arrangement.spacedBy(4.dp)) {   // ios: Views/GoalViews.swift:465
-                            Row { T(p.name, Modifier.alignByBaseline(), style = appFont(15f, FontWeight.Bold)); T("${p.y}년", Modifier.alignByBaseline().padding(start = 8.dp), style = appFont(12f), color = Theme.sub) }   // ios: Views/GoalViews.swift:466
-                            if (p.mean.isNotEmpty()) T(p.mean, style = appFont(12f), color = Theme.sub)   // ios: Views/GoalViews.swift:467
-                            T(p.need, style = appFont(13f, FontWeight.Bold), color = Theme.teal)   // ios: Views/GoalViews.swift:468
-                        }
+                // ios: Views/GoalViews.swift:461 가로 한 줄에 넷
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { presets.forEach { p ->
+                    val on = m.gK == p.k && m.gY == p.y   // ios: Views/GoalViews.swift:463
+                    val tap = Modifier.plainClickable { m.gK = p.k; m.gY = p.y; k = p.k.toInt().toString(); y = p.y.toString() }   // ios: Views/GoalViews.swift:464,473
+                    val card = Modifier.defaultMinSize(minHeight = 64.dp).background(if (on) Theme.mintBg else Theme.card, RoundedCornerShape(14.dp)).strokeR(if (on) Theme.teal else Theme.border, 14f, 2f).padding(horizontal = 4.dp, vertical = 10.dp)
+                    Column(Modifier.weight(1f).then(tap).then(card), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/GoalViews.swift:465
+                        T(p.name, style = appFont(15f, FontWeight.Bold), maxLines = 1)   // ios: Views/GoalViews.swift:466
+                        T("${p.y}년", style = appFont(12f), color = Theme.sub)
+                        if (p.need.isNotEmpty()) T(p.need, style = appFont(13f, FontWeight.Bold), color = Theme.teal, maxLines = 1)   // ios: Views/GoalViews.swift:468
                     }
-                    if (pair.size < 2) Spacer(Modifier.weight(1f))
-                } } }
-                inputField("목표 (만원)", k) { k = it }; OnChange(k) { v -> v.replace(",", "").toDoubleOrNull()?.let { d -> if (d > 0) m.gK = d } }   // ios: Views/GoalViews.swift:476
-                inputField("기간 (년)", y) { y = it }; OnChange(y) { v -> v.replace(",", "").toIntOrNull()?.let { d -> m.gY = min(30, max(1, d)) } }   // ios: Views/GoalViews.swift:477
-                if (m.bare) {   // ios: Views/GoalViews.swift:490
-                    inputField("모아 둔 돈 (만원)", a) { a = it }; OnChange(a) { v -> m.gA = max(0.0, v.toDoubleOrNull() ?: 0.0) }   // ios: Views/GoalViews.swift:481
-                } else {   // ios: Views/GoalViews.swift:482
-                    inputField("월 적립 (만원)", mo) { mo = it }; OnChange(mo) { v -> m.gM = max(0.0, v.replace(",", "").toDoubleOrNull() ?: 0.0) }   // ios: Views/GoalViews.swift:483
-                    // ios: Views/GoalViews.swift:484,485
-                    Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp).plainClickable { focus.clearFocus(); m.gK = m.autoGoal(years = m.gY); k = m.gK.toInt().toString() }, contentAlignment = Alignment.Center) {
-                        T("50%로 맞추기", style = appFont(15f, FontWeight.SemiBold), color = Theme.teal)
-                    }
+                } }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {   // 가로 한 줄에 셋
+                    Box(Modifier.weight(1f)) { inputField("목표 (만원)", k) { k = it } }   // ios: Views/GoalViews.swift:476
+                    Box(Modifier.weight(1f)) { inputField("기간 (년)", y) { y = it } }   // ios: Views/GoalViews.swift:477
+                    if (m.bare) Box(Modifier.weight(1f)) { inputField("모아 둔 돈 (만원)", a) { a = it } }   // ios: Views/GoalViews.swift:481
+                    else Box(Modifier.weight(1f)) { inputField("월 적립 (만원)", mo) { mo = it } }   // ios: Views/GoalViews.swift:483
+                }
+                if (!m.bare) {   // ios: Views/GoalViews.swift:482
                     T("출발 ${noWon(AppModel.wonK(start))} · 목표일 ${m.goalToShort}", style = appFont(13f), color = Theme.sub)   // ios: Views/GoalViews.swift:486
                 }
-                PrimaryButton(title = if (fromSettings || m.gDone.contains("goal")) "저장" else "길 보기", color = if (ok) Theme.teal else Theme.muted) {   // ios: Views/GoalViews.swift:488
+                PrimaryButton(title = if (editing) "저장" else "길 보기", color = if (ok) Theme.teal else Theme.muted) {   // ios: Views/GoalViews.swift:488
                     if (!ok) return@PrimaryButton   // ios: Views/GoalViews.swift:489
                     focus.clearFocus()   // ios: Views/GoalViews.swift:490
-                    if (m.bare) m.gM = max(5.0, (need / 5).swRound() * 5)   // ios: Views/GoalViews.swift:490
+                    putAll()
+                    if (m.bare) m.gM = max(5.0, (m.neededMonthly() / 5).swRound() * 5)   // ios: Views/GoalViews.swift:490
                     if (fromSettings) { nav?.pop?.invoke(); return@PrimaryButton }   // ios: Views/GoalViews.swift:492
                     if (m.gDone.contains("goal")) { m.boardPath = m.boardPath.dropLast(1); return@PrimaryButton }   // ios: Views/GoalViews.swift:491 고치기: 미션 판으로 돌아간다
                     m.gDone = m.gDone + "goal"; m.boardPath = m.boardPath + MissionRoute.g1r   // ios: Views/GoalViews.swift:492

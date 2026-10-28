@@ -330,7 +330,12 @@ fun Modifier.pulse(color: Color, dot: Dp, beats: Int? = null, key: Any? = null, 
 // 금액이 바뀔 때 숫자가 한 자리씩 위아래로 넘어가며 바뀐다 (플립). 글로 된 숫자(분석 카드 값 등)도 같다
 // ios: Views/Charts.swift:165,166,167,171,173,174
 @Composable
-fun RollText(text: String, value: Any, modifier: Modifier = Modifier, style: TextStyle) {
+fun RollText(text: String, value: Any, modifier: Modifier = Modifier, style: TextStyle) =
+    RollText(androidx.compose.ui.text.AnnotatedString(text), value, modifier, style)
+
+// 꾸민 글(▲만 작게 등)도 글자마다 꾸밈을 지닌 채 넘긴다
+@Composable
+fun RollText(text: androidx.compose.ui.text.AnnotatedString, value: Any, modifier: Modifier = Modifier, style: TextStyle) {
     // 오르면 새 숫자가 아래에서 올라오고, 내리면 위에서 내려온다 (.numericText(value:)). 글이면 위로
     var last by remember { mutableStateOf(value) }
     val upward = (value as? Double)?.let { v -> (last as? Double)?.let { v >= it } } ?: true
@@ -342,13 +347,14 @@ fun RollText(text: String, value: Any, modifier: Modifier = Modifier, style: Tex
     val base = full.firstBaseline; val fullH = full.size.height
     androidx.compose.ui.layout.Layout(content = {
         Row(Modifier.clipToBounds()) {
-            text.forEachIndexed { i, ch ->
+            for (i in text.indices) {
+                val ch = text.subSequence(i, i + 1)
                 androidx.compose.runtime.key(text.length - i) {
                     AnimatedContent(ch, transitionSpec = {
                         (slideInVertically(spec) { h -> if (upward) h else -h }) togetherWith (slideOutVertically(spec) { h -> if (upward) -h else h })
                     }, label = "roll") { c ->
                         // 글자마다 글꼴이 달라도(숫자·한글) 같은 기준선에 서게 둔다
-                        androidx.compose.ui.layout.Layout({ BasicText(c.toString(), style = style) }) { ms, cs ->
+                        androidx.compose.ui.layout.Layout({ BasicText(c, style = style) }) { ms, cs ->
                             val p = ms[0].measure(cs); val b = p[androidx.compose.ui.layout.FirstBaseline]
                             val dy = if (b == androidx.compose.ui.layout.AlignmentLine.Unspecified) 0 else base.roundToInt() - b
                             layout(p.width, maxOf(fullH, p.height + dy)) { p.place(0, dy) }

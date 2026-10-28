@@ -49,10 +49,12 @@ struct FlowSeries {
         self.dates = dates
         self.live = live
         let c = candles.map(\.c)
-        let zz = [0.06, 0.12, 0.22].map { FlowCalc.zigzag(c, $0) }
-        pivotSets = zz.map { $0.map { FlowPivot(i: $0.i, price: $0.high ? candles[$0.i].h : candles[$0.i].l, high: $0.high) } }
-        pivots = pivotSets[0]
-        trends = zz.map { FlowCalc.trends($0, c.count) }
+        // 흐름 띠: 작은 = 그날 등락, 중간 = 3%, 큰 = 6% 넘는 출렁임 (2026-10-28 드링커님 결정). 지지·저항·패턴은 전처럼 6% 고점·저점
+        let zz = [0.03, 0.06].map { FlowCalc.zigzag(c, $0) }
+        let ps = zz.map { $0.map { FlowPivot(i: $0.i, price: $0.high ? candles[$0.i].h : candles[$0.i].l, high: $0.high) } }
+        pivotSets = [ps[0], ps[1], ps[1]]
+        pivots = ps[1]
+        trends = [FlowCalc.daily(c)] + zz.map { FlowCalc.trends($0, c.count) }
         levels = FlowCalc.levels(pivots, last: c.last ?? 0)
         var out = FlowCalc.patterns(candles, pivots)
         // 장중 오늘 캔들에 닿은 패턴은 아직 바뀔 수 있어 확정이 아니다 (마감 뒤 일봉으로 다시 정한다)
@@ -81,6 +83,18 @@ enum FlowCalc {
                 else if c[i] >= c[ext] * (1 + th) { out.append(.init(i: ext, price: c[ext], high: false)); dir = 1; ext = i }
             }
         }
+        return out
+    }
+
+    /// 그날 등락 띠: 전날 종가보다 오르면 상승, 내리면 하락, 같으면 횡보. 같은 방향 날을 한 띠로 묶는다
+    static func daily(_ c: [Double]) -> [FlowTrend] {
+        guard !c.isEmpty else { return [] }
+        var out: [FlowTrend] = [], start = 0, dir = 0
+        for i in c.indices.dropFirst() {
+            let d = c[i] > c[i - 1] ? 1 : c[i] < c[i - 1] ? -1 : 0
+            if d != dir { if i > start { out.append(.init(from: start, to: i - 1, dir: dir)) }; start = i; dir = d }
+        }
+        out.append(.init(from: start, to: c.count - 1, dir: dir))
         return out
     }
 
@@ -525,16 +539,29 @@ final class FlowStore {
         return (d, (2...6).contains(c.weekday!) && c.hour! * 60 + c.minute! >= (kr ? 9 * 60 : 9 * 60 + 30))
     }
 
-    /// 장중 오늘 캔들 (날짜, 캔들). 지금 가격이 없거나, 일봉에 오늘이 이미 있거나, 전일 종가 그대로면(휴장) 없음
+    /// 미국 장 밖(데이마켓·시간외) 캔들 날짜: 오늘부터 처음 오는 평일 중 마지막 일봉 뒤인 날. 미국 시간 금 20시~일 20시(거래 없음)면 nil
+    static func usNext(after last: String) -> String? {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/New_York")!
+        let now = Date(), w = cal.component(.weekday, from: now), h = cal.component(.hour, from: now)
+        if w == 7 || (w == 1 && h < 20) || (w == 6 && h >= 20) { return nil }
+        let f = { (d: Date) in let x = cal.dateComponents([.year, .month, .day], from: d); return String(format: "%04d-%02d-%02d", x.year!, x.month!, x.day!) }
+        var d = now
+        while [1, 7].contains(cal.component(.weekday, from: d)) || f(d) <= last { d = cal.date(byAdding: .day, value: 1, to: d)! }
+        return f(d)
+    }
+
+    /// 장중 오늘 캔들 (날짜, 캔들). 지금 가격이 없거나, 일봉에 그날이 이미 있거나, 전일 종가 그대로면(휴장) 없음
+    /// 미국은 장 밖(토스 데이마켓·시간외)에도 지금 가격으로 다음 거래일 캔들을 붙인다 (장중 캔들처럼 흐리게)
     private func live(_ id: String, _ b: FlowBars.Series) -> (String, Candle)? {
         guard let s = Sample.symbol(id), let prev = b.c.last, let last = b.d.last else { return nil }
-        let q = Market.shared.quote(s)
-        let (md, open) = Self.marketNow(kr: Self.isKR(id))
-        guard q.live, q.last > 0, open, last < md, abs(q.last - prev) > 1e-9 else { return nil }
-        var k = today[id].flatMap { $0.0 == md ? $0.1 : nil } ?? Candle(o: prev, h: max(prev, q.last), l: min(prev, q.last), c: q.last, v: 0)
+        let q = Market.shared.quote(s), kr = Self.isKR(id)
+        let (md, open) = Self.marketNow(kr: kr)
+        guard q.live, q.last > 0, let day = kr ? (open ? md : nil) : Self.usNext(after: last), last < day, abs(q.last - prev) > 1e-9 else { return nil }
+        var k = today[id].flatMap { $0.0 == day ? $0.1 : nil } ?? Candle(o: prev, h: max(prev, q.last), l: min(prev, q.last), c: q.last, v: 0)
         k.c = q.last; k.h = max(k.h, q.last); k.l = min(k.l, q.last)
-        today[id] = (md, k)
-        return (md, k)
+        today[id] = (day, k)
+        return (day, k)
     }
 
     /// 차트 탭을 열 때: 아직 없는 담은 종목을 받는다. 토스는 기존 시세 갱신 흐름으로, 알파카는 여기서 한 번에

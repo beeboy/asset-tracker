@@ -6,14 +6,14 @@ enum AnalysisRoute: Hashable, Identifiable {
 
     func title(_ m: AppModel) -> String {
         switch self {
-        case .calm: return String(localized: "내 투자 습관")
+        case .calm: return String(localized: "결과에 끌려 사고팔까?")
         case .forecast: return m.forecastTitle
-        case .rateScen: return String(localized: "금리 충격 테스트")
-        case .external: return String(localized: "외부 요인")
+        case .rateScen: return String(localized: "금리가 바뀌면 내 목표는?")
+        case .external: return String(localized: "바깥 일, 내 돈은?")
         case .dividend: return String(localized: "배당")
         case .tax: return String(localized: "세금")
         case .goal: return String(localized: "목표 고치기")
-        case .fx: return String(localized: "환율 영향")
+        case .fx: return String(localized: "환율이 바뀌면?")
         case .glance: return String(localized: "종목 한눈에")
         }
     }
@@ -152,7 +152,6 @@ struct AnalysisView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 AppHeader(tab: String(localized: "분석")).padding(.horizontal, -16)
-                SampleNote()
                 Button { sheet = .forecast } label: {
                     ChanceBox(look: BoxLook(rawValue: lookRaw) ?? .jump, d: chance(p, f, pPlan, pro: pro)).boxScheme()
                 }
@@ -160,6 +159,7 @@ struct AnalysisView: View {
                 tug(pPlan, known: pro && f.exact)
                 shake(p, f, pro: pro)
                 if m.isGoal && pro { raise }
+                SampleNote()   // 샘플 안내는 맨 아래 (2026-10-28)
             }
             .screen()
         }
@@ -317,7 +317,7 @@ struct AnalysisView: View {
     }
 
     // MARK: 언제 흔들릴까? 내 길 계획선 그래프 + 앞으로 올 일정 깃발 (앱 일정표 MarketEvents · 세금은 내년 5월)
-    private struct Flag { let t: Double; let text: String; let warn: Bool; let route: AnalysisRoute }
+    private struct Flag { let t: Double; let text: String; let warn: Bool; let route: AnalysisRoute; var focus: String? = nil }
 
     private func flags(_ p: AppModel.MyPath, until: Double) -> [Flag] {
         let days = Int(max(0, (until - p.start) * 365.25))
@@ -325,7 +325,7 @@ struct AnalysisView: View {
         let dday = { (d: String) -> String in let n = Day.dday(d); return n == 0 ? String(localized: "오늘") : "D-\(n)" }
         var out: [Flag] = []
         if let h = hits.first(where: { $0.id == "x_fomc" }) {
-            out.append(Flag(t: p.start + Double(Day.dday(h.day)) / 365.25, text: dday(h.day) + " FOMC", warn: true, route: .external))
+            out.append(Flag(t: p.start + Double(Day.dday(h.day)) / 365.25, text: dday(h.day) + " FOMC", warn: true, route: .external, focus: "\(h.id).\(h.day)"))
         }
         if let h = hits.first(where: { $0.id.hasPrefix("e_") && $0.held }) {
             out.append(Flag(t: p.start + Double(Day.dday(h.day)) / 365.25, text: dday(h.day) + " " + h.kind.replacingOccurrences(of: String(localized: " 실적"), with: ""), warn: false, route: .external))
@@ -384,7 +384,7 @@ struct AnalysisView: View {
                         let x = CGFloat(min(1, max(0, X(fl[i].t)))) * w, y = CGFloat(i) * 22
                         let c = fl[i].warn ? Color(hex: 0xA8521A) : Theme.muted
                         Rectangle().fill(c).frame(width: 1, height: max(0, topH + chartH - y - 18)).offset(x: x, y: y + 18)
-                        Button { sheet = fl[i].route } label: {
+                        Button { ExternalView.focus = fl[i].focus; sheet = fl[i].route } label: {
                             Text(fl[i].text).appFont(11, .bold).foregroundStyle(fl[i].warn ? Color.white : Theme.ink).lineLimit(1).fixedSize()
                                 .padding(.horizontal, 6).frame(height: 18)
                                 .background(fl[i].warn ? Color(hex: 0xA8521A) : Theme.line, in: RoundedRectangle(cornerRadius: 6))
@@ -564,16 +564,10 @@ struct ChanceBox: View {
             }
             .font(.system(size: 14)).foregroundStyle(Self.dim)
             title.padding(.top, 6)
-            bar.frame(height: 62).padding(.top, 10)
-            HStack {
-                Text(d.foot)
-                Spacer(minLength: 8)
-                Text(d.nowText)
-            }
-            .font(.system(size: 15)).foregroundStyle(Self.dim).lineLimit(1).minimumScaleFactor(0.8)
-            .padding(.top, 8)
+            bar.frame(height: 50).padding(.top, 10)
+            // 맨 아래 '셋 중 … 선을 넘음 · 지금 …' 줄은 뺀다. 박스 높이를 종목 탭 박스에 맞춘다 (2026-10-27)
         }
-        .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 12)
+        .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background { MoodBackdrop(look: look) }
         .clipShape(RoundedRectangle(cornerRadius: 20))
@@ -600,38 +594,44 @@ struct ChanceBox: View {
         GeometryReader { g in
             let w = g.size.width
             let X = { (v: Double) -> CGFloat in CGFloat(min(1, max(0, v))) * w }
-            let xs = d.dots.map(X), lx = Self.spread(xs, gap: 38, w: w)
+            let xs = d.dots.map(X)
+            // 이름표: 세 점과 목표 이름을 한 줄에 놓고 서로 밀어 낸다 (0~2 = 점, 3 = 목표)
+            let tags = Self.tags(xs, goal: d.goal.map(X)), lx = Self.spread(tags.map(\.x), gap: 38, w: w)
             let names = [String(localized: "나쁠 때"), String(localized: "보통"), String(localized: "좋을 때")]
+            // 막대 위에 세 점을 겹치고 이름표는 그 아래. 인물·목표 옆 그림은 이 탭에서 뺀다 (2026-10-27)
             ZStack(alignment: .topLeading) {
-                ProgressTrack(look: look, fill: d.now).frame(width: w, height: 14).offset(y: 30)
+                ProgressTrack(look: look, fill: d.now).frame(width: w, height: 14).offset(y: 10)
                 if let gx = d.goal {
                     // 목표선 (점프 직전 라이트는 어두운 도로 위라 흰 선 + 옅은 그림자)
-                    Rectangle().fill(look == .jump ? bx(0xFFFFFF, 0xFFFFFF) : BoxInk.ink).frame(width: 2, height: 44)
+                    Rectangle().fill(look == .jump ? bx(0xFFFFFF, 0xFFFFFF) : BoxInk.ink).frame(width: 2, height: 22)
                         .shadow(color: look == .jump ? bx(0x16181D, 0.45, 0x000000, 0) : .clear, radius: 0.5)
-                        .offset(x: X(gx) - 1, y: 4)
-                    Text(d.goalLabel).font(.system(size: 10, weight: dk ? .regular : .bold)).foregroundStyle(BoxInk.ink).fixedSize()
-                        .position(x: min(w - 16, max(16, X(gx))), y: 56)
-                    // 목표선 옆에 서는 것 (오페라하우스·출구·일렁임·해·거품)
-                    TrackBuddy(look: look, goal: true)
-                        .frame(width: 60, height: 40, alignment: .bottomTrailing)
-                        .position(x: X(gx) - 3 - 30, y: 44 - 20)
+                        .offset(x: X(gx) - 1, y: 6)
                 }
                 ForEach(xs.indices, id: \.self) { i in
                     let r: CGFloat = i == 2 ? 8 : 7
                     Circle().fill(Self.dotC[i]).frame(width: r * 2, height: r * 2)
                         .overlay { if i == 1 && !dk { Circle().stroke(.white, lineWidth: 1.5) } }
-                        .position(x: xs[i], y: 19)
-                    Text(names[i]).font(.system(size: 10)).foregroundStyle(Self.labC[i]).fixedSize().position(x: lx[i], y: 0)
+                        .position(x: xs[i], y: 17)
                 }
-                // 지금 자리에 서는 작은 인물
-                TrackBuddy(look: look)
-                    .frame(width: 60, height: 40, alignment: .bottom)
-                    .position(x: min(w - 14, max(14, X(d.now))), y: 30 - 20)
+                ForEach(tags.indices, id: \.self) { j in
+                    let k = tags[j].kind
+                    Text(k == 3 ? d.goalLabel : names[k])
+                        .font(.system(size: 10, weight: k == 3 && !dk ? .bold : .regular))
+                        .foregroundStyle(k == 3 ? BoxInk.ink : Self.labC[k]).fixedSize()
+                        .position(x: lx[j], y: 42)
+                }
             }
         }
     }
 
-    /// 이름표 자리: 점 바로 위, 서로 gap 보다 가까우면 밀어 낸다 (박스 밖으로 나가지 않게)
+    /// 이름표 순서: 세 점(0~2)과 목표(3)를 가로 자리 순으로
+    static func tags(_ xs: [CGFloat], goal: CGFloat?) -> [(x: CGFloat, kind: Int)] {
+        var t = xs.enumerated().map { (x: $0.element, kind: $0.offset) }
+        if let goal { t.append((x: goal, kind: 3)) }
+        return t.sorted { $0.x < $1.x }
+    }
+
+    /// 이름표 자리: 서로 gap 보다 가까우면 밀어 낸다 (박스 밖으로 나가지 않게)
     static func spread(_ xs: [CGFloat], gap: CGFloat, w: CGFloat) -> [CGFloat] {
         guard !xs.isEmpty else { return [] }
         var l = xs.map { min(w - gap / 2, max(gap / 2, $0)) }
@@ -757,13 +757,12 @@ private struct ContentPopBlock: UIViewRepresentable {
     func updateUIView(_ v: V, context: Context) {}
 }
 
-// 목표일 전망: 시장이 어떻게 가느냐에 따라 목표일 자산이 얼마나 갈리나. 목표 판정은 내 목표(내 길) 화면 몫
+// 목표일 전망: 그래프 먼저, 그 밑 세 가지 미래 표의 줄을 눌러 시나리오를 고른다. 확률·근거 글은 요약 박스에서 이미 봤으니 두지 않는다 (2026-10-28)
 struct ForecastView: View {
     @Environment(AppModel.self) private var m
-    @State private var open = false
+    @State private var showEv = false
 
     var body: some View {
-        @Bindable var m = m
         let fs = Dictionary(uniqueKeysWithValues: Lens.allCases.map { ($0, m.forecast($0)) })
         let sel = m.lens, f = fs[sel] ?? m.forecast
         // 몬테카를로 경로는 종목만이라 현금을 더해 지금 평가액과 같은 기준으로 (닫힌 식은 이미 포함)
@@ -773,19 +772,18 @@ struct ForecastView: View {
         let chg = now > 0 ? med / now - 1 : 0
         let end = Self.ym(m.forecastHorizon)
         let others: [(label: String, med: [Double])] = Self.others(fs, sel: sel, add: add)
+        let hits = MarketEvents.upcoming(held: m.rows.map(\.id), days: 60).prefix(4).sorted { $0.day < $1.day }
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 DetailHead(title: m.forecastTitle, sub: f.exact ? "" : String(localized: "계산 중 (어림값)"))
-                Text(m.isGoal ? String(localized: "\(String(describing: end.short)) 내 자산은?") : String(localized: "3년 뒤 내 자산은?"))
-                    .appFont(20, .bold).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
 
                 Card {
-                    segments
-                    trustSlider
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("그럴듯한 금액 · 연 \(AppModel.sgn0(f.mu))").appFont(13).foregroundStyle(Theme.sub)
+                    Text(m.isGoal ? String(localized: "\(String(describing: end.short)) 내 자산은?") : String(localized: "3년 뒤 내 자산은?"))
+                        .appFont(15, .bold).foregroundStyle(Theme.ink)
+                    VStack(alignment: .leading, spacing: 2) {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(Self.amt(med)).font(.system(size: 28, weight: .bold)).foregroundStyle(Theme.ink)
+                            Text("보통").appFont(13).foregroundStyle(Theme.sub)
+                            Text(Self.amt(med)).font(.system(size: 22, weight: .bold)).foregroundStyle(Theme.ink)
                                 .lineLimit(1).minimumScaleFactor(0.7).roll(Self.amt(med))
                             Text(AppModel.sgn0(chg)).appFont(13, .bold).foregroundStyle(chg >= 0 ? Theme.green : Theme.up)
                         }
@@ -794,7 +792,9 @@ struct ForecastView: View {
                     ScenarioChart(sel: f, selShift: add(f), selLabel: Self.short(sel), others: others,
                                   goal: m.keyValue, goalLabel: m.keyName, endLabel: m.isGoal ? end.short : String(localized: "3년 뒤"))
                         .frame(height: 190)
+                        .overlay(alignment: .topLeading) { if !hits.isEmpty { evFlag(hits, span: f.tY.last ?? 1) } }
                     legend
+                    if showEv && !hits.isEmpty { evList(hits) }
                     if f.mu > 0.30 {
                         Text("연 \(AppModel.sgn0(f.mu))는 드문 속도 · 실제론 더 낮을 수도")
                             .appFont(12).foregroundStyle(Theme.ink).padding(10).frame(maxWidth: .infinity, alignment: .leading)
@@ -802,9 +802,7 @@ struct ForecastView: View {
                     }
                 }
 
-                table(fs, now: now, add: add)
-                schedule
-                details(f)
+                Card { table(fs, add: add) }
 
                 Text("지난 3년 기준 3,000가지 경우")
                     .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
@@ -820,41 +818,28 @@ struct ForecastView: View {
         .toolbarTitleDisplayMode(.inlineLarge)
     }
 
-    // MARK: 시나리오 버튼 3개 + 추세 슬라이더 (같은 축: 신중하게 = 0%, 지난 3년처럼 = 100%)
-    private var segments: some View {
-        HStack(spacing: 4) {
-            ForEach(Lens.allCases, id: \.self) { l in
-                let on = m.lens == l
-                Button { m.lens = l } label: {
-                    Text(l.label).appFont(13, on ? .bold : .regular).foregroundStyle(on ? Color.white : Theme.sub)
-                        .frame(maxWidth: .infinity).padding(.vertical, 8)
-                        .background(on ? Theme.teal : Color.clear, in: RoundedRectangle(cornerRadius: 9))
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(on ? .isSelected : [])
-            }
-        }
-        .padding(3)
-        .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
+    /// 판정 기간: 목표 = 목표일까지, 회복 = 내 길 기간 (3년까지). 분석 탭 확률 박스와 같은 셈
+    private var planYears: Double {
+        if m.isGoal { return AppModel.yrs(Day.today, Day.str(m.goalToDate)) }
+        let p = m.myPath
+        return min(3, p.end - p.start)
     }
+    private func plan(_ f: AppModel.Forecast) -> Double { m.isGoal ? f.pGoal : f.prob(planYears) }
 
-    /// 슬라이더에 보이는 값. 버튼을 골라도 '내 설정' 값(m.trust)은 그대로 기억한다
-    private var shownTrust: Double { m.lens == .base ? 0 : m.lens == .smooth ? 100 : m.trust }
-
+    /// 슬라이더 ('내 설정' 줄을 골랐을 때만 그 줄 밑에 펼친다). 끝까지 밀어도 '내 설정'에 머문다
     private var trustSlider: some View {
-        let b = Binding<Double>(get: { shownTrust }, set: { v in
-            if v <= 0 { m.lens = .base } else if v >= 100 { m.lens = .smooth } else { m.lens = .mine; m.trust = v }
-        })
+        @Bindable var m = m
         return VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text("지난 3년 추세 반영").appFont(13, .bold)
+                Text("지난 3년 추세 반영").appFont(12, .bold)
                 Spacer()
-                Text("\(Int(shownTrust))%").appFont(13, .bold).foregroundStyle(Theme.teal)
+                Text("\(Int(m.trust))%").appFont(12, .bold).foregroundStyle(Theme.teal)
             }
-            Slider(value: b, in: 0...100, step: 5).tint(Theme.teal).accessibilityLabel("지난 3년 추세를 얼마나 믿나요")
+            Slider(value: $m.trust, in: 0...100, step: 5).tint(Theme.teal).accessibilityLabel("지난 3년 추세를 얼마나 믿나요")
             HStack { Text("신중"); Spacer(); Text("반반"); Spacer(); Text("3년처럼") }
                 .appFont(11).foregroundStyle(Theme.muted)
         }
+        .padding(.horizontal, 8).padding(.bottom, 6)
     }
 
     private var legend: some View {
@@ -873,94 +858,77 @@ struct ForecastView: View {
         HStack(spacing: 4) { RoundedRectangle(cornerRadius: 2).fill(c).frame(width: 14, height: 10); Text(t) }
     }
 
-    // MARK: 세 가지 미래 한눈에
-    private func table(_ fs: [Lens: AppModel.Forecast], now: Double, add: @escaping (AppModel.Forecast) -> Double) -> some View {
+    // MARK: 세 가지 미래: 줄을 누르면 시나리오가 바뀌고 그래프가 같이 움직인다
+    private func table(_ fs: [Lens: AppModel.Forecast], add: @escaping (AppModel.Forecast) -> Double) -> some View {
         let lineName = m.isGoal ? Self.amt(m.keyValue) : String(localized: "본전")
-        let bads = Lens.allCases.map { l in fs[l].map { ($0.q5.last ?? 0) + add($0) } ?? now }
-        let below = bads.filter { $0 < now }.count
-        let msg = below == bads.count ? String(localized: "운 나쁘면 지금(\(String(describing: Self.amt(now))))보다 줄 수도")
-            : below > 0 ? String(localized: "신중하게 보면 지금(\(String(describing: Self.amt(now))))보다 줄 수도")
-            : String(localized: "운 나빠도 지금(\(String(describing: Self.amt(now))))보다 많을 가능성 큼")
-        return Card {
-            Text("세 가지 미래").appFont(15, .bold)
+        return VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("").frame(maxWidth: .infinity, alignment: .leading)
-                Text("보통").frame(width: 70, alignment: .trailing)
-                Text("나쁘면").frame(width: 58, alignment: .trailing)
-                Text("\(lineName)↑").frame(width: 78, alignment: .trailing)
+                Text("눌러서 고르기").frame(maxWidth: .infinity, alignment: .leading)
+                Text("보통").frame(width: 62, alignment: .trailing)
+                Text("나쁘면").frame(width: 56, alignment: .trailing)
+                Text("\(lineName)↑").frame(width: 64, alignment: .trailing)
             }
-            .appFont(11).foregroundStyle(Theme.muted)
+            .appFont(11).foregroundStyle(Theme.muted).padding(.horizontal, 8).padding(.top, 6)
             ForEach(Lens.allCases, id: \.self) { l in
                 if let x = fs[l] {
                     let on = m.lens == l
-                    Button { m.lens = l } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(Self.short(l)).appFont(13, on ? .bold : .regular)
-                                Text(AppModel.sgn0(x.mu)).appFont(11).foregroundStyle(Theme.muted)
+                    VStack(spacing: 0) {
+                        Button { withAnimation(.easeOut(duration: 0.2)) { m.lens = l } } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(Self.short(l)).appFont(13, on ? .bold : .regular)
+                                    Text(AppModel.sgn0(x.mu)).appFont(11).foregroundStyle(Theme.muted)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                Text(Self.amt((x.q50.last ?? 0) + add(x))).frame(width: 62, alignment: .trailing)
+                                Text(Self.amt((x.q5.last ?? 0) + add(x))).frame(width: 56, alignment: .trailing)
+                                Text(AppModel.pct(plan(x))).foregroundStyle(on ? Theme.teal : Theme.ink).frame(width: 64, alignment: .trailing)
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            Text(Self.amt((x.q50.last ?? 0) + add(x))).frame(width: 70, alignment: .trailing)
-                            Text(Self.amt((x.q5.last ?? 0) + add(x))).frame(width: 58, alignment: .trailing)
-                            Text(AppModel.pct(x.pGoal)).frame(width: 78, alignment: .trailing)
+                            .appFont(13, on ? .bold : .regular).foregroundStyle(Theme.ink)
+                            .padding(.vertical, 8).padding(.horizontal, 8)
+                            .contentShape(Rectangle())
                         }
-                        .appFont(13, on ? .bold : .regular).foregroundStyle(Theme.ink)
-                        .padding(.vertical, 8).padding(.horizontal, 8)
-                        .background(on ? Theme.tealBg : Color.clear, in: RoundedRectangle(cornerRadius: 10))
-                        .contentShape(Rectangle())
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(on ? .isSelected : [])
+                        if on && l == .mine { trustSlider }
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(on ? .isSelected : [])
+                    .background(on ? Theme.tealBg : Color.clear, in: RoundedRectangle(cornerRadius: 10))
                 }
             }
-            Text(msg).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    // MARK: 전망을 흔들 수 있는 일정 (외부 요인 토글 자리)
-    private var schedule: some View {
+    // MARK: 흔들 일정: 그래프 위 깃발 하나 (일정이 모두 앞쪽 한 달 안이라 하나로 묶는다). 누르면 아래에 목록과 반영 단추
+    private func evFlag(_ hits: [MarketEvents.Hit], span: Double) -> some View {
+        let last = Double(Day.dday(hits.last?.day ?? Day.today)) / 365.25
+        let on = m.shock
+        let c = on ? Color(hex: 0xA8521A) : Theme.muted
+        return GeometryReader { g in
+            let left: CGFloat = 36, W = g.size.width - left
+            let x = left + CGFloat(min(1, max(0, last / max(1e-6, span)))) * W
+            ZStack(alignment: .topLeading) {
+                Rectangle().fill(c.opacity(0.7)).frame(width: 1, height: max(0, g.size.height - 20 - 18)).offset(x: x, y: 18)
+                Button { withAnimation(.easeOut(duration: 0.2)) { showEv.toggle() } } label: {
+                    Text(on ? String(localized: "일정 \(String(describing: hits.count)) ›") : String(localized: "일정 \(String(describing: hits.count)) · 뺌 ›"))
+                        .appFont(11, .bold).foregroundStyle(on ? Color.white : Theme.ink).lineLimit(1).fixedSize()
+                        .padding(.horizontal, 7).frame(height: 18)
+                        .background(on ? c : Theme.line, in: RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .offset(x: min(max(left, x - 4), max(left, g.size.width - 90)))
+                .accessibilityLabel(String(localized: "흔들 일정 \(String(describing: hits.count))개, \(on ? String(localized: "계산에 반영") : String(localized: "계산에서 뺌"))"))
+            }
+        }
+    }
+
+    private func evList(_ hits: [MarketEvents.Hit]) -> some View {
         @Bindable var m = m
-        let hits = Array(MarketEvents.upcoming(held: m.rows.map(\.id), days: 60).prefix(4))
-        return Card {
-            Toggle(isOn: $m.shock) { Text("흔들 일정").appFont(15, .bold) }.tint(Theme.teal)
-            Text("켜면 계산에 반영").appFont(12).foregroundStyle(Theme.sub)
+        return VStack(alignment: .leading, spacing: 6) {
+            Toggle(isOn: $m.shock) { Text("계산에 반영").appFont(13, .bold) }.tint(Theme.teal)
             ForEach(hits.indices, id: \.self) { i in ScheduleRow(hit: hits[i]) }
         }
-    }
-
-    // MARK: 자세히 보기 (기본 접힘)
-    private func details(_ f: AppModel.Forecast) -> some View {
-        let what = m.isGoal ? Self.amt(m.keyValue) : String(localized: "본전")
-        return VStack(alignment: .leading, spacing: 10) {
-            Button { withAnimation { open.toggle() } } label: {
-                HStack {
-                    Text("자세히").appFont(15, .bold)
-                    Spacer()
-                    Image(systemName: open ? "chevron.up" : "chevron.down").font(.system(size: 12)).foregroundStyle(Theme.muted)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            if open {
-                Card(dark: true) {
-                    Text("한 번이라도 \(what) 넘을 확률").appFont(14, .bold)
-                    Text("잠깐 넘는 경우 포함").appFont(12).foregroundStyle(.secondary)
-                    ForEach(0..<f.byYear.count, id: \.self) { i in
-                        let y = f.byYear[i].year, p = f.byYear[i].p
-                        HStack(spacing: 10) {
-                            Text("\(y)년").appFont(13).frame(width: 46, alignment: .leading)
-                            ProgressBar(value: p, height: 10, fill: Theme.teal, track: Theme.track)
-                            Text(AppModel.pct(p)).appFont(13, .bold).frame(width: 40, alignment: .trailing)
-                        }
-                    }
-                }
-                Text("직접 옮긴 슬라이더 값은 '내 설정'에 저장")
-                    .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(16)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
-        .overlay { RoundedRectangle(cornerRadius: 18).stroke(Theme.border, lineWidth: 1) }
+        .padding(12)
+        .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
     }
 
     /// 비교선: 고르지 않은 두 시나리오의 중앙값 (현금 더함)

@@ -776,6 +776,7 @@ struct MockStockRow<Right: View>: View {
     var struck = false
     var dot = false                // 이름 옆 작은 빨간 점 (오늘 관찰에 2번 넘게 걸림)
     var filled = false             // 이름 오른쪽 위 모서리 노란 점 (체결)
+    var outside = false            // 이름 오른쪽 회색 점 (앱이 사지 않은 토스 보유)
     var colW: [Int: CGFloat] = [:] // 칸 폭 (같은 칸은 줄마다 같은 폭, 오른쪽 맞춤)
     @ViewBuilder var right: Right
     @Environment(\.colorScheme) private var scheme
@@ -810,6 +811,10 @@ struct MockStockRow<Right: View>: View {
                     Circle().fill(Theme.up).frame(width: 6, height: 6)
                         .accessibilityLabel(Text(verbatim: "오늘 2번 넘게 걸림"))
                 }
+                if outside {
+                    Circle().fill(Theme.muted).frame(width: 6, height: 6)
+                        .accessibilityLabel(Text(verbatim: "외부"))
+                }
             }
             .frame(minWidth: 56, idealWidth: 56, maxWidth: .infinity, alignment: .leading)
             if show { mt(mid).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1).holdCol(0, colW) }
@@ -843,8 +848,8 @@ struct MockQtyPill: View {
 }
 
 extension MockStockRow where Right == EmptyView {
-    init(code: String, name: String, mid: String, pct: Double, price: String? = nil, band: Double = 0, struck: Bool = false, dot: Bool = false, colW: [Int: CGFloat] = [:]) {
-        self.init(code: code, name: name, mid: mid, pct: pct, price: price, band: band, struck: struck, dot: dot, colW: colW) { EmptyView() }
+    init(code: String, name: String, mid: String, pct: Double, price: String? = nil, band: Double = 0, struck: Bool = false, dot: Bool = false, outside: Bool = false, colW: [Int: CGFloat] = [:]) {
+        self.init(code: code, name: name, mid: mid, pct: pct, price: price, band: band, struck: struck, dot: dot, outside: outside, colW: colW) { EmptyView() }
     }
 }
 

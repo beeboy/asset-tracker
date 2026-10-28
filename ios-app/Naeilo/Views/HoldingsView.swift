@@ -32,13 +32,12 @@ struct HoldingsView: View {
         }
         let us = sorted.filter { $0.sym.currency == .usd }
         let kr = sorted.filter { $0.sym.currency != .usd }
-        let mx = rows.map { abs(move($0)) }.max() ?? 0
+        let mx = rows.map { abs(dayPct($0)) }.max() ?? 0
         let earn = rows.contains { EarningsFeed.shared.summary($0.sym, qty: $0.h.qty) != nil }
         ScrollViewReader { sv in
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: String(localized: "종목")).padding(.horizontal, -16)
-                SampleNote()
                 todayBox(rows)
                 totalChart(rows)
                 listBar
@@ -67,6 +66,7 @@ struct HoldingsView: View {
                     .buttonStyle(.plain).fixedSize()
                 }
                 if adding { AddHoldingView(inline: true, close: { withAnimation(.snappy) { adding = false } }).id("add") }
+                SampleNote()   // 샘플 안내는 맨 아래 (2026-10-28)
                 Color.clear.frame(height: 24)   // 아래 탭바가 마지막 카드를 가리지 않게
             }
             .screen()
@@ -103,6 +103,11 @@ struct HoldingsView: View {
         let q = r.sym.quote
         guard r.id != KoreaEstimate.sumId, q.prevClose > 0 else { return 0 }
         return r.value - m.krw(r.sym, r.h.qty * q.prevClose)
+    }
+
+    /// 줄 막대가 재는 값: 오늘 등락률 (줄에 보이는 %와 같다). 국내 주식 합계는 뺀다
+    private func dayPct(_ r: AppModel.Row) -> Double {
+        r.id == KoreaEstimate.sumId ? 0 : r.sym.quote.change
     }
 
     private func todayBox(_ rows: [AppModel.Row]) -> some View {
@@ -219,9 +224,9 @@ struct HoldingsView: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
     }
 
-    /// 줄 배경: 왼쪽부터 오늘 움직인 금액 몫만큼 옅게 (오른 산호 · 그대로 회색 · 내린 하늘). 상한은 카드 폭의 34% (보기를 바꿔도 같다)
+    /// 줄 배경: 왼쪽부터 오늘 등락률 크기만큼 옅게 (오른 산호 · 그대로 회색 · 내린 하늘). 상한은 카드 폭의 34% (보기를 바꿔도 같다)
     private func tint(_ r: AppModel.Row, _ mx: Double) -> some View {
-        let v = move(r)
+        let v = dayPct(r)
         let f = v != 0 && mx > 0 ? max(0.12, abs(v) / mx) : 0.12
         let c = v > 0 ? Color(hex: 0xFF8A80) : v < 0 ? Color(hex: 0x8CC4F2) : Color(hex: 0xAAB2BE, dark: 0x4A5672)
         return GeometryReader { g in
@@ -230,13 +235,13 @@ struct HoldingsView: View {
         .accessibilityHidden(true)
     }
 
-    // 행 (시안 v33): 로고(실적 금색 점은 오른쪽 위) · 이름 · 평단가(평가금 보기는 수량) · 오늘 %(평가금 보기는 산 가격 대비 %와 금액) · 현재가(평가금)
+    // 행 (시안 v33): 로고(실적 금색 점은 오른쪽 위) · 이름 · 평단가(평가금 보기는 수량) · 오늘 %(평가금 보기는 산 가격 대비 %) · 현재가(평가금)
     // 로고·이름·평단가·%는 세부로, 금색 알약만 내 몫 실적 강 팝업으로 (실적이 없으면 알약 없이 세부로)
     private func row(_ r: AppModel.Row, _ mx: Double) -> some View {
         let es = EarningsFeed.shared.summary(r.sym, qty: r.h.qty)
         let day = r.sym.quote.change
         let bp = r.cost > 0 ? r.value / r.cost - 1 : 0
-        let v = valueMode, small: CGFloat = v ? 13 : 14
+        let v = valueMode, small: CGFloat = 14   // 평가금 보기도 현재가 보기와 같은 크기 (2026-10-27)
         // 글자 로고는 쓰지 않는다 (그림 로고만). 오늘 실적 금색 점은 이름 오른쪽 위
         let name = HStack(spacing: v ? 6 : 8) {
             if LogoTile.has(r.id) { LogoTile(symbol: r.id, size: 28) }
@@ -250,10 +255,9 @@ struct HoldingsView: View {
             }
         }
         let mid = Text(v ? "\(r.h.qty.formatted())주" : px(r, r.h.avg)).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1)
-        let chg = v ? (Text(AppModel.sgn(bp)) + Text("(" + amt(r, krw: r.value - r.cost, native: r.h.qty * (r.sym.last - r.h.avg)) + ")").font(.system(size: 10.5, weight: .semibold)))
-                    : Text(AppModel.sgn2(day))
+        let chg = Text(v ? AppModel.sgn(bp) : AppModel.sgn2(day))   // 평가금 보기 괄호 금액은 뺐다 (2026-10-27)
         let pctC = v ? (bp > 0 ? Theme.up : bp < 0 ? Theme.down : Theme.sub) : (day > 0 ? Theme.up : day < 0 ? Theme.down : Theme.sub)
-        let pct = chg.appFont(v ? 12.5 : 14, .bold).foregroundStyle(pctC).monospacedDigit().lineLimit(1).holdCol(1, colW)
+        let pct = chg.appFont(14, .bold).foregroundStyle(pctC).monospacedDigit().lineLimit(1).holdCol(1, colW)
         let pill = Text(v ? amt(r, krw: r.value, native: r.h.qty * r.sym.last) : px(r, r.sym.last))
             .appFont(small, .bold).monospacedDigit().lineLimit(1)
             .foregroundStyle(es != nil ? Color.black : Theme.ink)
@@ -457,12 +461,8 @@ struct MoodBand: View {
             band(height: 7, radius: 3)
                 .padding(2).background(ThemeBand.wood, in: ThemeBand.pinoShape)
         case .mug:
-            VStack(spacing: 0) {
-                ThemeBand.chalk.frame(height: 2)
-                band(height: 4, radius: 0).padding(.vertical, 3).background(ThemeBand.dirt)
-                ThemeBand.chalk.frame(height: 2)
-            }
-            .overlay(Rectangle().stroke(ThemeBand.dirtRim, lineWidth: 1))
+            band(height: 6, radius: 3)
+                .padding(2).background(ThemeBand.sphereTrack, in: Capsule())
         }
     }
 
@@ -572,7 +572,7 @@ struct MoodBackdrop: View {
 /// 눈금 글·가로선 없이 오른쪽 축에 꼬리표만. 시작 점은 속 빈 점, 시작 금액 높이에서 축까지 옅은 점선 (Sparkline 위에 얹는다)
 struct TagChart: View {
     struct Tag { var at: Double; var dy: CGFloat = 0; let text: String; let bg: Color; var fg: Color = .black }
-    static let gray = Color(hex: 0x8A949E)
+    static let gray = Color(hex: 0xD3D9DF, dark: 0x8A949E)   // 시작 금액 꼬리표: 라이트는 옅은 회색(검정 글 대비 14:1), 다크는 그대로
     let points: [Double]
     var height: CGFloat = 120
     let tags: [Tag]
@@ -642,7 +642,7 @@ struct TagChart: View {
 
 // MARK: 종목 세부 (시안 v38)
 
-/// 요약 박스(이름+티커, 현재가 큰 값·괄호 다른 통화, $/원) → 내 평가금 그래프(축 꼬리표 총 금액·달라진 금액·시작 금액) → 평균 단가·보유 수량 → 평단 계산기
+/// 요약 박스(이름+티커, 현재가 큰 값·괄호 다른 통화, $/원) → 한 주 가격 그래프(축 꼬리표 지금 가격·달라진 금액·시작 가격) → 평균 단가·보유 수량 → 평단 계산기
 /// 종목 상세 팝업: 제목(종목 이름) 왼쪽·X 오른쪽 머리 + 상세. 고치기 화면으로 넘어가려고 안에 NavigationStack
 struct HoldingDetailSheet: View {
     let sym: Symbol
@@ -721,14 +721,13 @@ struct HoldingDetailView: View {
 
     var body: some View {
         let h = m.holdings.first { $0.symbol == sym.id } ?? Holding(symbol: sym.id, qty: 0, avg: sym.close)
-        let q = h.qty > 0 ? h.qty : 1
-        // 그래프는 내 평가금 (고른 통화). $ 보기면 달러 정수, 원 보기면 만원
+        // 그래프는 한 주 가격 (고른 통화). $ 보기면 소수 둘째 자리, 원 보기면 원 단위 (2026-10-27)
         let k = isUsd && !du ? Market.shared.valFx : 1
         let day = period == .d1 ? mins : nil
-        let pts = (day.map { [Market.shared.quote(sym).prevClose] + $0.closes } ?? m.prices.series(sym, period: period)).map { $0 * q * k }
-        let big = { (v: Double) in du ? "$" + Int(abs(v).rounded()).formatted() : HoldFmt.won(abs(v)) }
+        let pts = (day.map { [Market.shared.quote(sym).prevClose] + $0.closes } ?? m.prices.series(sym, period: period)).map { $0 * k }
+        let big = { (v: Double) in du ? "$" + abs(v).usdText() : Int(abs(v).rounded()).formatted() + String(localized: "원") }
         let S = pts.first ?? 0, E = pts.last ?? 0, up = E >= S
-        let p = pair(sym.last), a = pair(h.avg)
+        let p = pair(sym.last), a = pair(h.avg), v = pair(sym.last * h.qty)
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Card {
@@ -768,6 +767,8 @@ struct HoldingDetailView: View {
                             kv(String(localized: "평균 단가"), Text(a.0) + Text(a.1.map { " (\($0))" } ?? "").font(.system(size: 12)).foregroundColor(Theme.sub))
                             Divider().overlay(Theme.line)
                             kv(String(localized: "보유 수량"), Text(h.qty.formatted() + String(localized: "주")))
+                            Divider().overlay(Theme.line)
+                            kv(String(localized: "평가금"), Text(v.0) + Text(v.1.map { " (\($0))" } ?? "").font(.system(size: 12)).foregroundColor(Theme.sub))   // 축이 한 주 가격이라 내 평가금은 여기 (2026-10-27)
                         }
                     }
                     AvgCalc(sym: sym, qty: h.qty, avg: h.avg, du: du)
@@ -1394,7 +1395,12 @@ struct HoldingsNews: View {
             if top.isEmpty { Text("종목을 넣으면 보여요").appFont(13).foregroundStyle(Theme.sub) }
             ForEach(Array(top), id: \.r.id) { x in
                 let d = x.d
-                line(x.r, Text(AppModel.sgn2(d) + " · " + AppModel.eokS(x.w)).foregroundColor(Theme.change(d)))
+                // 등락률·금액을 두 칸으로 오른쪽 줄맞춤. 부호는 앞 칸에 한 번만 (금액 부호가 다를 때만 금액에도)
+                let amt = (d >= 0) == (x.w >= 0) ? AppModel.eok(abs(x.w)) : AppModel.eokS(x.w)
+                line(x.r, HStack(spacing: 8) {
+                    Text(AppModel.sgn2(d)).frame(minWidth: 64, alignment: .trailing)
+                    Text(amt).frame(minWidth: 60, alignment: .trailing)
+                }.lineLimit(1).foregroundColor(Theme.change(d)))
             }
         }
         .card()
@@ -1417,7 +1423,7 @@ struct HoldingsNews: View {
         .card()
     }
 
-    @ViewBuilder private func line(_ r: AppModel.Row, _ right: Text) -> some View {
+    @ViewBuilder private func line(_ r: AppModel.Row, _ right: some View) -> some View {
         let row = HStack(spacing: 10) {
             if LogoTile.has(r.id) { LogoTile(symbol: r.id, size: 28) }
             Text(r.sym.name).appFont(14, .semibold).lineLimit(1)

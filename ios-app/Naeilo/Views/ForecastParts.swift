@@ -14,6 +14,9 @@ struct ScenarioChart: View {
     let endLabel: String
 
     /// 눈금 간격: 위 끝까지 눈금이 3칸 이하가 되는 가장 작은 값 (5천만, 1억, 2.5억, 5억, 10억 …)
+    /// 맨 위 눈금 글자가 반쯤 잘리지 않게 비우는 높이
+    static let topPad: CGFloat = 8
+
     static func step(_ top: Double) -> Double {
         var s = 5e7
         let mult: [Double] = [2, 2.5, 2]
@@ -33,9 +36,9 @@ struct ScenarioChart: View {
         let sh = selShift
         let top0 = max(goal, sel.q95.map { $0 + sh }.max() ?? 1, others.flatMap(\.med).max() ?? 0) * 1.05
         let st = Self.step(top0), top = max(st, (top0 / st).rounded(.up) * st)
-        let left: CGFloat = 36, W = size.width - left, H = size.height - 20
+        let left: CGFloat = 36, W = size.width - left, H = size.height - 20 - Self.topPad
         let span = max(1e-9, sel.tY.last ?? 1), v = sel.q50[0] + sh
-        return CGPoint(x: left + CGFloat(t0 / span) * W, y: H - CGFloat(min(max(v, 0), top) / top) * H)
+        return CGPoint(x: left + CGFloat(t0 / span) * W, y: Self.topPad + H - CGFloat(min(max(v, 0), top) / top) * H)
     }
 
     var body: some View {
@@ -47,10 +50,10 @@ struct ScenarioChart: View {
             let q75 = sel.q75.map { $0 + sh }, q95 = sel.q95.map { $0 + sh }
             let top0 = max(goal, q95.max() ?? 1, others.flatMap(\.med).max() ?? 0) * 1.05
             let st = Self.step(top0), top = max(st, (top0 / st).rounded(.up) * st)
-            let left: CGFloat = 36, bottom: CGFloat = 20, W = size.width - left, H = size.height - bottom
+            let left: CGFloat = 36, bottom: CGFloat = 20, W = size.width - left, H = size.height - bottom - Self.topPad
             let span = max(1e-9, sel.tY.last ?? 1)
             let x = { (i: Int) -> CGFloat in left + CGFloat(sel.tY[i] / span) * W }
-            let y = { (v: Double) -> CGFloat in H - CGFloat(min(max(v, 0), top) / top) * H }
+            let y = { (v: Double) -> CGFloat in Self.topPad + H - CGFloat(min(max(v, 0), top) / top) * H }
             func line(_ a: [Double]) -> Path {
                 Path { p in for i in 0...min(n, a.count - 1) { let pt = CGPoint(x: x(i), y: y(a[i])); i == 0 ? p.move(to: pt) : p.addLine(to: pt) } }
             }
@@ -72,14 +75,20 @@ struct ScenarioChart: View {
             // 띠와 선
             ctx.fill(band(q95, q5), with: .color(Theme.teal.opacity(0.14)))
             ctx.fill(band(q75, q25), with: .color(Theme.teal.opacity(0.30)))
+            var tags: [(text: String, y: CGFloat, sel: Bool)] = []
             for o in others where o.med.count > n {
                 ctx.stroke(line(o.med), with: .color(Theme.muted), style: StrokeStyle(lineWidth: 1.4, dash: [4, 3]))
-                ctx.draw(Text(o.label).font(.system(size: 10)).foregroundStyle(Theme.muted),
-                         at: CGPoint(x: size.width - 2, y: y(o.med[n]) - 7), anchor: .trailing)
+                tags.append((o.label, y(o.med[n]) - 7, false))
             }
             ctx.stroke(line(q50), with: .color(Theme.tealDark), lineWidth: 2.4)
-            ctx.draw(Text(selLabel).font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.tealDark),
-                     at: CGPoint(x: size.width - 2, y: y(q50[n]) - 8), anchor: .trailing)
+            tags.append((selLabel, y(q50[n]) - 8, true))
+            // 끝값이 가까우면 이름표가 겹친다: 위에서부터 12pt 이상 벌린다
+            tags.sort { $0.y < $1.y }
+            for i in tags.indices.dropFirst() where tags[i].y - tags[i - 1].y < 12 { tags[i].y = tags[i - 1].y + 12 }
+            for t in tags {
+                ctx.draw(Text(t.text).font(.system(size: 10, weight: t.sel ? .bold : .regular)).foregroundStyle(t.sel ? Theme.tealDark : Theme.muted),
+                         at: CGPoint(x: size.width - 2, y: t.y), anchor: .trailing)
+            }
             // 목표선
             let gy = y(goal)
             ctx.stroke(Path { $0.move(to: CGPoint(x: left, y: gy)); $0.addLine(to: CGPoint(x: size.width, y: gy)) },

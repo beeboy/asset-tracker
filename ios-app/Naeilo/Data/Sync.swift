@@ -230,6 +230,12 @@ final class Sync {
                 let L = Lots.withSite(Lots.fromJSON(st["lots"]), m.lots)
                 if L != m.lots { m.lots = L }
             }
+            // 투자 습관 기록은 언제나 합친다 (어느 쪽이 더 새것이든 다른 기기에만 있는 매매를 잃지 않게)
+            if let p = (r.state?["app"] as? [String: Any])?["calm"], let data = try? JSONSerialization.data(withJSONObject: p),
+               let c = try? JSONDecoder().decode(Calm.self, from: data) {
+                let mc = Calm.merge(m.calm, c)
+                if mc != m.calm { m.calm = mc }
+            }
             if let st = r.state, r.at > localAt {
                 if localAt == 0 && hasLocalData(m) {
                     // 처음 켤 때 양쪽 다 값이 있으면 묻는다 (사이트와 같은 동작)
@@ -365,6 +371,9 @@ final class Sync {
         if let t = Self.townOut((st["app"] as? [String: Any])?["town"]) { app["town"] = t }
         // 평행 세계의 나: 연 날·바구니·인물·본선 기록 (앱만 쓴다)
         if let w = m.pworld, let d = try? JSONEncoder().encode(w), let j = try? JSONSerialization.jsonObject(with: d) { app["parallel"] = j }
+        // 내 투자 습관 기록: 두 기기가 같은 지수를 내도록 (홈 소식은 기기마다 따로라 빼고)
+        var cm = m.calm; cm.notes = nil
+        if let d = try? JSONEncoder().encode(cm), let j = try? JSONSerialization.jsonObject(with: d) { app["calm"] = j }
         st["app"] = app
         // 목표는 사이트와 같은 칸(goal)에. 회복 루트(본전 기준)와 사이트 샘플 중에는 사이트 목표를 그대로 둔다
         if m.isGoal, (st["sample"] as? Bool) != true { st["goal"] = m.siteGoal(st["goal"] as? [String: Any]) }
@@ -511,7 +520,8 @@ final class Sync {
         var p = m.progress; p.lastOpen = ""
         let a = (try? JSONEncoder().encode(p)) ?? Data(), b = (try? JSONEncoder().encode(m.holdings)) ?? Data()
         let pw = m.pworld.map { "\($0.days.count)|\($0.segs.count)|\($0.segs.last?.from ?? "")|\($0.who)|\($0.opened)" } ?? "-"
-        let c = Data("\(m.myRecord.count)|\(m.myRecord.last?.d ?? "")|\(CustomSymbols.shared.krStamp)|\(pw)".utf8) + Self.townStamp()   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)
+        let cm = "\(m.calm.events.count)|\(m.calm.events.last?.day ?? "")|\(m.calm.type ?? "")|\(m.calm.together.count)"
+        let c = Data("\(m.myRecord.count)|\(m.myRecord.last?.d ?? "")|\(CustomSymbols.shared.krStamp)|\(pw)|\(cm)".utf8) + Self.townStamp()   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)
         return SHA256.hash(data: a + b + c).map { String(format: "%02x", $0) }.joined()
     }
 }

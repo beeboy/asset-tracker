@@ -35,20 +35,25 @@ struct FlowView: View {
     /// 아래 칩 줄: 큰 흐름 박스에 없는 종목만 비중 순
     private var restIds: [String] { let b = Set(mood.box); return byWeight.filter { !b.contains($0) } }
 
-    /// 큰 흐름 박스 값: 일봉이 있는 종목의 큰 흐름(22% 넘는 출렁임 띠) 마지막 방향을 평가액 몫으로 쌓는다
-    struct Mood { var shares: [Double] = [0, 0, 0]; var side = 0; var strong = false; var box: [String] = [] }
+    /// 큰 흐름 박스 값: 종목마다 세 흐름 마지막 방향(+1·0·-1)을 6:3:1 (작은·중간·큰) 무게로 더해 점수를 내고, 평가액 비중을 곱해 상승·하락 몫을 따로 쌓는다
+    struct Mood { var shares: [Double] = [0, 0, 0]; var side = 0; var strong = false; var box: [String] = []; var win = 0.0 }
     private var mood: Mood {
-        let items: [(String, Int, Double)] = byWeight.compactMap { id in
-            store.series(id)?.trends[2].last.map { (id, $0.dir > 0 ? 1 : $0.dir < 0 ? -1 : 0, weight(id)) }
+        // 무게 = 작은(그날 등락) 6 · 중간(3%) 3 · 큰(6%) 1. 6 > 3 + 1 이라 서로 지워지지 않는다
+        let k = [6.0, 3, 1], ks = k.reduce(0, +)
+        let all: [(String, Double, Bool)] = byWeight.compactMap { id in
+            let t = store.series(id)?.trends ?? [], d = t.compactMap { $0.last.map { Double($0.dir.signum()) } }
+            guard d.count == k.count else { return nil }
+            return (id, zip(d, k).reduce(0) { $0 + $1.0 * $1.1 } / ks, t.dropFirst().joined().contains { $0.dir != 0 })
         }
+        // 3%·6% 띠가 처음부터 끝까지 회색인 종목(단기채 같은)은 뺀다. 모두 그렇다면 그대로 둔다
+        let items = all.contains { $0.2 } ? all.filter { $0.2 } : all
         guard !items.isEmpty else { return Mood() }
-        let total = items.reduce(0) { $0 + $1.2 }
-        let w = { (d: Int) in items.filter { $0.1 == d }.reduce(0) { $0 + (total > 0 ? $1.2 / total : 1 / Double(items.count)) } }
-        let sh = [w(1), w(0), w(-1)]
-        // 횡보는 빼고 상승·하락 중 큰 쪽. 둘 다 없으면 횡보
-        let side = sh[0] == 0 && sh[2] == 0 ? 0 : sh[0] >= sh[2] ? 1 : -1
-        let win = side > 0 ? sh[0] : side < 0 ? sh[2] : sh[1]
-        return Mood(shares: sh, side: side, strong: win > 0.5, box: items.filter { $0.1 == side }.map(\.0))
+        let total = items.reduce(0) { $0 + weight($1.0) }
+        let v = items.map { total > 0 ? weight($0.0) / total : 1 / Double(items.count) }
+        let up = zip(items, v).reduce(0) { $0 + $1.1 * max($1.0.1, 0) }, dn = zip(items, v).reduce(0) { $0 + $1.1 * max(-$1.0.1, 0) }
+        // 상승·하락 몫을 서로 지우지 않고 따로 둔다. 큰 쪽이 머리글, 모든 종목 점수가 0 일 때만 횡보. 박스 버튼 = 같은 쪽 종목 (횡보면 전부)
+        let side = up == 0 && dn == 0 ? 0 : up >= dn ? 1 : -1, win = side > 0 ? up : side < 0 ? dn : max(0, 1 - up - dn)
+        return Mood(shares: [up, max(0, 1 - up - dn), dn], side: side, strong: side != 0 && win > 0.5, box: items.filter { side == 0 || $0.1 * Double(side) > 0 }.map(\.0), win: win)
     }
     private func name(_ id: String) -> String { Sample.symbol(id)?.name ?? id }
     private var store: FlowStore { FlowStore.shared }
@@ -99,17 +104,17 @@ struct FlowView: View {
         .refreshable { await Market.shared.pullRefresh(model); await store.ensure(ids) }
     }
 
-    // 맨 위 큰 흐름 박스: 홈에서 고른 박스 모양. 큰 글자 = 상승·하락 중 큰 쪽 (절반 넘으면 강한), 버튼 = 그쪽 종목만
+    // 맨 위 큰 흐름 박스: 홈에서 고른 박스 모양. 큰 글자 = 상승·하락 몫 중 큰 쪽 (절반 넘으면 강한), 버튼 = 그쪽 종목만
     private var moodBox: some View {
         let md = mood, look = BoxLook(rawValue: lookRaw) ?? .jump
         let c = md.side > 0 ? TodayBox.upC : md.side < 0 ? TodayBox.downC : TodayBox.dim
         let head = md.side == 0 ? String(localized: "횡보")
             : md.side > 0 ? (md.strong ? String(localized: "강한 상승") : String(localized: "약한 상승"))
             : (md.strong ? String(localized: "강한 하락") : String(localized: "약한 하락"))
-        let share = md.side > 0 ? md.shares[0] : md.side < 0 ? md.shares[2] : md.shares[1]
+        let share = md.win
         return VStack(alignment: .leading, spacing: 0) {
-            HStack { Text("내 종목 · 큰 흐름"); Spacer(); FreshLabel() }.appFont(13).foregroundStyle(TodayBox.dim)
-            (Text(head + " · ").foregroundColor(BoxInk.ink) + Text(AppModel.pct(share)).foregroundColor(c))
+            HStack { Text("내 종목 · 최근 흐름"); Spacer(); FreshLabel() }.appFont(13).foregroundStyle(TodayBox.dim)
+            (Text(head + " · ").foregroundColor(BoxInk.ink) + Text(verbatim: (md.side > 0 ? "⇡" : md.side < 0 ? "⇣" : "") + "\(Int((share * 100).rounded()))").foregroundColor(c))
                 .font(.system(size: 30, weight: .heavy)).tracking(-0.5).lineLimit(1).minimumScaleFactor(0.6)
                 .padding(.top, 6)
             MoodBand(look: look, shares: md.shares, road: 10, up: md.side >= 0).padding(.top, 14)
@@ -118,7 +123,7 @@ struct FlowView: View {
                     .padding(.horizontal, 18)
             }
             .mask(LinearGradient(stops: [.init(color: .black, location: 0.84), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
-            .padding(.horizontal, -18).padding(.top, 14)
+            .padding(.horizontal, -18).padding(.top, 10)
         }
         .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -131,11 +136,12 @@ struct FlowView: View {
         let on = cur == id
         return Button { sel = id; term = nil } label: {
             HStack(spacing: 6) {
-                Circle().fill(dot).frame(width: 8, height: 8)
-                Text(id == "DRNK" ? "DRNK" : name(id)).appFont(15, on ? .bold : .regular).lineLimit(1)
+                // 알약은 작게: 박스 높이를 종목 탭 박스에 맞춘다 (2026-10-27)
+                Circle().fill(dot).frame(width: 6, height: 6)
+                Text(id == "DRNK" ? "DRNK" : name(id)).appFont(13, on ? .bold : .regular).lineLimit(1)
             }
             .foregroundStyle(on ? BoxInk.ink : BoxInk.sub)
-            .padding(.horizontal, 14).frame(minHeight: 34)
+            .padding(.horizontal, 10).frame(minHeight: 24)
             .background(bx(0xFFFFFF, 0.55, 0xFFFFFF, 0), in: Capsule())
             .overlay(Capsule().stroke(on ? BoxInk.ink : bx(0x16181D, 0.16, 0xFFFFFF, 0.22)))
             .contentShape(Capsule())
@@ -269,7 +275,7 @@ enum FlowTerm: Equatable {
     var body: String {
         switch self {
         case .dots: String(localized: "고점·저점 표시 · 계단 위로 상승 · 아래로 하락 · 같은 높이 횡보")
-        case .band: String(localized: "큰 흐름 · 22% 넘는 출렁임만 셈\n중간 흐름 · 12% 넘는 출렁임\n작은 흐름 · 6% 넘는 출렁임\n빨강 상승 · 파랑 하락 · 회색 횡보")
+        case .band: String(localized: "큰 흐름 · 6% 넘는 출렁임만 셈\n중간 흐름 · 3% 넘는 출렁임\n작은 흐름 · 그날 등락 (전날 종가보다)\n빨강 상승 · 파랑 하락 · 회색 횡보")
         case .support: String(localized: "여러 번 내려와 받친 가격 · 많이 닿을수록 진하게")
         case .resistance: String(localized: "여러 번 올라와 막힌 가격 · 많이 닿을수록 진하게")
         case .pattern(let k): k.body
@@ -473,7 +479,7 @@ struct FlowChart: View {
                     }
                     .frame(width: W)
                     // 띠 이름: 오른쪽 눈금 칸에 아주 작게 (차트 폭은 그대로)
-                    ForEach(Array(["큰", "중간", "작은"].enumerated()), id: \.offset) { row, t in
+                    ForEach(Array(["∿6%", "∿3%", "∿당일"].enumerated()), id: \.offset) { row, t in
                         Text(LocalizedStringKey(t)).appFont(8).foregroundStyle(Theme.muted).lineLimit(1).fixedSize()
                             .position(x: W + 4 + 12, y: topH + CGFloat(row) * (bandH / 3) + bandH / 6)
                     }

@@ -10,6 +10,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import com.naeilo.app.ui.HDivider
+import com.naeilo.app.core.Day
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -230,83 +234,175 @@ object ExternalView {
             Ev(hit = h, k = em.factor, sd = em.sd, v = v, amt = amt)   // ios: Views/AnalysisDetail.swift:818
         }.sortedBy { it.hit.day }   // ios: Views/AnalysisDetail.swift:819
     val evBase: Map<String, String> = mapOf("mkt" to "미국 시장", "fx" to "원/달러", "oil" to "유가")   // ios: Views/AnalysisDetail.swift:821
+    val short: Map<String, String> = mapOf("mkt" to "시장", "fx" to "환율", "rate" to "금리", "oil" to "유가", "gold" to "금값")   // ios: Views/AnalysisDetail.swift:569
+    /** 그래프 깃발로 들어올 때 맨 위에 띄울 일 ("id.day"). 화면이 열리며 읽고 비운다 */
+    @Volatile var focus: String? = null   // ios: Views/AnalysisDetail.swift:572
 }
 
 /** 외부 요인 화면 값 (요인 순위·일정은 Dispatchers.Default 에서 계산해 둔다) */
 private class ExtData(val rs: List<ExternalView.Rank>, val es: List<ExternalView.Ev>)
 
-/** 과거 재생: 그때 함께 움직인 요인 변화 × 지금 내 종목 민감도 (웹 xfReplays 와 같은 식) */
-// ios: Views/AnalysisDetail.swift:772
+/** 과거 재생: 그때 함께 움직인 요인 변화 × 지금 내 종목 민감도 (웹 xfReplays 와 같은 식). 일마다 막대 하나와 금액, 환율 몫은 한 줄로 모은다 */
+// ios: Views/AnalysisDetail.swift:619
 @Composable
 private fun ReplayCard(m: AppModel) {
-    val total = max(1.0, m.total)   // ios: Views/AnalysisDetail.swift:773
-    // ios: Views/AnalysisDetail.swift:774
+    val total = max(1.0, m.total)
+    val rows = SiteCalc.replays.map { rp ->
+        val os = m.rows.map { r -> Pair(r.value, SiteCalc.replayMove(rp, usd = r.sym.currency == Currency.usd) { k -> if (k == "mkt") ExternalView.mktBeta(r.id) else SiteCalc.shared.beta(k, r.id) }) }
+        Triple(rp, os.fold(0.0) { a, x -> a + x.first * x.second.total }, os.fold(0.0) { a, x -> a + x.first * x.second.fx })
+    }
+    val top = max(1.0, rows.maxOfOrNull { abs(it.second) } ?: 1.0)
+    // 환율 한 줄: 같은 몫끼리 묶는다 (막아 줌·더 깎음·보탬·깎음). 작은 건 뺀다
+    val groups = LinkedHashMap<String, MutableList<String>>()
+    rows.filter { abs(it.third) >= total * FactorDetailView.tiny }.forEach { x ->
+        val g = if (x.third > 0) (if (x.second < 0) "막아 줌" else "보탬") else (if (x.second < 0) "더 깎음" else "깎음")
+        groups.getOrPut(g) { mutableListOf() }.add(x.first.name)
+    }
+    val note = if (groups.isEmpty()) "달러 적어 환율 영향 작음" else "환율이 ${groups.entries.joinToString(", ") { "${it.value.joinToString("·")} 땐 ${it.key}" }}"
     Card {
-        T("그때 그 일이 지금 나면", style = appFont(16f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:775
-        // ios: Views/AnalysisDetail.swift:776
-        SiteCalc.replays.forEach { rp -> key(rp.`when`) {
-            val os = m.rows.map { r -> Pair(r.value, SiteCalc.replayMove(rp, usd = r.sym.currency == Currency.usd) { k -> if (k == "mkt") ExternalView.mktBeta(r.id) else SiteCalc.shared.beta(k, r.id) }) }   // ios: Views/AnalysisDetail.swift:777
-            val tot = os.fold(0.0) { a, x -> a + x.first * x.second.total }; val fx = os.fold(0.0) { a, x -> a + x.first * x.second.fx }   // ios: Views/AnalysisDetail.swift:778
-            val small = abs(fx) < total * FactorDetailView.tiny   // ios: Views/AnalysisDetail.swift:779
-            val note = if (small) "달러 적어 환율 영향 작음"   // ios: Views/AnalysisDetail.swift:780
-                else if (tot < 0) (if (fx > 0) "환율 방어 +${AppModel.man(fx)}" else "환율도 하락 −${AppModel.man(-fx)} 추가")   // ios: Views/AnalysisDetail.swift:781
-                else if (fx > 0) "환율이 +${AppModel.man(fx)} 보탬" else "환율이 −${AppModel.man(-fx)} 깎음"   // ios: Views/AnalysisDetail.swift:782
-            val chips = listOf("mkt", "rate", "fx").filter { it != "rate" || abs(rp.mv["rate"] ?: 0.0) >= 1 }.map { k ->   // ios: Views/AnalysisDetail.swift:783
-                val v = rp.mv[k] ?: 0.0   // ios: Views/AnalysisDetail.swift:784
-                val lab = mapOf("mkt" to "시장", "rate" to "금리")[k] ?: FactorDetailView.names[k] ?: ""; val sg = if (v > 0) "+" else "−"; val unit = if (k == "rate") "%p" else "%"; val num = cfmt("%g", abs(v))
-                "${lab} ${sg}${num}${unit}"   // Views/AnalysisDetail.swift:895 (검사 예외: 같은 글)
-            }
-            // ios: Views/AnalysisDetail.swift:787
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier
-                .fillMaxWidth().border(1.dp, Theme.border, RoundedCornerShape(12.dp))   // ios: Views/AnalysisDetail.swift:801
-                .padding(12.dp)) {   // ios: Views/AnalysisDetail.swift:800
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/AnalysisDetail.swift:788
-                    T("${rp.`when`} ${rp.name}", style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:789
-                    Spacer(Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:790
-                    T((if (tot > 0) "+" else if (tot < 0) "−" else "") + AppModel.man(abs(tot)), style = appFont(15f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:791
+        T("그때 그 일이 지금 나면", style = appFont(16f, FontWeight.Bold))
+        rows.forEach { (rp, tot, _) -> key(rp.`when`) {
+            val c = if (tot < 0) Theme.blue else sysRed()
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.width(84.dp)) {
+                    T(rp.name, style = appFont(13f, FontWeight.SemiBold), maxLines = 1)
+                    T(rp.`when`, style = appFont(11f), color = Theme.muted)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/AnalysisDetail.swift:793
-                    chips.forEach { c ->   // ios: Views/AnalysisDetail.swift:794
-                        T(c, Modifier.background(Theme.border, CapsuleShape).padding(horizontal = 8.dp, vertical = 3.dp), style = appFont(11f))   // ios: Views/AnalysisDetail.swift:795
-                    }
+                BoxWithConstraints(Modifier.weight(1f).height(10.dp), contentAlignment = Alignment.CenterEnd) {
+                    Box(Modifier.fillMaxSize().background(Theme.border, CapsuleShape))
+                    Box(Modifier.fillMaxHeight().width(dmax(3.dp, maxWidth * (abs(tot) / top).toFloat())).background(c, CapsuleShape))
                 }
-                T(note, style = appFont(12f), color = if (!small && fx > 0) Theme.teal else sysOrange())   // ios: Views/AnalysisDetail.swift:798
+                T(AppModel.eokS(tot), Modifier.width(76.dp), style = appFont(14f, FontWeight.Bold).copy(textAlign = TextAlign.End, fontFeatureSettings = "tnum"), color = c, maxLines = 1)
             }
         } }
+        T(note, style = appFont(11f).ls(2f), color = Theme.sub)
     }
 }
 
-/** 오늘의 이벤트 카드: 가장 가까운 일정 하나 (45일 안에 없으면 숨김) */
-// ios: Views/AnalysisDetail.swift:824
+/** 맨 위 칸: 들어온 그 일 (그래프 깃발로 왔으면 그 일, 아니면 가장 가까운 일). 흔들림 폭을 −/+ 막대로 (45일 안에 없으면 숨김) */
+// ios: Views/AnalysisDetail.swift:676
 @Composable
 private fun TodayCard(m: AppModel, x: ExternalView.Ev?, asked: Set<String>, setAsked: (Set<String>) -> Unit) {
     val scope = rememberCoroutineScope()
-    if (x != null) {   // ios: Views/AnalysisDetail.swift:825
-        val tot = max(1.0, m.total)   // ios: Views/AnalysisDetail.swift:826
-        val b = m.rows.fold(0.0) { a, r -> a + r.value / tot * (ExternalView.mktBeta(r.id) ?: 1.0) }   // ios: Views/AnalysisDetail.swift:827
-        Card(dark = true) {   // ios: Views/AnalysisDetail.swift:828
-            T("${MarketEvents.`when`(x.hit.day)} · ${x.hit.kind}", style = appFont(12f, FontWeight.SemiBold), color = Theme.teal)   // ios: Views/AnalysisDetail.swift:829
-            T("±" + AppModel.man(x.amt), style = appFont(26f, FontWeight.Bold), roll = "±" + AppModel.man(x.amt))   // ios: Views/AnalysisDetail.swift:830
-            val bs = cformat("%.1f", b); val base0 = ExternalView.evBase[x.k] ?: ""; val sd = cfmt("%g", x.sd)   // Views/AnalysisDetail.swift:941 (검사 예외: 같은 글)
-            T("${base0} ±${sd}% 가정" + (if (x.k == "mkt") " · 시장의 ${bs}배" else ""),
-              style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:832
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/AnalysisDetail.swift:833
-                T(text = "미리 보기", style = appFont(13f, FontWeight.SemiBold), color = Color.White,   // ios: Views/AnalysisDetail.swift:835
-                  modifier = Modifier.plainClickable { m.analysisPath = m.analysisPath + FactorDetailRoute(factor = x.k, start = x.v) }   // ios: Views/AnalysisDetail.swift:834,838
-                      .background(Theme.teal, RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 8.dp))   // ios: Views/AnalysisDetail.swift:836
-                val on = asked.contains("${x.hit.id}.${x.hit.day}")   // ios: Views/AnalysisDetail.swift:839
-                val label = if (on) "알림 켬" else "결과 알림"; val icon = if (on) "bell.fill" else "bell"   // ios: Views/AnalysisDetail.swift:845
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier
-                    .plainClickable {   // ios: Views/AnalysisDetail.swift:840,844,849
-                        val k = "${x.hit.id}.${x.hit.day}"   // ios: Views/AnalysisDetail.swift:841
-                        setAsked(if (on) asked - k else asked + k)   // ios: Views/AnalysisDetail.swift:842
-                        scope.launch { EventRetro.ask(id = x.hit.id, kind = x.hit.kind, day = x.hit.day, on = !on) }   // ios: Views/AnalysisDetail.swift:843
-                    }
-                    .background(Color.White.copy(alpha = if (on) 0.25f else 0.12f), RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {   // ios: Views/AnalysisDetail.swift:847
-                    if (SF.containsKey(icon)) Sym(icon, 13f, Color.White)   // bell·bell.fill 은 아직 SF 표에 없다 (넣으면 보인다)
-                    T(label, style = appFont(13f, FontWeight.SemiBold), color = Color.White)   // ios: Views/AnalysisDetail.swift:846
+    if (x != null) {
+        val tot = max(1.0, m.total); val amt = AppModel.man(x.amt)
+        val k = "${x.hit.id}.${x.hit.day}"; val on = asked.contains(k)
+        Card(dark = true) {
+            Row(verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    T("${MarketEvents.`when`(x.hit.day)} · ${x.hit.kind}", style = appFont(12f, FontWeight.SemiBold), color = Theme.teal)
+                    T("±$amt", style = appFont(30f, FontWeight.Bold), roll = "±$amt")
+                    val nm = ExternalView.short[x.k] ?: ""; val sd = cfmt("%g", x.sd); val my = cformat("%.1f", x.amt / tot * 100)
+                    T("${nm} ${sd}% 움직이면 내 돈 ${my}%", style = appFont(12f), color = Theme.sub)
+                }
+                val icon = if (on) "bell.fill" else "bell"; val label = if (on) "알림 켬" else "결과 알림"
+                Box(Modifier.size(36.dp).background(Color.White.copy(alpha = if (on) 0.25f else 0.12f), RoundedCornerShape(10.dp))
+                    .semantics { contentDescription = tr(label) }
+                    .plainClickable {
+                        setAsked(if (on) asked - k else asked + k)
+                        scope.launch { EventRetro.ask(id = x.hit.id, kind = x.hit.kind, day = x.hit.day, on = !on) }
+                    }, contentAlignment = Alignment.Center) {
+                    Sym(icon, 15f, Color.White)
                 }
             }
+            // −/+ 막대: 가운데가 지금
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp).height(8.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                Box(Modifier.weight(1f).fillMaxHeight().background(Theme.blue, CapsuleShape))
+                Box(Modifier.weight(1f).fillMaxHeight().background(sysRed(), CapsuleShape))
+            }
+            Row(Modifier.fillMaxWidth()) {
+                T("−$amt", style = appFont(11f), color = Theme.sub)
+                Spacer(Modifier.weight(1f))
+                T("지금", style = appFont(11f), color = Theme.sub)
+                Spacer(Modifier.weight(1f))
+                T("+$amt", style = appFont(11f), color = Theme.sub)
+            }
+            T("미리 보기 ›", Modifier.padding(top = 4.dp).plainClickable { m.analysisPath = m.analysisPath + FactorDetailRoute(factor = x.k, start = x.v) },
+              style = appFont(13f, FontWeight.SemiBold), color = Theme.teal)
+        }
+    }
+}
+
+/** 무엇이 흔드나: 뚜렷한 요인만 한 막대에 나눠 담는다 (한 달 기준). 이름을 누르면 요인 상세 */
+// ios: Views/AnalysisDetail.swift:576
+@Composable
+private fun ShakeCard(m: AppModel, rs: List<ExternalView.Rank>) {
+    val strong = rs.filter { !it.weak && it.amt > 0 }
+    val shade = { i: Int -> listOf(1f, 0.6f, 0.32f, 0.18f, 0.1f)[min(i, 4)] }
+    val sum = max(1.0, strong.fold(0.0) { a, x -> a + x.amt })
+    Card {
+        Row(Modifier.fillMaxWidth()) {
+            T("무엇이 흔드나", Modifier.alignByBaseline(), style = appFont(16f, FontWeight.Bold))
+            Spacer(Modifier.weight(1f))
+            T("한 달", Modifier.alignByBaseline(), style = appFont(12f), color = Theme.sub)
+        }
+        if (strong.isEmpty()) {
+            T(if (SiteCalc.shared.factorMonth("mkt") == null) "요인 자료 불러오는 중" else "뚜렷한 요인 없음", style = appFont(12f), color = Theme.muted)
+        } else {
+            Row(Modifier.fillMaxWidth().height(12.dp).clip(CapsuleShape), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                strong.forEachIndexed { i, x -> Box(Modifier.weight((x.amt / sum).toFloat().coerceAtLeast(0.005f)).fillMaxHeight().background(Theme.teal.copy(alpha = shade(i)))) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                strong.forEachIndexed { i, x ->
+                    val nm = FactorDetailView.names[x.k] ?: ""; val rel = "보통 한 달 ±" + AppModel.man(x.amt); val a11y = "${nm}, ${rel}. 자세히 보기"
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = tr(a11y) }
+                            .plainClickable { m.analysisPath = m.analysisPath + FactorDetailRoute(factor = x.k) }) {
+                        Box(Modifier.size(8.dp).background(Theme.teal.copy(alpha = shade(i)), RoundedCornerShape(2.dp)))
+                        T(ExternalView.short[x.k] ?: "", style = appFont(12f), color = Theme.sub, maxLines = 1)
+                        T(AppModel.man(x.amt), style = appFont(13f, FontWeight.Bold), color = Theme.ink, maxLines = 1)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** 다가오는 일: 시장 일정과 내 종목 일정을 날짜순 한 목록에. 막대 = 내 돈 흔들림, 내 종목은 이름 뒤 점 */
+// ios: Views/AnalysisDetail.swift:753
+@Composable
+private fun UpcomingCard(m: AppModel, es: List<ExternalView.Ev>, mine: List<MarketEvents.Hit>) {
+    val near = es.take(8)
+    val items = (near.map { Pair(it.hit, it as ExternalView.Ev?) } + mine.map { Pair(it, null as ExternalView.Ev?) }).sortedBy { it.first.day }
+    val top = max(1.0, near.maxOfOrNull { it.amt } ?: 1.0)
+    Card {
+        Row(Modifier.fillMaxWidth()) {
+            T("다가오는 일", Modifier.alignByBaseline(), style = appFont(16f, FontWeight.Bold))
+            Spacer(Modifier.weight(1f))
+            T("막대 = 내 돈 흔들림", Modifier.alignByBaseline(), style = appFont(12f), color = Theme.sub)
+        }
+        items.forEachIndexed { i, (h, x) ->
+            if (i > 0) HDivider()
+            if (x != null) EvRow(m, h, x.amt, top, Modifier.plainClickable { m.analysisPath = m.analysisPath + FactorDetailRoute(factor = x.k, start = x.v) })
+            else EvRow(m, h, null, top, Modifier)
+        }
+        if (items.isEmpty()) T("45일 안 일정 없음", style = appFont(13f), color = Theme.sub)
+    }
+}
+
+/** 다가오는 일 한 줄: 날짜 | 이름 | 막대 | 금액 | › (막대와 금액은 칸을 맞춘다). 내 종목 일정은 막대·금액 칸에 비중 */
+// ios: Views/AnalysisDetail.swift:777
+@Composable
+private fun EvRow(m: AppModel, h: MarketEvents.Hit, amt: Double?, top: Double, modifier: Modifier) {
+    val n = Day.dday(h.day)
+    Row(modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        T(if (n == 0) "오늘" else if (n == 1) "내일" else Day.md(h.day), Modifier.width(44.dp), style = appFont(12f, FontWeight.SemiBold), color = Theme.teal, maxLines = 1)
+        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            T(h.kind.replace(" 결정", ""), Modifier.weight(1f, fill = false), style = appFont(14f, FontWeight.Bold), maxLines = 1)
+            if (amt == null && h.held) Box(Modifier.size(6.dp).background(Theme.teal, CircleShape))
+        }
+        if (amt != null) {
+            BoxWithConstraints(Modifier.width(64.dp).height(6.dp)) {
+                Box(Modifier.fillMaxSize().background(Theme.border, CapsuleShape))
+                Box(Modifier.fillMaxHeight().width(dmax(3.dp, maxWidth * (amt / top).toFloat())).background(Theme.ink, CapsuleShape))
+            }
+            T("±${AppModel.man(amt)}", Modifier.width(64.dp), style = appFont(13f, FontWeight.Bold).copy(textAlign = TextAlign.End, fontFeatureSettings = "tnum"), maxLines = 1)
+            Sym("chevron.right", 11f, Theme.muted, Modifier.width(8.dp))
+        } else {
+            val w = AppModel.pct(m.weight(h.target))
+            T(if (h.held) "비중 ${w}" else h.sub, Modifier.width(136.dp), style = appFont(12f, FontWeight.SemiBold).copy(textAlign = TextAlign.End),
+              color = if (h.held) Theme.teal else Theme.sub, maxLines = 1)
+            Spacer(Modifier.width(8.dp))
         }
     }
 }
@@ -342,124 +438,43 @@ private fun RetroCard(retro: EventRetro.Snap?) {
     }
 }
 
-/** 외부 요인 화면 (분석 넘기기 안). 요인 상세는 FactorDetailRoute 로 쌓는다 */
-// ios: Views/AnalysisDetail.swift:674,886
+/** 바깥 일, 내 돈은? (분석 넘기기 안). 요인 상세는 FactorDetailRoute 로 쌓는다 */
+// ios: Views/AnalysisDetail.swift:809
 @Composable
 fun ExternalView(m: AppModel) {
-    var asked by remember { mutableStateOf(setOf<String>()) }   // ios: Views/AnalysisDetail.swift:854
-    var retro by remember { mutableStateOf<EventRetro.Snap?>(null) }   // ios: Views/AnalysisDetail.swift:855
+    var asked by remember { mutableStateOf(setOf<String>()) }
+    var retro by remember { mutableStateOf<EventRetro.Snap?>(null) }
     var data by remember { mutableStateOf<ExtData?>(null) }
+    // 그래프 깃발로 들어올 때 맨 위에 띄울 일 ("id.day"). 화면이 열리며 읽고 비운다
+    val focusKey = remember { ExternalView.focus.also { ExternalView.focus = null } }
     val rowsKey = m.rows.map { it.id to it.value }; val stats = Market.shared.stats; val fxNow = Market.shared.fx.last
     // 요인 순위·일정은 화면 밖에서 (직접 추가한 종목의 시장 민감도는 지난 종가 회귀라 무겁다). 바뀌기 전 값은 그대로 둔다
     LaunchedEffect(rowsKey, stats, fxNow) {
         data = withContext(Dispatchers.Default) {
             m.rows.forEach { ExternalView.mktBeta(it.id) }
-            ExtData(ExternalView.ranks(m), ExternalView.events(m))   // ios: Views/AnalysisDetail.swift:808
+            ExtData(ExternalView.ranks(m), ExternalView.events(m))
         }
     }
-    LaunchedEffect(Unit) { SiteCalc.shared.refresh() }   // ios: Views/AnalysisDetail.swift:995
+    LaunchedEffect(Unit) { SiteCalc.shared.refresh() }
     val d = data
-    // ios: Views/AnalysisDetail.swift:893,993,994
     Box(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
-        Column(Modifier.widthIn(max = Theme.maxWidth).fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {   // ios: Views/AnalysisDetail.swift:894,991
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {   // ios: Views/AnalysisDetail.swift:895
-                T("바깥 일이 생기면 내 돈은?", style = appFont(20f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:896
-                T("단기(오늘~한 달) 기준",   // ios: Views/AnalysisDetail.swift:897
-                  style = appFont(13f).ls(2f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:898
-            }
+        Column(Modifier.widthIn(max = Theme.maxWidth).fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if (d != null) {
-                val rs = d.rs   // ios: Views/AnalysisDetail.swift:887
-                val scale = max(1.0, rs.filter { !it.weak }.map { it.amt }.maxOrNull() ?: 1.0)   // ios: Views/AnalysisDetail.swift:888
-                val es = d.es   // ios: Views/AnalysisDetail.swift:889
-                val events = MarketEvents.upcoming(held = m.rows.map { it.id }, days = 45).filter { SiteCalc.eventMoves[it.id] == null }.sortedBy { it.day }.take(5)   // ios: Views/AnalysisDetail.swift:890
-                val nos: Map<String, String> = rs.filter { !it.weak }.mapIndexed { i, x -> x.k to (i + 1).toString() }.toMap()   // ios: Views/AnalysisDetail.swift:891
-                // ios: Views/AnalysisDetail.swift:900
+                val es = d.es
+                val mine = MarketEvents.upcoming(held = m.rows.map { it.id }, days = 45).filter { SiteCalc.eventMoves[it.id] == null }.sortedBy { it.day }.take(5)
+                val hero = es.firstOrNull { "${it.hit.id}.${it.hit.day}" == focusKey } ?: es.firstOrNull()
                 LaunchedEffect(Unit) {
-                    EventRetro.record(es.map { EventRetro.Rec(id = it.hit.id, kind = it.hit.kind, day = it.hit.day, amt = it.amt) }, total = m.total)   // ios: Views/AnalysisDetail.swift:901
-                    asked = es.filter { EventRetro.isAsked(it.hit.id, it.hit.day) }.map { "${it.hit.id}.${it.hit.day}" }.toSet()   // ios: Views/AnalysisDetail.swift:902
-                    retro = EventRetro.latest   // ios: Views/AnalysisDetail.swift:903
+                    EventRetro.record(es.map { EventRetro.Rec(id = it.hit.id, kind = it.hit.kind, day = it.hit.day, amt = it.amt) }, total = m.total)
+                    asked = es.filter { EventRetro.isAsked(it.hit.id, it.hit.day) }.map { "${it.hit.id}.${it.hit.day}" }.toSet()
+                    retro = EventRetro.latest
                 }
-                TodayCard(m, es.firstOrNull(), asked) { asked = it }   // ios: Views/AnalysisDetail.swift:905
-                RetroCard(retro)   // ios: Views/AnalysisDetail.swift:906
-                Card {   // ios: Views/AnalysisDetail.swift:907
-                    Row(Modifier.fillMaxWidth()) {   // ios: Views/AnalysisDetail.swift:908
-                        T("흔드는 요인", Modifier.alignByBaseline(), style = appFont(16f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:909
-                        Spacer(Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:910
-                        T("한 달 기준", Modifier.alignByBaseline(), style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:911
-                    }
-                    rs.forEach { x -> key(x.k) {   // ios: Views/AnalysisDetail.swift:913
-                        val no = nos[x.k] ?: "–"   // ios: Views/AnalysisDetail.swift:914
-                        val nm = FactorDetailView.names[x.k] ?: ""; val rel = if (x.weak) "뚜렷한 관계 없음" else "보통 한 달 ±" + AppModel.man(x.amt); val a11y = "${nm}, ${rel}. 자세히 보기"   // Views/AnalysisDetail.swift:1054 (검사 예외: 같은 글)
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top,   // ios: Views/AnalysisDetail.swift:916
-                            modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = tr(a11y) }
-                                .plainClickable { m.analysisPath = m.analysisPath + FactorDetailRoute(factor = x.k) }   // ios: Views/AnalysisDetail.swift:915,943
-                                .padding(vertical = 6.dp)) {   // ios: Views/AnalysisDetail.swift:941
-                            Box(Modifier.background(if (no == "1") Theme.ink else Theme.border, CircleShape), contentAlignment = Alignment.Center) {   // ios: Views/AnalysisDetail.swift:919
-                                T(no, Modifier.size(24.dp, 24.dp).wrapContentSize(), style = appFont(12f, FontWeight.Bold),   // ios: Views/AnalysisDetail.swift:917
-                                  color = if (no == "1") Color.White else Theme.ink)   // ios: Views/AnalysisDetail.swift:918
-                            }
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {   // ios: Views/AnalysisDetail.swift:920
-                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/AnalysisDetail.swift:921
-                                    T(FactorDetailView.names[x.k] ?: x.k, style = appFont(15f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:922
-                                    Spacer(Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:923
-                                    T(if (x.weak) "관계 없음" else "±" + AppModel.man(x.amt), style = appFont(14f, if (x.weak) FontWeight.Normal else FontWeight.Bold),   // ios: Views/AnalysisDetail.swift:924
-                                      color = if (x.weak) Theme.muted else Theme.ink)   // ios: Views/AnalysisDetail.swift:925
-                                }
-                                if (!x.weak) {   // ios: Views/AnalysisDetail.swift:927
-                                    BoxWithConstraints(Modifier.fillMaxWidth().height(6.dp)) {   // ios: Views/AnalysisDetail.swift:928,929,934
-                                        Box(Modifier.fillMaxSize().background(Theme.border, CapsuleShape))   // ios: Views/AnalysisDetail.swift:930
-                                        Box(Modifier.fillMaxHeight().width(dmax(3.dp, maxWidth * (x.amt / scale).toFloat())).background(Theme.teal, CapsuleShape))   // ios: Views/AnalysisDetail.swift:931
-                                    }
-                                }
-                                val ds = ExternalView.desc(m, x)   // ios: Views/AnalysisDetail.swift:936
-                                if (ds.isNotEmpty()) T(ds, style = appFont(12f).ls(2f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:937
-                            }
-                            Sym("chevron.right", 12f, Theme.muted, Modifier.padding(top = 5.dp))   // ios: Views/AnalysisDetail.swift:939
-                        }
-                    } }
-                    val s = ExternalView.summary(rs)
-                    if (s != null) {   // ios: Views/AnalysisDetail.swift:946
-                        T(s, style = appFont(13f).ls(2f), color = Theme.ink, modifier = Modifier.fillMaxWidth()   // ios: Views/AnalysisDetail.swift:947
-                            .background(Theme.teal.copy(alpha = 0.1f), RoundedCornerShape(12.dp))   // ios: Views/AnalysisDetail.swift:949
-                            .padding(12.dp))   // ios: Views/AnalysisDetail.swift:948
-                    } else if (SiteCalc.shared.factorMonth("mkt") == null) {   // ios: Views/AnalysisDetail.swift:950
-                        T("요인 자료 불러오는 중", style = appFont(12f), color = Theme.muted)   // ios: Views/AnalysisDetail.swift:951
-                    }
-                }
-                ReplayCard(m)   // ios: Views/AnalysisDetail.swift:954
-                Card {   // ios: Views/AnalysisDetail.swift:955
-                    T("다가오는 일", style = appFont(16f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:956
-                    es.take(8).forEach { x ->   // ios: Views/AnalysisDetail.swift:957
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/AnalysisDetail.swift:958
-                            T(MarketEvents.`when`(x.hit.day), Modifier.widthIn(min = 64.dp), style = appFont(12f, FontWeight.SemiBold), color = Theme.teal)   // ios: Views/AnalysisDetail.swift:959
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/AnalysisDetail.swift:960,964
-                                T(x.hit.kind.replace(" 결정", ""), style = appFont(14f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:961
-                                val lab = mapOf("mkt" to "시장")[x.k] ?: ExternalView.evBase[x.k] ?: ""; T("±${AppModel.man(x.amt)} · ${lab}", style = appFont(12f), color = Theme.sub)   // Views/AnalysisDetail.swift:1072 (검사 예외: 같은 글)
-                            }
-                            T(modifier = Modifier.plainClickable { m.analysisPath = m.analysisPath + FactorDetailRoute(factor = x.k, start = x.v) }   // ios: Views/AnalysisDetail.swift:965,969
-                                .border(1.dp, Theme.border, RoundedCornerShape(10.dp))   // ios: Views/AnalysisDetail.swift:967
-                                .padding(horizontal = 10.dp, vertical = 6.dp), text = "미리 보기", style = appFont(12f, FontWeight.SemiBold))   // ios: Views/AnalysisDetail.swift:966
-                        }
-                    }
-                    if (es.isEmpty()) T("45일 안 일정 없음", style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:972
-                    T("미리 보기는 나쁜 쪽 기준", style = appFont(11f), color = Theme.muted)   // ios: Views/AnalysisDetail.swift:973
-                }
-                if (events.isNotEmpty()) Card(dark = true) {   // ios: Views/AnalysisDetail.swift:975
-                    T("내 종목 일정", style = appFont(15f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:976
-                    events.forEach { e ->   // ios: Views/AnalysisDetail.swift:977
-                        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/AnalysisDetail.swift:978
-                            T(MarketEvents.`when`(e.day), Modifier.widthIn(min = 64.dp), style = appFont(12f, FontWeight.SemiBold), color = Theme.teal)   // ios: Views/AnalysisDetail.swift:979
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/AnalysisDetail.swift:980
-                                T(e.kind, style = appFont(14f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:981
-                                val w = AppModel.pct(m.weight(e.target)); T(if (e.held) "비중 ${w}" else e.sub,   // ios: Views/AnalysisDetail.swift:982
-                                  style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:983
-                            }
-                        }
-                    }
-                }
+                TodayCard(m, hero, asked) { asked = it }
+                RetroCard(retro)
+                ShakeCard(m, d.rs)
+                UpcomingCard(m, es, mine)
+                ReplayCard(m)
             }
-            T("'만약에' 화면 · 큰 변화일수록 오차 큼",   // ios: Views/AnalysisDetail.swift:988
-              style = appFont(12f).ls(2f), color = Theme.muted)   // ios: Views/AnalysisDetail.swift:989
+            T("큰 변화일수록 오차 큼", Modifier.fillMaxWidth(), style = appFont(12f).copy(textAlign = TextAlign.Center), color = Theme.muted)
         }
     }
 }

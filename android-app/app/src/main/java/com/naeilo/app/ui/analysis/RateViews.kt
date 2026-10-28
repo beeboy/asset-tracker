@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.heightIn
+import com.naeilo.app.ui.home.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -336,14 +339,12 @@ private class RateOut(val r: RateScen, val pb: List<Double>, val mid: Double, va
 // ios: Views/AnalysisDetail.swift:1333,1339
 @Composable
 fun RateScenarioView(m: AppModel) {
-    var pick by remember { mutableIntStateOf(2) }   // ios: Views/AnalysisDetail.swift:1334 프리셋 번호. 기본 "작년만큼 또 오른다". -1 이면 직접 정한 값
-    var custom by remember { mutableDoubleStateOf(0.0) }   // ios: Views/AnalysisDetail.swift:1335
-    var open by remember { mutableStateOf(false) }   // ios: Views/AnalysisDetail.swift:1336
+    var pick by remember { mutableIntStateOf(2) }   // ios: Views/AnalysisDetail.swift:1131 프리셋 번호. 기본 "작년만큼 또 오른다"
     val macro = MacroData.shared   // ios: Views/AnalysisDetail.swift:1337
     val file = macro.file; val M = file?.meals
     Box(Modifier.fillMaxSize().background(Theme.bg)) {   // ios: Views/AnalysisDetail.swift:1340,1351,1352
         if (file != null && M != null) {   // ios: Views/AnalysisDetail.swift:1341
-            RateMain(m, file, M, pick, custom, open, { pick = it }, { custom = it }, { open = it })   // ios: Views/AnalysisDetail.swift:1342
+            RateMain(m, file, M, pick) { pick = it }   // ios: Views/AnalysisDetail.swift:1342
         } else {   // ios: Views/AnalysisDetail.swift:1343
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {   // ios: Views/AnalysisDetail.swift:1344,1348
                 if (macro.failed) T("금리 자료 못 불러옴 · 인터넷 확인", style = appFont(14f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:1345
@@ -356,11 +357,10 @@ fun RateScenarioView(m: AppModel) {
 
 // ios: Views/AnalysisDetail.swift:1395
 @Composable
-private fun RateMain(m: AppModel, file: MacroData.File, M: MacroData.File.Meals, pick: Int, custom: Double, open: Boolean,
-                     setPick: (Int) -> Unit, setCustom: (Double) -> Unit, setOpen: (Boolean) -> Unit) {
+private fun RateMain(m: AppModel, file: MacroData.File, M: MacroData.File.Meals, pick: Int, setPick: (Int) -> Unit) {
     val macro = MacroData.shared
     val presets = ratePresets(macro)
-    val d = if (pick >= 0) presets[pick].dr else custom; val mm = 0.0   // ios: Views/AnalysisDetail.swift:1396 시장 공통 기대수익은 이 화면에서 뺐다 (목표일 전망의 추세 믿음과 같은 레버)
+    val d = presets[pick].dr; val mm = 0.0   // ios: Views/AnalysisDetail.swift:1191 시장 공통 기대수익은 이 화면에서 뺐다 (목표일 전망의 추세 믿음과 같은 레버)
     val f = m.forecast; val ci = closedInput(m, f)   // ios: Views/AnalysisDetail.swift:1398
     // 식단 1000벌·확률 1000번·종목 민감도는 화면 밖에서. 같은 값이면 MacroData 가 저장해 둔 결과, 바뀌는 동안엔 앞 결과를 그대로 보여 준다
     var out by remember { mutableStateOf<RateOut?>(null) }
@@ -388,27 +388,23 @@ private fun RateMain(m: AppModel, file: MacroData.File, M: MacroData.File.Meals,
     val eps = if (H > 0) exp(r.cum[H - 1][1] / 100) - 1 else 0.0   // ios: Views/AnalysisDetail.swift:1405
     val m0 = RateScenarioView.months(ci, 0.0); val m1 = RateScenarioView.months(ci, mid)   // ios: Views/AnalysisDetail.swift:1406
     val endAmt = f.q50.lastOrNull() ?: 0.0; val T = ci.T   // ios: Views/AnalysisDetail.swift:1407
-    val whenS = if (pick >= 0) (if (pick == 0) "내리면" else if (pick == 1) "그대로면" else if (pick == 2) "작년만큼 오르면" else "2022년처럼 오르면")   // ios: Views/AnalysisDetail.swift:1408
-        else RateScenarioView.signed(d, "%p", 1).let { sd -> "${sd} 움직이면" }   // Views/AnalysisDetail.swift:1519 (검사 예외: 같은 글)
+    val whenS = if (pick == 0) "내리면" else if (pick == 1) "그대로면" else if (pick == 2) "작년만큼 오르면" else "2022년처럼 오르면"   // ios: Views/AnalysisDetail.swift:1203
     Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {   // ios: Views/AnalysisDetail.swift:1411
         Column(Modifier.widthIn(max = Theme.maxWidth).fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {   // ios: Views/AnalysisDetail.swift:1412,1476
-            DetailHead(title = "금리 충격 테스트", sub = "")   // ios: Views/AnalysisDetail.swift:1413
-            T("금리가 바뀌면 내 목표는?", style = appFont(20f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:1414
-            val cols = listOf(8.dp, 8.dp)   // ios: Views/AnalysisDetail.swift:1415 (두 칸: 칸 사이 8, 줄 사이 8)
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { presets.indices.chunked(cols.size).forEach { pr -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(cols[0])) {
-                pr.forEach { i ->   // ios: Views/AnalysisDetail.swift:1416
-                    val on = pick == i   // ios: Views/AnalysisDetail.swift:1417
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp),   // ios: Views/AnalysisDetail.swift:1419
-                        modifier = Modifier.weight(1f).plainClickable { setPick(i) }   // ios: Views/AnalysisDetail.swift:1418,1427
-                            .background(if (on) Theme.tealBg else Theme.card, RoundedCornerShape(14.dp))   // ios: Views/AnalysisDetail.swift:1424
-                            .border(if (on) 2.dp else 1.dp, if (on) Theme.teal else Theme.border, RoundedCornerShape(14.dp))   // ios: Views/AnalysisDetail.swift:1425
-                            .padding(12.dp)) {   // ios: Views/AnalysisDetail.swift:1423
-                        T(presets[i].label, style = appFont(14f, FontWeight.Bold), color = Theme.ink)   // ios: Views/AnalysisDetail.swift:1420
-                        T(presets[i].sub, style = appFont(12f), color = if (on) Theme.tealDark else Theme.sub)   // ios: Views/AnalysisDetail.swift:1421
+            DetailHead(title = "금리가 바뀌면 내 목표는?", sub = "")   // ios: Views/AnalysisDetail.swift:1207
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {   // ios: Views/AnalysisDetail.swift:1208
+                presets.indices.forEach { i ->   // ios: Views/AnalysisDetail.swift:1209
+                    val on = pick == i   // ios: Views/AnalysisDetail.swift:1210
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp), horizontalAlignment = Alignment.CenterHorizontally,   // ios: Views/AnalysisDetail.swift:1212
+                        modifier = Modifier.weight(1f).plainClickable { setPick(i) }   // ios: Views/AnalysisDetail.swift:1211
+                            .background(if (on) Theme.tealBg else Theme.card, RoundedCornerShape(14.dp))   // ios: Views/AnalysisDetail.swift:1217
+                            .border(if (on) 2.dp else 1.dp, if (on) Theme.teal else Theme.border, RoundedCornerShape(14.dp))   // ios: Views/AnalysisDetail.swift:1218
+                            .padding(horizontal = 4.dp, vertical = 10.dp)) {   // ios: Views/AnalysisDetail.swift:1216
+                        FitText(presets[i].label, style = appFont(13f, FontWeight.Bold), minScale = 0.7f, color = Theme.ink)   // ios: Views/AnalysisDetail.swift:1213
+                        FitText(presets[i].sub, style = appFont(11f), minScale = 0.7f, color = if (on) Theme.tealDark else Theme.sub)   // ios: Views/AnalysisDetail.swift:1214
                     }
                 }
-                if (pr.size == 1) Box(Modifier.weight(1f))
-            } } }
+            }
             Card(dark = true) {   // ios: Views/AnalysisDetail.swift:1430
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {   // ios: Views/AnalysisDetail.swift:1431
                     T("${m.keyName} 가능성", Modifier.alignByBaseline(), style = appFont(14f))   // ios: Views/AnalysisDetail.swift:1432
@@ -430,27 +426,16 @@ private fun RateMain(m: AppModel, file: MacroData.File, M: MacroData.File.Meals,
             }
             Card {   // ios: Views/AnalysisDetail.swift:1449
                 T("어떻게 번지나?", style = appFont(16f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:1450
-                Step(1, "금리", file.now?.rate?.let { cformat("%.2f%% → %.2f%%", it, it + d) } ?: RateScenarioView.signed(d, "%p", 1), "미국 10년물")   // ios: Views/AnalysisDetail.swift:1451
-                val epsS = if (eps < 0) "−" else "+"; val epsP = (abs(eps) * 100).swRound().toInt(); Step(2, "기업 이익", if (abs(eps) < 0.005) "${H}년간 거의 그대로" else "${H}년간 ${epsS}${epsP}%", "")   // Views/AnalysisDetail.swift:1562 (검사 예외: 같은 글)
-                val midS = if (mid < 0) "−" else "+"; val midP = cformat("%.1f", abs(mid) * 100); Step(3, "내 기대수익", if (abs(mid) < 0.0005) "거의 그대로" else "연 ${midS}${midP}%p", "")   // Views/AnalysisDetail.swift:1563 (검사 예외: 같은 글)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {   // ios: Views/AnalysisDetail.swift:1244
+                    Cell("금리", RateScenarioView.signed(d, "%p", 1), "미국 10년물")   // ios: Views/AnalysisDetail.swift:1245
+                    val epsS = if (eps < 0) "−" else "+"; val epsP = (abs(eps) * 100).swRound().toInt(); Cell("기업 이익", if (abs(eps) < 0.005) "그대로" else "${epsS}${epsP}%", "${H}년간")   // ios: Views/AnalysisDetail.swift:1246
+                    val midS = if (mid < 0) "−" else "+"; val midP = cformat("%.1f", abs(mid) * 100); Cell("내 기대수익", if (abs(mid) < 0.0005) "그대로" else "${midS}${midP}%p", "1년에")   // ios: Views/AnalysisDetail.swift:1247
+                }
                 T(text = "근거 ›", style = appFont(13f, FontWeight.Bold), color = Theme.teal,   // ios: Views/AnalysisDetail.swift:1455
                   modifier = Modifier.plainClickable { m.analysisPath = m.analysisPath + RateWhyRoute(r, whenS, file.eps_last) })   // ios: Views/AnalysisDetail.swift:1454
             }
             WeakCard(m, o.list)   // ios: Views/AnalysisDetail.swift:1458
             RateEventsCard(m)   // ios: Views/AnalysisDetail.swift:1459
-            Card(Modifier.animateContentSize()) {   // ios: Views/AnalysisDetail.swift:1460,1461,1464
-                Row(Modifier.fillMaxWidth().plainClickable { setOpen(!open) }, verticalAlignment = Alignment.CenterVertically) {
-                    T("직접 정하기", Modifier.weight(1f), style = appFont(15f, FontWeight.Bold), color = Theme.ink); Sym(if (open) "chevron.up" else "chevron.down", 17f, Theme.ink)   // ios: Views/AnalysisDetail.swift:1462
-                }
-                if (open) {   // ios: Views/AnalysisDetail.swift:1465
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("1년 뒤 10년물", Modifier.weight(1f), style = appFont(14f)); T(RateScenarioView.signed(d, "%p", 1), style = appFont(15f, FontWeight.Bold)) }   // ios: Views/AnalysisDetail.swift:1466
-                    IosSlider(value = d, onChange = { setCustom(it); setPick(-1) }, range = -2.0..3.0, step = 0.1,   // ios: Views/AnalysisDetail.swift:1467
-                        tint = Theme.orange, modifier = Modifier.semantics { contentDescription = tr("앞으로 1년 10년물 금리 변화") })   // ios: Views/AnalysisDetail.swift:1468
-                    val c = macro.change1y; if (c != null) {   // ios: Views/AnalysisDetail.swift:1469
-                        val cs = RateScenarioView.signed(c, "%p", 2); T("작년 ${cs}", style = appFont(12f), color = Theme.muted)   // Views/AnalysisDetail.swift:1580 (검사 예외: 같은 글)
-                    }
-                }
-            }
             Footnote("'만약에' 화면 · 추천 아님")   // ios: Views/AnalysisDetail.swift:1474
         }
     }
@@ -464,11 +449,12 @@ private fun RateEventsCard(m: AppModel) {
     val events = MarketEvents.rateUpcoming(days = 60).take(4)   // ios: Views/AnalysisDetail.swift:1482
     Card {   // ios: Views/AnalysisDetail.swift:1483
         T("금리 일정", style = appFont(16f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:1484
-        events.forEach { e ->   // ios: Views/AnalysisDetail.swift:1485
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/AnalysisDetail.swift:1486
-                T(MarketEvents.`when`(e.day), Modifier.widthIn(min = 64.dp).alignByBaseline(), style = appFont(12f, FontWeight.SemiBold), color = Theme.teal)   // ios: Views/AnalysisDetail.swift:1487
-                T(e.kind.replace(" 금리 결정", ""), Modifier.alignByBaseline(), style = appFont(14f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:1488
-                Spacer(Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:1489
+        if (events.isNotEmpty()) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {   // ios: Views/AnalysisDetail.swift:1266,1267
+            events.forEach { e ->   // ios: Views/AnalysisDetail.swift:1268
+                Column(cellBox().weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {   // ios: Views/AnalysisDetail.swift:1269,1273-1276
+                    FitText(MarketEvents.`when`(e.day), style = appFont(12f, FontWeight.SemiBold), minScale = 0.7f, color = Theme.teal)   // ios: Views/AnalysisDetail.swift:1270
+                    FitText(e.kind.replace(" 금리 결정", ""), style = appFont(14f, FontWeight.Bold), minScale = 0.7f, color = Theme.ink)   // ios: Views/AnalysisDetail.swift:1271
+                }
             }
         }
         if (events.isEmpty()) T("60일 안 금리 일정 없음", style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:1492
@@ -484,30 +470,22 @@ private fun RateEventsCard(m: AppModel) {
 // ios: Views/AnalysisDetail.swift:1501
 @Composable
 private fun WeakCard(m: AppModel, list: List<WeakItem>) {
-    val tot = max(1.0, m.total)   // ios: Views/AnalysisDetail.swift:1502
     if (list.isNotEmpty()) {   // ios: Views/AnalysisDetail.swift:1506
         val lo = list.minOfOrNull { it.c } ?: 0.0; val hi = list.maxOfOrNull { it.c } ?: 0.0   // ios: Views/AnalysisDetail.swift:1507
         val span = max(0.0001, hi - lo)   // ios: Views/AnalysisDetail.swift:1508
         Card {   // ios: Views/AnalysisDetail.swift:1509
-            T("금리에 약한 종목", style = appFont(16f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:1510
-            list.take(6).forEach { e ->   // ios: Views/AnalysisDetail.swift:1511
-                // 가장 약한 쪽 1/3 은 크게, 가장 강한 쪽 1/3 은 덜, 나머지는 보통
-                val t = (e.c - lo) / span   // ios: Views/AnalysisDetail.swift:1513
-                val tier = if (list.size < 2) 1 else (if (t < 1.0 / 3) 0 else if (t > 2.0 / 3) 2 else 1)   // ios: Views/AnalysisDetail.swift:1514
-                val col = if (tier == 0) Theme.orange else if (tier == 1) Theme.muted else Theme.teal   // ios: Views/AnalysisDetail.swift:1515
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {   // ios: Views/AnalysisDetail.swift:1516
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/AnalysisDetail.swift:1517
-                        T(e.r.sym.name, Modifier.weight(1f), style = appFont(14f, FontWeight.Bold), maxLines = 1)   // ios: Views/AnalysisDetail.swift:1518
-                        Spacer(Modifier.width(8.dp))   // ios: Views/AnalysisDetail.swift:1519
-                        T(listOf("크게", "보통", "덜")[tier], style = appFont(12f, FontWeight.Bold), color = col)   // ios: Views/AnalysisDetail.swift:1520
-                    }
-                    BoxWithConstraints(Modifier.fillMaxWidth().height(8.dp)) {   // ios: Views/AnalysisDetail.swift:1522,1523,1528
-                        Box(Modifier.fillMaxSize().background(Theme.muted.copy(alpha = 0.2f), CapsuleShape))   // ios: Views/AnalysisDetail.swift:1524
-                        Box(Modifier.fillMaxHeight().width(maxWidth * (0.15 + 0.85 * (1 - t)).toFloat()).background(col, CapsuleShape))   // ios: Views/AnalysisDetail.swift:1525
-                    }
-                    val pc = (e.r.value / tot * 100).swRound().toInt(); T("${pc}%", style = appFont(12f), color = Theme.muted)   // ios: Views/AnalysisDetail.swift:1529
+            T("금리에 약한 순", style = appFont(16f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:1297
+            // 가장 약한 쪽 1/3 은 주황, 가장 강한 쪽 1/3 은 초록, 나머지는 회색
+            FlowRow(spacing = 6.dp) {   // ios: Views/AnalysisDetail.swift:1299
+                list.forEach { e ->   // ios: Views/AnalysisDetail.swift:1300
+                    val t = (e.c - lo) / span   // ios: Views/AnalysisDetail.swift:1301
+                    val tier = if (list.size < 2) 1 else (if (t < 1.0 / 3) 0 else if (t > 2.0 / 3) 2 else 1)   // ios: Views/AnalysisDetail.swift:1302
+                    val col = if (tier == 0) Theme.orange else if (tier == 1) Theme.muted else Theme.teal   // ios: Views/AnalysisDetail.swift:1303
+                    T(e.r.sym.name, Modifier.background(col.copy(alpha = 0.15f), CapsuleShape).border(1.dp, col, CapsuleShape)   // ios: Views/AnalysisDetail.swift:1306,1307
+                        .padding(horizontal = 12.dp, vertical = 6.dp), style = appFont(13f, FontWeight.Bold), maxLines = 1)   // ios: Views/AnalysisDetail.swift:1304,1305
                 }
             }
+            T("약함 → 강함", style = appFont(12f), color = Theme.muted)   // ios: Views/AnalysisDetail.swift:1310
             CompareLink()   // ios: Views/AnalysisDetail.swift:1532
         }
     }
@@ -537,16 +515,19 @@ private fun InfoRow(k: String, v: String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T(k, Modifier.weight(1f), style = appFont(13f), color = Theme.sub); T(v, style = appFont(14f, FontWeight.Bold)) }   // ios: Views/AnalysisDetail.swift:1580
 }
 
-// ios: Views/AnalysisDetail.swift:1583
+/** 작은 칸 하나 (미션 체크인 칸 모양): 이름, 값, 단위 */
 @Composable
-private fun Step(n: Int, title: String, v: String, note: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {   // ios: Views/AnalysisDetail.swift:1584
-        Box(Modifier.size(24.dp, 24.dp).background(Theme.teal, CircleShape), contentAlignment = Alignment.Center) { T("${n}", style = appFont(13f, FontWeight.Bold), color = Color.White) }   // ios: Views/AnalysisDetail.swift:1585
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/AnalysisDetail.swift:1586
-            T(title, style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:1587
-            T(v, style = appFont(15f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:1588
-            if (note.isNotEmpty()) T(note, style = appFont(12f), color = Theme.muted)   // ios: Views/AnalysisDetail.swift:1589
-        }
+private fun cellBox() = Modifier.heightIn(min = 64.dp)
+    .background(Theme.card, RoundedCornerShape(12.dp)).border(1.dp, Theme.border, RoundedCornerShape(12.dp))
+    .padding(horizontal = 4.dp, vertical = 8.dp)   // ios: Views/AnalysisDetail.swift:1381-1384
+
+// ios: Views/AnalysisDetail.swift:1374
+@Composable
+private fun RowScope.Cell(k: String, v: String, note: String) {
+    Column(cellBox().weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {   // ios: Views/AnalysisDetail.swift:1375
+        T(k, style = appFont(12f), color = Theme.sub, maxLines = 1)   // ios: Views/AnalysisDetail.swift:1376
+        FitText(v, style = appFont(15f, FontWeight.Bold), minScale = 0.7f, color = Theme.ink)   // ios: Views/AnalysisDetail.swift:1377
+        if (note.isNotEmpty()) T(note, style = appFont(11f), color = Theme.muted, maxLines = 1)   // ios: Views/AnalysisDetail.swift:1378
     }
 }
 

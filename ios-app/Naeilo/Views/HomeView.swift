@@ -19,7 +19,6 @@ struct HomeView: View {
                         // 기호 오른쪽 끝을 평가액 박스보다 조금 안쪽에 (안드로이드 실기기 재서 +4.5)
                         .padding(.trailing, 7.5)
                     }
-                SampleNote()
                 summary
                 // '매달 더 넣으면?'은 홈에 두지 않는다. 미션 화면에만 (2026-10-26)
                 shelterBox
@@ -29,6 +28,7 @@ struct HomeView: View {
                 reminder
                 EarnHomeCard()
                 TownButton { TownView(scroll: $0) }
+                SampleNote()   // 샘플 안내는 맨 아래 (2026-10-28)
             }
             .screen()
         }
@@ -62,25 +62,23 @@ struct HomeView: View {
         }
     }
 
-    /// 장면 박스 값: 가로 자리 = 지금 값 ÷ 목표(본전), 계획 자리 = 내 길 계획선(적립 포함)의 오늘 값, 눈금 = 계획선의 1년·2년 값
+    /// 장면 박스 값: 가로 자리 = 지금 값 ÷ 목표(본전), 계획 자리 = 내 길 계획선(적립 포함)의 오늘 값. 눈금은 모든 모양이 25·50·75% (2026-10-27)
     private var scene: BoxScene {
         let p = m.myPath, K = max(1, p.key), me = m.trackValue, n = p.need(p.start)
         let onPlan = n <= 0 || me >= n
         if m.isGoal {
             let value = m.isGoal && !m.bare
-            let years = Int(p.end.rounded(.up))
-            let ticks: [(String, Double)] = years > 1 ? (1..<years).map { y in (String(localized: "\(String(describing: y))년"), p.need(Double(y)) / K) } : []
             return BoxScene(label: value ? String(localized: "평가액") : String(localized: "모은 돈"),
                             amount: m.bare ? m.goalSaved * 1e4 : m.total,
-                            f: me / K, plan: n > 0 ? n / K : nil, ticks: ticks,
-                            target: AppModel.wonK(m.gK), half: AppModel.wonK(m.gK / 2),
+                            f: me / K, plan: n > 0 ? n / K : nil,
+                            target: AppModel.wonK(m.gK),
                             today: value && m.route == .plus && m.total > 0 ? m.todayMove : nil,
                             ret: value && m.cost > 0 ? m.ret : nil,
                             status: m.goalReached ? String(localized: "목표 도달!") : onPlan ? String(localized: "계획대로") : String(localized: "조금 늦어요"))
         }
         let need = m.cost / max(1, m.total) - 1
         return BoxScene(label: String(localized: "평가액"), amount: m.total, f: me / K, plan: n > 0 ? n / K : nil,
-                        target: String(localized: "본전"), half: String(localized: "절반"),
+                        target: String(localized: "본전"),
                         today: m.total > 0 ? m.todayMove : nil, ret: m.ret,
                         status: need > 0 ? String(localized: "본전까지 +\(String(describing: String(format: "%.1f", need * 100)))%") : String(localized: "본전 도달"))
     }
@@ -115,7 +113,6 @@ struct HomeView: View {
                         .lineLimit(1).minimumScaleFactor(0.6)
                 }
             }
-            if value && m.route == .plus && m.total > 0 { todayLine }
             HStack {
                 Text("목표 \(AppModel.wonK(m.gK)) · \(m.gY)년"); Spacer()
                 Text(AppModel.pct(prog)).fontWeight(.bold).foregroundStyle(BoxInk.gold)
@@ -152,7 +149,6 @@ struct HomeView: View {
                 Text(AppModel.sgn(m.ret)).appFont(16, .bold).lineLimit(1).fixedSize()
                     .foregroundStyle(m.ret >= 0 ? BoxInk.up : BoxInk.down)
             }
-            if m.total > 0 { todayLine }
             HStack {
                 Text("본전까지")
                 Spacer()
@@ -171,13 +167,6 @@ struct HomeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(BoxInk.card, in: RoundedRectangle(cornerRadius: 20))
         .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(BoxInk.cardRim, lineWidth: 1))
-    }
-
-    // 오늘 등락: 부호는 한 번만 (▲/▼ 뒤 퍼센트·금액은 부호 없이). 목표·회복 카드 공통
-    private var todayLine: some View {
-        let mv = m.todayMove, diff = m.stockTotal - m.stockTotal / (1 + mv)
-        return Text(String(localized: "오늘 ") + (mv >= 0 ? "▲ " : "▼ ") + String(format: "%.1f%%", abs(mv) * 100) + " · " + AppModel.won(abs(diff)))
-            .appFont(13).foregroundStyle(mv >= 0 ? BoxInk.up : BoxInk.down)
     }
 
     // 쉼터 박스: 홈에 둔 친구 + 말풍선 (리마인드 소식이 있으면 그 소식) + 새 소식 + 다른 친구 칸
@@ -466,7 +455,7 @@ struct SampleNote: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("샘플").appFont(12, .bold).foregroundStyle(.white)
                     .padding(.horizontal, 8).padding(.vertical, 2).background(Theme.orange, in: Capsule())
-                Text("지금 숫자는 샘플(가상 종목 DRNK·QQQ)이에요. 종목 탭에서 내 종목을 넣으면 바뀌어요.")
+                Text("가상 종목 DRNK·QQQ · 종목 탭에서 내 종목 넣기")
                     .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             }
             .padding(12).frame(maxWidth: .infinity, alignment: .leading)
@@ -492,7 +481,7 @@ enum BoxLook: String, CaseIterable, Identifiable {
         case .tub: return String(localized: "욕조와 오리")
         case .dory: return String(localized: "도리와 문어")
         case .pino: return String(localized: "피노키오와 새")
-        case .mug: return String(localized: "철수와 영희")
+        case .mug: return String(localized: "구면 뒤집기")
         case .bar: return String(localized: "진행 막대")
         }
     }
@@ -505,10 +494,8 @@ struct BoxScene {
     var amount: Double         // 크게 쓰는 금액 (원)
     var f: Double              // 지금 자리 (0 = 출발, 1 = 목표)
     var plan: Double?          // 계획 자리
-    var ticks: [(String, Double)] = []   // 1년·2년 눈금 자리 (계획선 위)
     var target: String         // 10억 · 본전
-    var half: String           // 가운데 눈금 글 (5억)
-    var today: Double?         // 오늘 등락
+    var today: Double?         // 오늘 등락 (글로는 안 쓴다. 새 테마 기분만)
     var ret: Double?           // 넣은 돈 대비
     var status: String         // 계획대로 · 본전까지 +3.1%
 }
@@ -535,15 +522,14 @@ struct SceneBox: View {
     var body: some View {
         VStack(spacing: 0) {
             scene
-            // 욕조: 수익률·계획 줄은 장면 아래 따로 (박스 끝에 붙지 않게)
-            if look == .tub { subLine(13).padding(.top, 2).padding(.bottom, 12) }
         }
-        // 욕조: 아래 수익률 줄까지 타일 벽이 이어지게 (장면 타일과 같은 칸 크기)
-        .background { if look == .tub { GeometryReader { g in TileWall(cell: 22 * g.size.width / 300) } } }
         .boxScheme()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(s.label) \(amountText), \(s.target)까지 \(AppModel.pct(s.f)), \(s.status)")
     }
+
+    /// 판 위쪽 30을 잘라 박스 높이를 진행 막대 정도로 (2026-10-27). 글 아래 그림은 장면마다 내리거나 줄였다
+    private let cut: CGFloat = 30
 
     private var scene: some View {
         GeometryReader { g in
@@ -555,20 +541,23 @@ struct SceneBox: View {
                     case .tub: TubScene(s: s)
                     case .dory: DoryScene(s: s)
                     case .pino: PinoScene(s: s)
-                    case .mug: MugScene(s: s)
+                    case .mug: SphereScene(s: s)
                     default: HorizonScene(s: s)
                     }
                 }
                 .frame(width: 300, height: 170)
                 .scaleEffect(k, anchor: .topLeading)
+                .offset(y: -cut * k)
                 .allowsHitTesting(false)
                 if look == .tub {
-                    // 욕조: 금액은 욕조 앞면 (바닥 테두리 위)
+                    // 욕조: 금액은 욕조 앞면 (바닥 테두리 위), 수익률·계획 줄은 욕조 아래 타일 벽
                     amountView(20 * k, color: Color(hex: 0x16203A))
-                        .frame(width: 200 * k).position(x: 150 * k, y: 130 * k)
+                        .frame(width: 200 * k).position(x: 150 * k, y: (122 - cut) * k)
+                    subLine(13).position(x: 150 * k, y: (155 - cut) * k)
                     head.padding(.horizontal, 18).padding(.top, 12)
                 } else {
-                    VStack(alignment: .leading, spacing: 2) {
+                    // 피노키오: 글은 오른쪽 정렬 (왼쪽 아래 피노키오와 새를 가리지 않게, 2026-10-27)
+                    VStack(alignment: look == .pino ? .trailing : .leading, spacing: 2) {
                         head
                         amountView(30, color: BoxInk.ink)
                         subLine(13)
@@ -577,11 +566,15 @@ struct SceneBox: View {
                 }
             }
         }
-        .aspectRatio(300 / 170, contentMode: .fit)
+        .aspectRatio(300 / (170 - cut), contentMode: .fit)
+        .clipped()
     }
 
     private var head: some View {
-        HStack { Text(s.label); Spacer(); FreshLabel() }.appFont(13).foregroundStyle(Self.dim)
+        HStack {
+            if look == .pino { FreshLabel(); Spacer(); Text(s.label) } else { Text(s.label); Spacer(); FreshLabel() }
+        }
+        .appFont(13).foregroundStyle(Self.dim)
     }
     private func amountView(_ size: CGFloat, color: Color) -> some View {
         Text(amountText).font(.system(size: size, weight: .heavy)).tracking(-0.5).foregroundStyle(color).roll(s.amount)
@@ -589,7 +582,8 @@ struct SceneBox: View {
             .contentShape(Rectangle()).onTapGesture { hide.toggle() }
     }
     private func subLine(_ size: CGFloat) -> some View {
-        (Text(s.ret.map { AppModel.sgn($0) + " · " } ?? "").foregroundColor((s.ret ?? 0) >= 0 ? Self.upC : Self.downC)
+        // 총 수익률 대신 목표까지 진행률 (2026-10-28)
+        (Text(AppModel.pct(s.f) + " · ").fontWeight(.bold).foregroundColor(BoxInk.gold)
          + Text(s.status).foregroundColor(Self.dim))
             .font(.system(size: size)).lineLimit(1).minimumScaleFactor(0.7)
     }
@@ -614,6 +608,8 @@ struct TileWall: View {
 
 /// 장면 그림 도구: 300×170 판 좌표
 enum Sk {
+    /// 평가액 박스 가로 눈금: 모든 모양이 같은 % (욕조는 세로로 따로 그린다)
+    static let pctTicks: [(String, Double)] = [("25%", 0.25), ("50%", 0.5), ("75%", 0.75)]
     static func p(_ pts: [(CGFloat, CGFloat)]) -> Path {
         var path = Path()
         for (i, q) in pts.enumerated() { i == 0 ? path.move(to: CGPoint(x: q.0, y: q.1)) : path.addLine(to: CGPoint(x: q.0, y: q.1)) }
@@ -631,8 +627,6 @@ enum Sk {
         }
     }
     /// 오늘 등락 글: ▼4.3%
-    static func today(_ v: Double) -> String { String(localized: "오늘 ") + (v >= 0 ? "▲" : "▼") + String(format: "%.1f%%", abs(v) * 100) }
-    static func todayColor(_ v: Double) -> Color { v >= 0 ? bx(0xC0392B, 0xFF8A80) : bx(0x1B5E96, 0x9EC1FF) }
 }
 
 /// 반복 움직임 하나 (켜지면 on 이 true 로 돌고 되돌기를 되풀이한다)
@@ -678,7 +672,7 @@ private struct HorizonScene: View {
                     ctx.stroke(Sk.line(CGPoint(x: x0, y: y), CGPoint(x: me, y: y)),
                                with: .linearGradient(Gradient(colors: [road.opacity(dk ? 0.15 : 0.2), road.opacity(dk ? 0.9 : 1)]), startPoint: CGPoint(x: x0, y: y), endPoint: CGPoint(x: me, y: y)), lineWidth: 2.5)
                 }
-                for (t, f) in s.ticks where f > 0 && f < 1 {
+                for (t, f) in Sk.pctTicks {
                     ctx.stroke(Sk.line(CGPoint(x: X(f), y: y - 4), CGPoint(x: X(f), y: y + 4)), with: .color(line), lineWidth: 1)
                     Sk.text(ctx, t, X(f), 150, lab, anchor: .center)
                 }
@@ -698,45 +692,22 @@ private struct HorizonScene: View {
             Circle().fill(Color(hex: dk ? 0xFFF4D6 : 0xE8A417)).frame(width: 9, height: 9)
                 .overlay { if !dk { Circle().stroke(.white, lineWidth: 1.5) } }
                 .position(x: me, y: y)
-            if let v = s.today {
-                // 오늘 등락: 내 불빛 위 작은 물결
-                Loop(duration: 2) { on in
-                    HStack(spacing: 3) {
-                        Wave().stroke(Sk.todayColor(v), lineWidth: 1.3).frame(width: 18, height: 4)
-                        Text(Sk.today(v)).font(.system(size: 9.5)).foregroundStyle(Sk.todayColor(v)).fixedSize()
-                    }
-                    .offset(y: on ? -2 : 0)
-                }
-                .position(x: min(250, max(50, me + 20)), y: 112)
-            }
         }
     }
 }
 
-/// 물결 한 줄 (지평선 오늘 등락)
-private struct Wave: Shape {
-    func path(in r: CGRect) -> Path {
-        var p = Path(); let n = 3, w = r.width / CGFloat(n)
-        p.move(to: CGPoint(x: r.minX, y: r.midY))
-        for i in 0..<n {
-            let a = r.minX + w * CGFloat(i)
-            p.addQuadCurve(to: CGPoint(x: a + w, y: r.midY), control: CGPoint(x: a + w / 2, y: i % 2 == 0 ? r.minY : r.maxY))
-        }
-        return p
-    }
-}
 
 // MARK: 시안 3 욕조와 오리: 남색 타일 벽 앞 흰 욕조. 욕조 안쪽 맨 위 눈금이 목표, 그 위로 넘칠 여유. 노란 오리가 나, 금색 줄이 계획
 private struct TubScene: View {
     let s: BoxScene
-    /// 물높이: 바닥 150, 목표 70 (넘치면 54까지)
-    static func level(_ f: Double) -> CGFloat { 150 - 80 * CGFloat(min(1.2, max(0, f))) }
+    /// 물높이: 바닥 140, 목표 76 (넘치면 63까지). 판 위쪽 30을 잘라 내므로 욕조를 내리고 줄였다 (2026-10-27)
+    static func level(_ f: Double) -> CGFloat { 140 - 64 * CGFloat(min(1.2, max(0, f))) }
     static let tub: Path = {
         var p = Path()
-        p.move(to: CGPoint(x: 40, y: 52)); p.addLine(to: CGPoint(x: 260, y: 52)); p.addLine(to: CGPoint(x: 260, y: 120))
-        p.addQuadCurve(to: CGPoint(x: 230, y: 150), control: CGPoint(x: 260, y: 150))
-        p.addLine(to: CGPoint(x: 70, y: 150))
-        p.addQuadCurve(to: CGPoint(x: 40, y: 120), control: CGPoint(x: 40, y: 150))
+        p.move(to: CGPoint(x: 40, y: 62)); p.addLine(to: CGPoint(x: 260, y: 62)); p.addLine(to: CGPoint(x: 260, y: 110))
+        p.addQuadCurve(to: CGPoint(x: 230, y: 140), control: CGPoint(x: 260, y: 140))
+        p.addLine(to: CGPoint(x: 70, y: 140))
+        p.addQuadCurve(to: CGPoint(x: 40, y: 110), control: CGPoint(x: 40, y: 140))
         p.closeSubpath()
         return p
     }()
@@ -766,33 +737,25 @@ private struct TubScene: View {
             .frame(width: 300, height: 170, alignment: .topLeading)
             .clipShape(Self.tub)
             Canvas { ctx, _ in
-                // 눈금·계획 줄: 물 위에. 물에 잠긴 눈금은 흰색으로
+                // 눈금: 물 위에. 물에 잠긴 눈금은 흰색으로. 계획 줄은 뺀다 (2026-10-27)
                 var inner = ctx
                 inner.clip(to: Self.tub)
                 let mark = { (y: CGFloat, dry: Color) in y > w ? Color.white.opacity(0.9) : dry }
-                inner.stroke(Sk.line(CGPoint(x: 240, y: 70), CGPoint(x: 254, y: 70)), with: .color(mark(70, Color(hex: dk ? 0x7D889E : 0x6B7690))), lineWidth: 1.6)
-                Sk.text(inner, s.target, 237, 70, mark(70, Color(hex: dk ? 0x7D889E : 0x5A6580)), size: 8.5, bold: true, anchor: .trailing)
-                for (t, y) in [("75%", 90.0), ("25%", 130.0)] as [(String, CGFloat)] {
+                inner.stroke(Sk.line(CGPoint(x: 240, y: 76), CGPoint(x: 254, y: 76)), with: .color(mark(76, Color(hex: dk ? 0x7D889E : 0x6B7690))), lineWidth: 1.6)
+                Sk.text(inner, s.target, 237, 76, mark(76, Color(hex: dk ? 0x7D889E : 0x5A6580)), size: 8.5, bold: true, anchor: .trailing)
+                for (t, f) in Sk.pctTicks {
+                    let y = Self.level(f)
                     inner.stroke(Sk.line(CGPoint(x: 246, y: y), CGPoint(x: 254, y: y)), with: .color(mark(y, Color(hex: 0x9AA6BD))), lineWidth: 1.2)
                     Sk.text(inner, t, 243, y, mark(y, Color(hex: dk ? 0x9AA6BD : 0x7D889E)), size: 8, anchor: .trailing)
                 }
-                if let p = s.plan {
-                    let y = Self.level(p)
-                    inner.stroke(Sk.line(CGPoint(x: 236, y: y), CGPoint(x: 254, y: y)), with: .color(Color(hex: dk ? 0xC98A00 : 0xB07A00)), lineWidth: 2.2)
-                    Sk.text(inner, String(localized: "계획"), 233, y - 4, y - 4 > w ? Color(hex: 0xFFE08A) : Color(hex: dk ? 0xC98A00 : 0x9A6A00), size: 8.5, bold: true, anchor: .trailing)
-                }
                 ctx.stroke(Self.tub, with: .color(dk ? .white : Color(hex: 0xB7CAE3)), lineWidth: 3)
-                let rim = Path(roundedRect: CGRect(x: 32, y: 46, width: 236, height: 8), cornerRadius: 4)
+                let rim = Path(roundedRect: CGRect(x: 32, y: 56, width: 236, height: 8), cornerRadius: 4)
                 ctx.fill(rim, with: .color(.white))
                 if !dk { ctx.stroke(rim, with: .color(Color(hex: 0xB7CAE3)), lineWidth: 1) }
             }
             // 오리 = 나
             Loop(duration: 1.3) { on in Duck().rotationEffect(.degrees(on ? -2 : 0)).offset(y: on ? 2.5 : 0) }
                 .position(x: 156, y: w - 12)
-            if let v = s.today {
-                Text(Sk.today(v)).font(.system(size: 9.5)).foregroundStyle(Sk.todayColor(v)).fixedSize()
-                    .position(x: 100, y: w - 21)
-            }
         }
     }
 }
@@ -842,22 +805,16 @@ private struct JumpScene: View {
                 if dk { for (x, y, r) in [(200, 18, 0.9), (240, 44, 0.6), (170, 40, 0.5)] as [(CGFloat, CGFloat, CGFloat)] { ctx.fill(Sk.dot(x, y, r), with: .color(Color(hex: 0xC9D3EA))) } }
                 ctx.fill(Path(CGRect(x: 0, y: 128, width: 300, height: 42)), with: .color(Color(hex: dk ? 0x151925 : 0x2F3650)))
                 ctx.stroke(Sk.line(CGPoint(x: 0, y: 160), CGPoint(x: 300, y: 160)), with: .color(Color(hex: dk ? 0x3A4155 : 0x5A6585)), style: StrokeStyle(lineWidth: 1.5, dash: [10, 8]))
-                Sk.text(ctx, s.target, x1, 62, Color(hex: dk ? 0x9FDCFF : 0x1E5FA8), size: 10, bold: true, anchor: .center)
                 let tick = Color(hex: dk ? 0x6B7489 : 0xAEB6C6)
                 for (i, f) in [0, 0.25, 0.5, 0.75].enumerated() {
                     let x = X(f), long = i % 2 == 0
                     ctx.stroke(Sk.line(CGPoint(x: x, y: 128), CGPoint(x: x, y: long ? 134 : 131)), with: .color(tick), lineWidth: 1)
                 }
                 Sk.text(ctx, String(localized: "출발"), x0, 166, tick, size: 8, anchor: .center)
-                Sk.text(ctx, s.half, X(0.5), 166, tick, size: 8, anchor: .center)
-                if let p = s.plan {
-                    let x = X(p), pole = Color(hex: dk ? 0x9AA2B2 : 0x6B7489)
-                    ctx.stroke(Sk.line(CGPoint(x: x, y: 96), CGPoint(x: x, y: 131)), with: .color(pole), lineWidth: 2)
-                    let sign = Path(roundedRect: CGRect(x: x - 12, y: 86, width: 24, height: 13), cornerRadius: 2)
-                    ctx.fill(sign, with: .color(Color(hex: dk ? 0x2B3350 : 0xFFFFFF))); ctx.stroke(sign, with: .color(pole), lineWidth: 1)
-                    Sk.text(ctx, String(localized: "계획"), x, 92.5, Color(hex: dk ? 0xFFD98A : 0x9A6A00), size: 8, bold: !dk, anchor: .center)
-                }
-                if let v = s.today { Sk.text(ctx, Sk.today(v), 6, 120, Sk.todayColor(v)) }
+                // 계획 표지판은 뺀다 (2026-10-27). 눈금 글은 %만
+                for (t, f) in Sk.pctTicks { Sk.text(ctx, t, X(f), 166, tick, size: 8, anchor: .center) }
+                ctx.stroke(Sk.line(CGPoint(x: x1, y: 128), CGPoint(x: x1, y: 134)), with: .color(tick), lineWidth: 1)
+                Sk.text(ctx, s.target, x1, 166, Color(hex: dk ? 0x9FDCFF : 0x1E5FA8), size: 8.5, bold: true, anchor: .center)
             }
             // 목표: 파란 일렁임
             Loop(duration: 1.2) { on in

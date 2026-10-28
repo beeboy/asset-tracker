@@ -56,6 +56,11 @@ def line(path, n):
     return (DATA / path).read_text().split("\n")[n - 1]
 
 
+def at(path, head):
+    """줄 번호 대신 글머리로 찾는다 (앱 파일 줄이 밀려도 안 깨지게)"""
+    return next(l for l in (DATA / path).read_text().split("\n") if l.strip().startswith(head))
+
+
 def lines(path, a, b):
     return (DATA / path).read_text().split("\n")[a - 1:b]
 
@@ -76,25 +81,25 @@ def swift_src():
     yahoo = j(block("StockSearch.swift", r"static func yahoo\(for s: Symbol\)"))
     p.append("final class CustomSymbols {\n    static let shared = CustomSymbols()\n"
              "    struct Saved { let id: String; let yahoo: String; let name: String; let usd: Bool; var kp: Double? = nil; var kd: String? = nil }\n"
-             "    " + line("StockSearch.swift", 199).strip() + "\n"
+             "    " + at("StockSearch.swift", "struct Hist: Codable").strip() + "\n"
              "    var items: [Saved] = []\n    var symbols: [Symbol] = []\n    func isLive(_ id: String) -> Bool { false }\n"
              + yahoo + "\n}")
     krx = j(block("StockSearch.swift", r"^enum KrxList"))
     krx = krx.replace('Bundle.main.url(forResource: "krx_stocks", withExtension: "json")', "Optional(URL(fileURLWithPath: KRX_PATH))")
     p.append("var KRX_PATH = \"\"\n" + krx)
-    p.append("enum StockSearch {\n" + line("StockSearch.swift", 92) + "\n" + line("StockSearch.swift", 95) + "\n"
+    p.append("enum StockSearch {\n" + at("StockSearch.swift", "private static let usEx") + "\n" + at("StockSearch.swift", "static func norm(") + "\n"
              + j(block("StockSearch.swift", r"static func local\(")) + "\n}")
     p.append(j(block("StockSearch.swift", r"^enum KoreaEstimate")))
-    p.append("enum YahooSample { " + line("Market.swift", 268).strip() + " }")
+    p.append("enum YahooSample { " + at("Market.swift", "struct Hist: Codable").strip() + " }")
     p.append("final class Market { static let shared = Market(); var stats: MC.Stats? = nil; var prices: SitePrices.File? = nil }")
     p.append("enum SitePrices {\n    struct File { var h: [String: YahooSample.Hist] }\n" + j(block("Market.swift", r"static func hist\(_ o")) + "\n}")
     p.append("enum SiteStats {\n" + j(span("SiteStats.swift", "    typealias T = MC.Stats.Ticker", "    typealias File = MC.Stats")) + "\n"
              "    static func key(_ id: String) -> String { id }\n    static func mcKey(_ id: String) -> String { id }\n"
              + j(block("SiteStats.swift", r"static func params\(")) + "\n" + j(block("SiteStats.swift", r"static func fx\("))
              + "\n" + j(block("SiteStats.swift", r"static func corr\(")) + "\n}")
-    p.append("final class ExtraStats {\n" + line("SiteStats.swift", 76) + "\n    var items: [String: Item] = [:]\n"
+    p.append("final class ExtraStats {\n" + at("SiteStats.swift", "struct Item: Codable") + "\n    var items: [String: Item] = [:]\n"
              + j(block("SiteStats.swift", r"func augment\(")) + "\n}")
-    p.append("enum Sync {\n" + line("Sync.swift", 23) + "\n" + j(block("Sync.swift", r"static func derive\(")) + "\n}")
+    p.append("enum Sync {\n" + at("Sync.swift", "struct Creds: Codable") + "\n" + j(block("Sync.swift", r"static func derive\(")) + "\n}")
     num = (IOS / "WidgetShared/Models.swift").read_text().split("\n")
     i = next(k for k, l in enumerate(num) if l.startswith("func num(_ v: Any?)"))
     p.append("\n".join(num[i:i + 7]))
@@ -102,10 +107,10 @@ def swift_src():
     chart = j(span("StockSearch.swift", "        guard let r = ((o[\"chart\"] as? [String: Any])?[\"result\"] as? [[String: Any]])?.first,", "        return ((price, prevClose), Hist(dates: dates, closes: cl))")).replace("f.string(from: Date())", "f.string(from: now)")
     p.append("extension CustomSymbols {\n    static func chartParse(_ o: [String: Any], keepToday: Bool, now: Date) throws -> ((last: Double, prev: Double), CustomSymbols.Hist) {\n"
              + chart + "\n    }\n}")
-    # 매매기준율 표 파싱: MarFeed.smbs 의 정규식(532줄 글자)과 533~544줄 그대로. 받은 시각만 인자로
-    pat = re.search(r'NSRegularExpression\(pattern: ("(?:[^"\\]|\\.)*")\)', line("Market.swift", 532)).group(1)
+    # 매매기준율 표 파싱: MarFeed.smbs 의 정규식(글자)과 그 아래 줄 그대로. 받은 시각만 인자로
+    pat = re.search(r'NSRegularExpression\(pattern: ("(?:[^"\\]|\\.)*")\)', at("Market.swift", "let re = try? NSRegularExpression(pattern: \"label=")).group(1)
     sm = j(span("Market.swift", "        var days: [Prev] = []", "        return File(rate: last.rate, date: last.date, got: Date().timeIntervalSince1970, prev: pv)")).replace("Date().timeIntervalSince1970", "got")
-    p.append("enum MarFeed {\n" + line("Market.swift", 488) + "\n" + line("Market.swift", 490) + "\n"
+    p.append("enum MarFeed {\n" + at("Market.swift", "struct Prev: Codable { var rate") + "\n" + at("Market.swift", "struct File: Codable { var rate") + "\n"
              "    static func smbsParse(_ t: String, got: Double) -> File? {\n"
              f"        guard let re = try? NSRegularExpression(pattern: {pat}) else {{ return nil }}\n" + sm + "\n    }\n}")
     return "\n\n".join(x for x in p if x) + "\n"

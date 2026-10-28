@@ -115,6 +115,16 @@ import com.naeilo.app.ui.home.boxInk
 import com.naeilo.app.ui.home.bx
 import com.naeilo.app.ui.hold.moodBackdrop
 import com.naeilo.app.ui.home.SampleNote
+import com.naeilo.app.ui.Sheet
+import com.naeilo.app.ui.hold.FitAnnotated
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.sp
+import com.naeilo.app.ui.analysis.ProgressTrack
+import com.naeilo.app.ui.goal.GoalIntermissionView
+import com.naeilo.app.ui.wave.WaveMap
+import com.naeilo.app.core.game.GameLevel
+import com.naeilo.app.core.game.GameRecord
+import com.naeilo.app.core.game.GameStage
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
@@ -134,6 +144,7 @@ fun BoardView(
     m: AppModel,   // ios: Views/BoardView.swift:7
 ) {
     var openDone by remember { mutableStateOf(false) }   // ios: Views/BoardView.swift:8
+    var checkInOpen by remember { mutableStateOf(false) }   // ios: Views/BoardView.swift:9
     val steps = m.boardSteps; val starts = steps.filter { !it.inter }   // ios: Views/BoardView.swift:11
     // ios: Views/BoardView.swift:10,12,28,29 (이동 막대 숨김: NavStack 은 첫 화면에 막대를 그리지 않는다)
     // 100칸 카드는 화면 아래(탭 위)까지 늘어난다: 카드 위치를 재서 남은 높이를 넘긴다
@@ -146,11 +157,10 @@ fun BoardView(
             // ios: Views/BoardView.swift:13
             Column(Modifier.animateContentSize(easeSpring), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box(Modifier.outset(16.dp)) { AppHeader(tab = "미션") }   // ios: Views/BoardView.swift:14 (-16)
-                SampleNote(m)   // ios: Views/BoardView.swift:15
-                // 맨 위는 인터미션 카드 (목표 카드·제목은 뺌)
-                steps.firstOrNull { it.inter }?.let { inter -> InterCard(m, inter) }   // ios: Views/BoardView.swift:17
-                if (!m.interDone && m.playOn) CheckIn(m)   // ios: Views/BoardView.swift:18
-                StartList(m, starts, openDone) { openDone = !openDone }   // ios: Views/BoardView.swift:19
+                // 맨 위는 미션 요약 박스: 진행 막대(시작 미션 + 체크인 칸), 누르면 체크인 팝업, 아래 게임 최고 점수 (2026-10-27)
+                steps.firstOrNull { it.inter }?.let { inter -> SummaryBox(m, inter, starts) { checkInOpen = true } }   // ios: Views/BoardView.swift:20
+                // 시작 미션을 다 끝내면 접힌 줄은 미션 판에서 뺀다
+                if (!starts.all { it.ok }) StartList(m, starts, openDone) { openDone = !openDone }   // ios: Views/BoardView.swift:22
                 ReachedCard(m)   // ios: Views/BoardView.swift:20
                 // ios: Views/BoardView.swift:21
                 steps.firstOrNull { !it.ok && it.avail }?.takeIf { !it.inter }?.let { next ->
@@ -161,9 +171,15 @@ fun BoardView(
                     val d = LocalDensity.current
                     com.naeilo.app.ui.goal.GoalCellsCard(m, minHeight = with(d) { max(0, vh - cardTop - 24.dp.roundToPx()).toDp() })
                 } else LockedPlay(m)
+                SampleNote(m)   // ios: Views/BoardView.swift:29 샘플 안내는 맨 아래 (2026-10-28)
             }
         }
     }
+    }
+    // ios: Views/BoardView.swift:39,40,41,42,43,44,45
+    Sheet(checkInOpen, { checkInOpen = false }) {
+        if (m.isGoal) GoalIntermissionView(m)
+        else Column(Modifier.fillMaxWidth().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp)) { CheckIn(m) }
     }
 }
 
@@ -237,74 +253,77 @@ private fun NextCard(m: AppModel, next: BoardStep, steps: List<BoardStep>) {
 }
 
 /** 인터미션 카드: 목표 = 달마다 계획대로 넣었나(3달), 회복 = 주마다 비중을 지켰나(4주) */
-// ios: Views/BoardView.swift:75
+/** 미션 요약 박스: 홈에서 고른 박스 모양의 바탕·글자색. 진행 = 끝낸 시작 미션 + 채운 체크인 칸 */
+// ios: Views/BoardView.swift:82
 @Composable
-private fun InterCard(m: AppModel, b: BoardStep) {
-    val goal = m.isGoal; val done = b.ok; val avail = b.avail   // ios: Views/BoardView.swift:76
-    val n = if (goal) m.gWeeks.size else m.weeks.size; val total = if (goal) 3 else 4   // ios: Views/BoardView.swift:77
-    val picks: List<Pair<String, Color>> = if (goal) m.gWeeks.map { it.label to it.color } else m.weeks.map { it.label to it.color }   // ios: Views/BoardView.swift:78
-    val tap = if (done || avail) b.to else null   // ios: Views/BoardView.swift:79
-    val lit = done || avail
-    // 열린 카드는 홈에서 고른 박스 모양의 바탕·글자색을 따른다 (2026-10-25)
-    BoxSchemeScope {   // ios: Views/BoardView.swift:115 (.boxScheme())
-    val ink = boxInk(); val look = BoxLook.entries.firstOrNull { it.name == BoxLook.raw } ?: BoxLook.jump   // ios: Views/BoardView.swift:80
-    // ios: Views/BoardView.swift:112
-    Fg(if (lit) ink.ink else Theme.sub2) {
-        val fg = LocalFg.current(LocalPal.current)
-        // ios: Views/BoardView.swift:81
-        Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth()
-                // ios: Views/BoardView.swift:80,113 (buttonStyle plain, 갈 곳 없으면 눌리지 않음)
-                .then(if (tap != null) Modifier.plainClickable { m.boardPath = m.boardPath + tap } else Modifier)
-                .semantics(mergeDescendants = true) { if (tap == null) disabled() }
-                .alpha(if (tap == null) 0.5f else 1f)   // SwiftUI 가 눌리지 않는 버튼을 반투명(0.5)으로 그린다 (시뮬레이터에서 잰 값)
-                .semantics { contentDescription = tr(if (goal) "처음 석 달 체크인, $n/3달" else "처음 4주 체크인, $n/4주") }   // ios: Views/BoardView.swift:114
-                .clip(RoundedCornerShape(18.dp)).then(if (lit) Modifier.moodBackdrop(look) else Modifier.background(Theme.track))   // ios: Views/BoardView.swift:114,115
-                .padding(16.dp),   // ios: Views/BoardView.swift:110
-        ) {
-            // ios: Views/BoardView.swift:82
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                T(if (goal) "석 달 체크인" else "처음 4주 체크인", style = appFont(12f, FontWeight.Bold), color = if (lit) ink.good else Theme.mint)   // ios: Views/BoardView.swift:83
-                Spacer(Modifier.weight(1f))   // ios: Views/BoardView.swift:84
-                if (done) T("완료 ✓", style = appFont(12f, FontWeight.Bold), color = ink.gold)   // ios: Views/BoardView.swift:85
-                else if (!avail) Sym("lock", 12f, fg)   // ios: Views/BoardView.swift:86
-            }
-            // ios: Views/BoardView.swift:88 (다 마치면 큰 글은 숨긴다)
-            if (!(done || n >= total)) {
-                T(if (!avail) "시작 미션 뒤 열림"   // ios: Views/BoardView.swift:89
-                  else if (goal) "월 1회 계획대로 체크 · $n/3달"   // ios: Views/BoardView.swift:90
-                  else "주 1회 비중 체크 · $n/4주",   // ios: Views/BoardView.swift:91
-                  style = appFont(16f, FontWeight.Bold))   // ios: Views/BoardView.swift:92
-            }
-            // ios: Views/BoardView.swift:94
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                // ios: Views/BoardView.swift:95
-                for (i in 0 until total) {
-                    val pick = if (i < picks.size) picks[i] else null; val cur = avail && !done && i == n   // ios: Views/BoardView.swift:96
-                    val edge = pick?.second ?: (if (cur) ink.gold else ink.flatF)
-                    // ios: Views/BoardView.swift:97
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.weight(1f).defaultMinSize(minHeight = 60.dp)   // ios: Views/BoardView.swift:101
-                            .background(if (pick != null) bx(ink.dk, 0xFFFFFF, 0xFFFFFF, 0.72f, 0.10f) else Color.Transparent, RoundedCornerShape(10.dp))   // ios: Views/BoardView.swift:111 고른 칸: 테마가 비치는 반투명 칸 + 결과 색 테두리
-                            // ios: Views/BoardView.swift:104 테두리 선은 가장자리 가운데에 (SwiftUI stroke), 10 모서리
-                            .drawBehind {
-                                drawRoundRect(edge, cornerRadius = CornerRadius(10.dp.toPx()),
-                                    // ios: Views/BoardView.swift:105
-                                    style = Stroke(width = 2.dp.toPx(), pathEffect = if (pick == null) PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 4.dp.toPx())) else null))
-                            },
-                    ) {
-                        val c = if (pick != null) ink.ink else if (cur) ink.gold else ink.dim   // ios: Views/BoardView.swift:110
-                        T(if (goal) "${i + 1}달" else "${i + 1}주째", style = appFont(11f), color = c)   // ios: Views/BoardView.swift:98
-                        T(pick?.first ?: (if (cur) (if (goal) "이번 달" else "이번 주") else "–"), style = appFont(13f, FontWeight.Bold), color = c)   // ios: Views/BoardView.swift:99
-                    }
-                }
-            }
+private fun SummaryBox(m: AppModel, b: BoardStep, starts: List<BoardStep>, open: () -> Unit) {
+    val goal = m.isGoal   // ios: Views/BoardView.swift:83
+    val total = if (goal) 3 else 4; val n = min(total, if (goal) m.gWeeks.size else m.weeks.size)   // ios: Views/BoardView.swift:84
+    val done = starts.count { it.ok } + n; val all = starts.size + total   // ios: Views/BoardView.swift:85
+    val f = done.toDouble() / max(1, all)   // ios: Views/BoardView.swift:86
+    // 체크인 팝업: 열린 뒤에만 (회복은 끝나면 판 위 체크인이 없어 닫는다)
+    val tap = if (goal) b.avail || b.ok else !m.interDone && m.playOn   // ios: Views/BoardView.swift:88
+    val rec = remember { GameRecord.load() }   // ios: Views/BoardView.swift:116
+    BoxSchemeScope {   // ios: Views/BoardView.swift:113
+    val ink = boxInk(); val look = BoxLook.entries.firstOrNull { it.name == BoxLook.raw } ?: BoxLook.jump   // ios: Views/BoardView.swift:83
+    // ios: Views/BoardView.swift:89,110,111,112,114,115
+    Column(
+        Modifier.fillMaxWidth()
+            .then(if (tap) Modifier.plainClickable(open) else Modifier)
+            .semantics(mergeDescendants = true) { if (!tap) disabled(); contentDescription = tr("미션 $done/$all, 진행 ${AppModel.pct(f)}") }
+            .alpha(if (tap) 1f else 0.5f)   // SwiftUI 가 눌리지 않는 버튼을 반투명(0.5)으로 그린다
+            .clip(RoundedCornerShape(20.dp)).moodBackdrop(look)
+            .padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 16.dp),
+    ) {
+        // ios: Views/BoardView.swift:91,92,93,94,95,96
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            T("미션 · $done/$all", Modifier.weight(1f), style = appFont(13f), color = ink.dim)
+            T(if (b.ok) "체크인 완료 ✓" else if (b.avail) "체크인 $n/$total ›" else "체크인은 시작 미션 뒤", style = appFont(13f), color = if (b.ok) ink.gold else ink.dim)
+        }
+        // ios: Views/BoardView.swift:97,98,99
+        Box(Modifier.padding(top = 6.dp)) {
+            FitAnnotated(buildAnnotatedString { append(tr("진행 · ")); withStyle(SpanStyle(color = ink.gold)) { append(AppModel.pct(f)) } },
+                TextStyle(fontSize = fx(30f), fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp), 0.6f, ink.ink)
+        }
+        ProgressTrack(look, f, Modifier.padding(top = 10.dp).fillMaxWidth().height(14.dp))   // ios: Views/BoardView.swift:100
+        // ios: Views/BoardView.swift:101,102,103,104,105
+        Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            GameBest("벽돌깨기", brickBest(rec), Modifier.weight(1f))
+            GameBest("파도타기", waveBest(), Modifier.weight(1f))
         }
     }
     }
+}
+
+/** 글자 크기 고정 (.font(.system(size:)) 자리: 손쉬운 사용 크기를 따르지 않는다) */
+@Composable
+private fun fx(size: Float): androidx.compose.ui.unit.TextUnit = (size / LocalDensity.current.fontScale).sp
+
+/** 게임 한 칸: 이름 · 최고 점수 / 그 점수를 낸 단계 */
+// ios: Views/BoardView.swift:121
+@Composable
+private fun GameBest(name: String, best: Pair<Int, String>?, modifier: Modifier) {
+    val ink = boxInk()
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        FitText(best?.let { "$name 최고 ${cformat("%,d", it.first)}점" } ?: "$name 기록 없음", appFont(13f, FontWeight.SemiBold), 0.8f, color = ink.ink)   // ios: Views/BoardView.swift:123,124
+        FitText(best?.second ?: " ", appFont(12f), 0.8f, color = ink.dim)   // ios: Views/BoardView.swift:125
+    }
+}
+
+/** 벽돌깨기 최고 점수: 모든 난이도·단계 중 가장 높은 판 ("난이도.단계" 키) */
+// ios: Views/BoardView.swift:132
+private fun brickBest(rec: GameRecord): Pair<Int, String>? {
+    val top = rec.best.maxByOrNull { it.value }?.takeIf { it.value > 0 } ?: return null   // ios: Views/BoardView.swift:133
+    val k = top.key.split("."); val lv = k.firstOrNull()?.let { r -> GameLevel.entries.firstOrNull { it.name == r } }   // ios: Views/BoardView.swift:134
+    val st = k.lastOrNull()?.toIntOrNull()?.let { n -> GameStage.all.firstOrNull { it.n == n } }   // ios: Views/BoardView.swift:135
+    return top.value to listOfNotNull(lv?.title?.let { tr(it) }, st?.let { "${tr(it.bg.volume)} ${tr(it.bg.name)}" }).joinToString(" · ")   // ios: Views/BoardView.swift:136
+}
+
+/** 파도타기 최고 점수: 섬마다 최고 중 가장 높은 섬 */
+// ios: Views/BoardView.swift:140
+private fun waveBest(): Pair<Int, String>? {
+    val i = WaveMap.order.maxByOrNull { WaveMap.best(it) }?.takeIf { WaveMap.best(it) > 0 } ?: return null   // ios: Views/BoardView.swift:141
+    return WaveMap.best(i) to tr(i.label)   // ios: Views/BoardView.swift:142
 }
 
 /** 시작 미션: 접힌 한 줄, 펼치면 번호 목록. 끝냈거나 열린 미션은 눌러서 들어간다 */
