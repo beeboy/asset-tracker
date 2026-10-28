@@ -414,7 +414,7 @@ final class Sync {
             if kr, Self.num(h["price"]) > 0 { krPrice[id] = (Self.num(h["price"]), h["price_date"] as? String) }
             if CustomSymbols.shared.symbol(id) == nil && YahooSample.quotes[id] == nil {
                 let ko = StockCatalog.all.first { $0.id == id }
-                unknown.append(StockHit(id: id, yahoo: kr ? t.uppercased() : id, name: ko?.name ?? Sample.symbols.first { $0.id == id }?.name ?? (h["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? id,
+                unknown.append(StockHit(id: id, yahoo: kr ? t.uppercased() : id, name: ko?.name ?? Sample.symbols.first { $0.id == id }?.name ?? (kr ? KrxList.name(id) : nil) ?? (h["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? id,
                                         market: ko?.market ?? (kr ? (t.uppercased().hasSuffix(".KQ") ? String(localized: "코스닥") : String(localized: "코스피")) : String(localized: "미국 주식")),
                                         currency: kr ? .krw : .usd))
             }

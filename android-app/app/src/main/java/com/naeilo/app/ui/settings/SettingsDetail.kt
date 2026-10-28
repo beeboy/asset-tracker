@@ -728,7 +728,7 @@ object TaxCalc {
 // ios: Views/SettingsDetail.swift:542,543,546
 @Composable
 fun TaxRulesView(m: AppModel) {
-    var gain by remember { mutableStateOf(m.taxGain.toInt().toString()) }   // ios: Views/SettingsDetail.swift:544,592
+    var gain by remember { mutableStateOf((m.taxGain * 1e4).roundToLong().toString()) }   // ios: Views/SettingsDetail.swift:544,592
     val G = m.taxGain; val tax = TaxCalc.tax(G)
     val won0 = TaxCalc::won0
     // ios: Views/SettingsDetail.swift:549
@@ -754,12 +754,12 @@ fun TaxRulesView(m: AppModel) {
         }
         // ios: Views/SettingsDetail.swift:569
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            T("올해 해외주식 실현 이익 (만원)", style = appFont(13f, FontWeight.SemiBold), color = Theme.sub)   // ios: Views/SettingsDetail.swift:570
+            T("올해 해외주식 실현 이익 (원)", style = appFont(13f, FontWeight.SemiBold), color = Theme.sub)   // ios: Views/SettingsDetail.swift:570
             // ios: Views/SettingsDetail.swift:571,572,573,574,575,576
-            InputField(gain, { v -> gain = v; m.taxGain = max(0.0, v.toDoubleOrNull() ?: 0.0) }, "",
+            InputField(gain, { v -> gain = v; m.taxGain = max(0.0, v.toDoubleOrNull() ?: 0.0) / 1e4 }, "",
                 Modifier.background(Theme.card, RoundedCornerShape(10.dp)).border(2.dp, Theme.border, RoundedCornerShape(10.dp)).defaultMinSize(minHeight = 48.dp).padding(horizontal = 12.dp)
-                    .semantics { contentDescription = tr("올해 해외주식 실현 이익 (만원)") },
-                number = true, style = appFont(18f, FontWeight.SemiBold))
+                    .semantics { contentDescription = tr("올해 해외주식 실현 이익 (원)") },
+                number = true, style = appFont(18f, FontWeight.SemiBold), commas = true)
         }
         // ios: Views/SettingsDetail.swift:578
         Card {

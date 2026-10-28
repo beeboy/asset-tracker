@@ -1649,6 +1649,12 @@ struct DividendView: View {
             Text(none).appFont(13).foregroundStyle(Theme.sub).padding(12).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.line, in: RoundedRectangle(cornerRadius: 12))
         }
+        // 내 키로만 받는 기기: 토스에는 배당 자료가 없다 (SiteCalc.alpacaDivs)
+        if Config.yahooOff && !AlpacaKeys.on {
+            Button { m.openSettings(.alpaca) } label: {
+                (Text("배당 자료는 Alpaca 키로 받아요 ") + Text("키 넣기 ›").foregroundColor(Theme.teal).bold()).appFont(12).foregroundStyle(Theme.sub)
+            }.buttonStyle(.plain)
+        }
         if !paid.isEmpty {
             let usP = paid.filter { !$0.krw }, krP = paid.filter(\.krw)
             let usTax = usP.reduce(0.0) { $0 + $1.out.y1 / (1 - $1.tax) - $1.out.y1 }, krTax = krP.reduce(0.0) { $0 + $1.out.y1 / (1 - $1.tax) - $1.out.y1 }
@@ -1839,6 +1845,15 @@ struct DividendView: View {
                     .background(Theme.teal.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
             }
         }
+        // 이익을 넣고 고치는 곳: 설정의 세금 규칙
+        NavigationLink { TaxRulesView() } label: {
+            HStack(spacing: 4) {
+                Text("세금 규칙").appFont(13, .semibold)
+                Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold))
+            }
+            .foregroundStyle(Theme.sub).padding(.horizontal, 4)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: 작은 조각

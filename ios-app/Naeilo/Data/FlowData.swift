@@ -379,7 +379,7 @@ enum FlowAlpaca {
     static func fetch(_ keys: [String: String]) async -> Bool {
         guard let k = AlpacaKeys.load(), !keys.isEmpty else { return false }
         var f = FlowBars.read(FlowBars.alpacaName)
-        let (md, closed) = nyDay(), stamp = closed ? Day.today + "c" : Day.today
+        let (md, closed) = nyDay(), stamp = closed ? md + "c" : md
         let from = Day.str(Date().addingTimeInterval(-(3 * 365 + 15) * 86400))
         let need = keys.filter { f.day[$0.key] != stamp || f.b[$0.key] == nil }
         guard !need.isEmpty else { return false }
@@ -442,7 +442,7 @@ enum FlowLongbridge {
     static func fetch(_ keys: [String: String]) async -> Bool {
         guard let k = LongbridgeKeys.load(), !keys.isEmpty else { return false }
         var f = FlowBars.read(FlowBars.longbridgeName)
-        let (md, closed) = FlowAlpaca.nyDay(), stamp = closed ? Day.today + "c" : Day.today
+        let (md, closed) = FlowAlpaca.nyDay(), stamp = closed ? md + "c" : md
         let from = Day.str(Date().addingTimeInterval(-(3 * 365 + 15) * 86400))
         let need = keys.filter { f.day[$0.key] != stamp || f.b[$0.key] == nil }
         guard !need.isEmpty else { return false }

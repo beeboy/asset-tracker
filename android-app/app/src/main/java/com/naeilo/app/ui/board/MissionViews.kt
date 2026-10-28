@@ -164,6 +164,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.exp
+import kotlin.math.roundToLong
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
@@ -898,13 +899,13 @@ fun TaxInputView(m: AppModel) {
     MissionPage(kicker = "절세 · 한국 거주자", title = "올해 판 해외주식 이익은?") {
         GuideBubble(m, pose = Pose.stand, text = "한국에서는 해외주식 한 해 이익과 손실을 합쳐 250만 원을 넘는 부분에만 22%가 붙어요. 올해 판 게 없으면 0을 넣으세요.")   // ios: Views/MissionViews.swift:560
         T("한국 거주자 · 미국 주식만", style = appFont(13f, FontWeight.SemiBold), color = Theme.teal)   // ios: Views/MissionViews.swift:561
-        com.naeilo.app.ui.goal.inputField("올해 실현 이익 (만원)", gain) { gain = it }   // ios: Views/MissionViews.swift:562
+        com.naeilo.app.ui.goal.inputField("올해 실현 이익 (원)", gain, commas = true) { gain = it }   // ios: Views/MissionViews.swift:562
         // ios: Views/MissionViews.swift:563
         PrimaryButton(title = "세금 보기") {
-            m.taxGain = max(0.0, gain.toDoubleOrNull() ?: 0.0); m.done = m.done + 4; m.boardPath = m.boardPath + MissionRoute.m4r   // ios: Views/MissionViews.swift:564
+            m.taxGain = max(0.0, gain.toDoubleOrNull() ?: 0.0) / 1e4; m.done = m.done + 4; m.boardPath = m.boardPath + MissionRoute.m4r   // ios: Views/MissionViews.swift:564
         }
     }
-    LaunchedEffect(Unit) { gain = m.taxGain.toInt().toString() }   // ios: Views/MissionViews.swift:567
+    LaunchedEffect(Unit) { gain = (m.taxGain * 1e4).roundToLong().toString() }   // ios: Views/MissionViews.swift:567
 }
 
 // ios: Views/MissionViews.swift:571,572,573

@@ -559,12 +559,12 @@ struct TaxInputView: View {
         MissionPage(kicker: String(localized: "절세 · 한국 거주자"), title: String(localized: "올해 판 해외주식 이익은?")) {
             GuideBubble(pose: .stand, text: String(localized: "한국에서는 해외주식 한 해 이익과 손실을 합쳐 250만 원을 넘는 부분에만 22%가 붙어요. 올해 판 게 없으면 0을 넣으세요."))
             Text("한국 거주자 · 미국 주식만").appFont(13, .semibold).foregroundStyle(Theme.teal)
-            inputField(String(localized: "올해 실현 이익 (만원)"), $gain)
+            inputField(String(localized: "올해 실현 이익 (원)"), $gain, commas: true)
             PrimaryButton(title: String(localized: "세금 보기")) {
-                m.taxGain = max(0, Double(gain) ?? 0); m.done.insert(4); m.boardPath.append(.m4r)
+                m.taxGain = commaValue(gain) / 1e4; m.done.insert(4); m.boardPath.append(.m4r)
             }
         }
-        .onAppear { gain = String(Int(m.taxGain)) }
+        .onAppear { gain = commaDigits(String(Int((m.taxGain * 1e4).rounded()))) }
     }
 }
 

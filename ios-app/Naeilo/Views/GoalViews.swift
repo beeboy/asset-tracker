@@ -40,7 +40,7 @@ private func legend(_ c: Color, _ t: String) -> some View {
         .appFont(12).foregroundStyle(Theme.sub)
 }
 
-func inputField(_ label: String, _ text: Binding<String>) -> some View {
+func inputField(_ label: String, _ text: Binding<String>, commas: Bool = false) -> some View {
     VStack(alignment: .leading, spacing: 4) {
         Text(label).appFont(13, .semibold).foregroundStyle(Theme.sub)
         TextField("", text: text).keyboardType(.numberPad).appFont(18, .semibold)
@@ -48,8 +48,21 @@ func inputField(_ label: String, _ text: Binding<String>) -> some View {
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 2))
             .accessibilityLabel(label)
+            .onChange(of: text.wrappedValue) { _, v in
+                if commas, commaDigits(v) != v { text.wrappedValue = commaDigits(v) }
+            }
     }
 }
+
+/// 숫자만 남겨 세 자리마다 쉼표 (19530000 → 19,530,000). 원 단위 금액 칸에 쓴다
+func commaDigits(_ v: String) -> String {
+    let d = v.filter(\.isNumber)
+    guard let n = Int(d) else { return d }
+    return n.formatted(.number.locale(Locale(identifier: "en_US")))
+}
+
+/// 쉼표 넣은 금액 글을 숫자로
+func commaValue(_ v: String) -> Double { Double(v.filter(\.isNumber)) ?? 0 }
 
 /// 금액 끝의 "원"을 뗀다 (826만원 → 826만, 5.1억원 → 5.1억)
 private func noWon(_ s: String) -> String { s.hasSuffix("원") ? String(s.dropLast()) : s }
@@ -718,7 +731,7 @@ struct GoalTaxView: View {
         MissionPage(kicker: String(localized: "미션 \(String(describing: m.goalNo("tax"))) / \(String(describing: m.goalTotal))"), title: String(localized: "비중 맞추려 팔면 세금은?")) {
             GuideBubble(pose: .point, text: String(localized: "비중을 매도로 맞추면 이익에 세금이 붙어요. 공제는 해마다 있어서, 나누는 방식에 따라 세금이 달라져요. 계산 예시예요."))
             Text("한국 거주자 · 미국 주식만").appFont(13, .semibold).foregroundStyle(Theme.teal)
-            inputField(String(localized: "올해 해외주식 이익 (만원)"), $gain).onChange(of: gain) { _, v in m.taxGain = max(0, Double(v) ?? 0) }
+            inputField(String(localized: "올해 해외주식 이익 (원)"), $gain, commas: true).onChange(of: gain) { _, v in m.taxGain = commaValue(v) / 1e4 }
             if sh.sell > 0 && gainSale > 0 {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("내년 5월 세금 · \(pick.1)").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
@@ -745,7 +758,7 @@ struct GoalTaxView: View {
             Text("결제일 기준 · 계산 예시 · 세무 상담·매매 권유 아님").appFont(12).foregroundStyle(Theme.muted)
             PrimaryButton(title: String(localized: "확인")) { m.gDone.insert("tax"); m.boardPath = [] }
         }
-        .onAppear { gain = String(Int(m.taxGain)) }
+        .onAppear { gain = commaDigits(String(Int((m.taxGain * 1e4).rounded()))) }
     }
 }
 

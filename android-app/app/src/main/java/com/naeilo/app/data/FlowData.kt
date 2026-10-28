@@ -420,7 +420,7 @@ object FlowAlpaca {   // ios: Data/FlowData.swift:344
     suspend fun fetch(keys: Map<String, String>): Boolean = withContext(Dispatchers.IO) {   // ios: Data/FlowData.swift:357,358
         val k = AlpacaKeys.load(); if (k == null || keys.isEmpty()) return@withContext false   // ios: Data/FlowData.swift:359
         val f = FlowBars.read(FlowBars.alpacaName)   // ios: Data/FlowData.swift:360
-        val (md, closed) = nyDay(); val stamp = if (closed) Day.today + "c" else Day.today   // ios: Data/FlowData.swift:361
+        val (md, closed) = nyDay(); val stamp = if (closed) md + "c" else md   // ios: Data/FlowData.swift:361
         val from = Day.str(Instant.now().minusSeconds((3 * 365 + 15) * 86400L))   // ios: Data/FlowData.swift:362
         val need = keys.filter { f.day[it.key] != stamp || f.b[it.key] == null }   // ios: Data/FlowData.swift:363
         if (need.isEmpty()) return@withContext false   // ios: Data/FlowData.swift:364
@@ -485,7 +485,7 @@ object FlowLongbridge {   // ios: Data/FlowData.swift:416
     suspend fun fetch(keys: Map<String, String>): Boolean = withContext(Dispatchers.IO) {   // ios: Data/FlowData.swift:420,421
         val k = LongbridgeKeys.load(); if (k == null || keys.isEmpty()) return@withContext false   // ios: Data/FlowData.swift:422
         val f = FlowBars.read(FlowBars.longbridgeName)   // ios: Data/FlowData.swift:423
-        val (md, closed) = FlowAlpaca.nyDay(); val stamp = if (closed) Day.today + "c" else Day.today   // ios: Data/FlowData.swift:424
+        val (md, closed) = FlowAlpaca.nyDay(); val stamp = if (closed) md + "c" else md   // ios: Data/FlowData.swift:424
         val from = Day.str(Instant.now().minusSeconds((3 * 365 + 15) * 86400L))   // ios: Data/FlowData.swift:425
         val need = keys.filter { f.day[it.key] != stamp || f.b[it.key] == null }   // ios: Data/FlowData.swift:426
         if (need.isEmpty()) return@withContext false   // ios: Data/FlowData.swift:427
