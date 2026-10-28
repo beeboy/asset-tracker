@@ -14,6 +14,7 @@ struct HoldingsView: View {
     @State private var editSym: Symbol? = nil       // 길게 누르기 '종목 고치기'
     @State private var adding = false               // '+ 종목 추가' 상자: 팝업 대신 목록 맨 아래에 펼친다
     @State private var colW: [Int: CGFloat] = [:]   // 목록 칸 폭: 같은 칸은 묶음을 넘어 줄마다 같은 폭
+    @State private var narrow = false   // 작은 폰: 평단가(수량)를 이름 아래로 내려 이름 칸을 넓힌다 (2026-10-28)
     @AppStorage("holdUsd") private var inUsd = false // 미국 종목을 달러로 볼지
     @AppStorage("holdValue") private var valueMode = false   // 보기: 현재가 | 평가금
     @AppStorage("holdDown") private var downFirst = false    // 정렬: 오른 순(기본) ↔ 내린 순
@@ -222,6 +223,7 @@ struct HoldingsView: View {
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
+        .onGeometryChange(for: Bool.self) { $0.size.width < 355 } action: { narrow = $0 }
     }
 
     /// 줄 배경: 왼쪽부터 오늘 등락률 크기만큼 옅게 (오른 산호 · 그대로 회색 · 내린 하늘). 상한은 카드 폭의 34% (보기를 바꿔도 같다)
@@ -292,8 +294,13 @@ struct HoldingsView: View {
                 HStack(spacing: v ? 5 : 8) {
                     DetailLink(sym: r.sym) {
                         HStack(spacing: v ? 4 : 6) {
-                            HStack(spacing: 0) { name; Spacer(minLength: 4) }
-                            if !nk { mid.holdCol(0, colW) }
+                            if narrow {
+                                VStack(alignment: .leading, spacing: 1) { name; if !nk { mid } }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            } else {
+                                HStack(spacing: 0) { name; Spacer(minLength: 4) }
+                                if !nk { mid.holdCol(0, colW) }
+                            }
                             right
                         }.frame(minHeight: 52).contentShape(Rectangle())
                     }.buttonStyle(.plain)

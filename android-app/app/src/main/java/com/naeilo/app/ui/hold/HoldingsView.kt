@@ -505,8 +505,13 @@ private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, v: Boolean, bi
                 // ios: Views/HoldingsView.swift:277,278,282,283
                 Row(Modifier.weight(1f).defaultMinSize(minHeight = 52.dp).plainClickable(onOpen), horizontalArrangement = Arrangement.spacedBy(if (v) 4.dp else 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     // 이름이 남은 폭을 다 먼저 쓴다 (Spacer 에 weight 를 주면 이름이 반으로 잘린다)
-                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(0.dp)) { Name(Modifier.weight(1f, fill = false)); Spacer(Modifier.width(4.dp)) }   // ios: Views/HoldingsView.swift:279
-                    if (!nk) Mid(Modifier.holdCol(0, colW))   // ios: Views/HoldingsView.swift:286
+                    // 작은 폰: 평단가(수량)를 이름 아래로 내려 이름 칸을 넓힌다 (2026-10-28, ios: narrow)
+                    if (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 387) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) { Name(Modifier); if (!nk) Mid(Modifier) }
+                    } else {
+                        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(0.dp)) { Name(Modifier.weight(1f, fill = false)); Spacer(Modifier.width(4.dp)) }   // ios: Views/HoldingsView.swift:279
+                        if (!nk) Mid(Modifier.holdCol(0, colW))   // ios: Views/HoldingsView.swift:286
+                    }
                     Right()   // ios: Views/HoldingsView.swift:281
                 }
                 Earn()   // ios: Views/HoldingsView.swift:284

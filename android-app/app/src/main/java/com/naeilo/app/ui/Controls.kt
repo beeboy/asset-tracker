@@ -648,7 +648,8 @@ fun FitText(text: String, style: TextStyle, minScale: Float, modifier: Modifier 
     // 폭을 재서 글자 크기를 정하고, 첫 줄 기준선(FirstBaseline)을 밖으로 넘겨 옆 글자와 기준선을 맞출 수 있게 한다
     androidx.compose.ui.layout.SubcomposeLayout(modifier) { c ->
         val w = measurer.measure(text, style, maxLines = 1, softWrap = false).size.width
-        val k = if (c.hasBoundedWidth && w > c.maxWidth) maxOf(minScale, c.maxWidth.toFloat() / w) else 1f
+        // 줄인 글자 폭이 반올림으로 칸보다 1~2픽셀 넘으면 끝이 "…"로 잘린다: 2% 여유를 두고 줄인다
+        val k = if (c.hasBoundedWidth && w > c.maxWidth) maxOf(minScale, c.maxWidth.toFloat() / w * 0.98f) else 1f
         val st = if (k < 1f) style.copy(fontSize = style.fontSize * k, letterSpacing = if (style.letterSpacing.isSpecified) style.letterSpacing * k else style.letterSpacing) else style   // 정해지지 않은 자간은 곱하면 죽는다
         // 칸 이름을 고정해야 글자 크기가 바뀌어도 플립이 이어진다
         val p = subcompose(Unit) { T(text, style = st, color = color, maxLines = 1, roll = roll) }.first().measure(c.copy(minWidth = 0))
