@@ -17,6 +17,9 @@ import com.naeilo.app.core.jDbls
 import com.naeilo.app.core.jObj
 import com.naeilo.app.core.jObjs
 import com.naeilo.app.core.pctEncode
+import com.naeilo.app.core.num
+import com.naeilo.app.core.TossKeys
+import com.naeilo.app.core.TossFeed
 import com.naeilo.app.data.Currency
 import com.naeilo.app.data.Defaults
 import com.naeilo.app.data.Sample
@@ -168,14 +171,24 @@ object StockSearch {   // ios: Data/StockSearch.swift:91
         return out.filter { mine.contains(it.id) || KoreaEstimate.allowed(it) }   // ios: Data/StockSearch.swift:114
     }
 
-    /** Yahoo 검색 (한글은 못 찾는다) */
+    /** Yahoo 검색 (한글은 못 찾는다). 토스 키가 있으면 Yahoo 를 부르지 않고 토스로만 찾는다 */
     suspend fun remote(q: String): List<StockHit> = withContext(Dispatchers.IO) {   // ios: Data/StockSearch.swift:118
         val k = q.trim(' ', '\t')   // ios: Data/StockSearch.swift:119
         if (!(k.length >= 1 && k.all { it.code < 128 })) return@withContext emptyList()   // ios: Data/StockSearch.swift:120
+        if (TossKeys.on) return@withContext toss(k)   // ios: Data/StockSearch.swift:121
         val qs = pctEncode(k)   // ios: Data/StockSearch.swift:121
         val o = runCatching { Relay.yahoo("/v1/finance/search?q=$qs&quotesCount=12&newsCount=0") }.getOrNull()   // ios: Data/StockSearch.swift:122
         val quotes = jObjs(o?.get("quotes")) ?: return@withContext emptyList()   // ios: Data/StockSearch.swift:123
         quotes.mapNotNull { q -> remoteHit(q) }.filter(KoreaEstimate::allowed)   // ios: Data/StockSearch.swift:124,138
+    }
+    /** 토스 키 검색: 친 티커를 토스 현재가로 확인한다 (토스에 있는 미국 종목만). 이름은 아는 한글 이름, 없으면 티커 */
+    private suspend fun toss(k: String): List<StockHit> {   // ios: Data/StockSearch.swift:142
+        val c = TossFeed.code(k) ?: return emptyList()
+        val (code, o, _) = TossFeed.userGet("/api/toss/v1/prices?symbols=$c", timeout = 3.0)
+        if (code != 200 || (jObjs(o?.get("result")) ?: emptyList()).none { (it["symbol"] as? String)?.uppercase() == c && (num(it["lastPrice"]) ?: 0.0) > 0 }) return emptyList()
+        val id = c.replace(".", "-")
+        StockCatalog.all.firstOrNull { it.id == id }?.let { return listOf(it) }
+        return listOf(StockHit(id = id, yahoo = id, name = id, market = "미국 주식", currency = Currency.usd))
     }
     /** 검색 결과 한 줄 → 종목 (Yahoo 없이 시험할 수 있게 따로 둔다) */
     internal fun remoteHit(q: Map<String, Any?>): StockHit? {
@@ -325,6 +338,16 @@ class CustomSymbols {   // ios: Data/StockSearch.swift:189,190
             // 한국 종목은 시세를 받지 않는다: 예전에 Yahoo 에서 받아 둔 종가는 버리고, 넣은 가격으로 다시 만든다 (rebuildKR)
             for (s in items) if (!s.usd && !(s.lv == true && KoreaEstimate.liveOK(s.id, name = s.name))) h.remove(s.id)   // ios: Data/StockSearch.swift:220
             hist = h
+            // 국내 종목 이름이 코드뿐이면(사이트에서 불러온 때) 코스피·코스닥 목록의 한글 이름으로
+            items = items.map { s ->
+                val n = if (!s.usd && s.name == s.id) KrxList.name(s.id) ?: StockCatalog.all.firstOrNull { it.id == s.id }?.name else null
+                if (n != null) s.copy(name = n) else s
+            }
+            // 토스 키가 있으면 Yahoo 이름(긴 영문)을 쓰지 않는다: 미국 종목은 아는 한글 이름, 없으면 티커
+            if (TossKeys.on) items = items.map { s ->
+                val n = StockCatalog.all.firstOrNull { it.id == s.id }?.name ?: s.id
+                if (!s.usd || s.name == n) s else s.copy(name = n)
+            }
         }
         // 기록 없이 금액 하나만 있던 예전 저장값은 그 금액·날짜를 첫 줄로
         val s = items.firstOrNull { it.id == KoreaEstimate.sumId }; val p = s?.kp   // ios: Data/StockSearch.swift:223
