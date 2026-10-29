@@ -1100,6 +1100,14 @@ def fetch_mar() -> dict | None:
                         return {"USD": {"rate": rate, "date": end.isoformat(), "src": "서울외국환중개", "fetched": int(time.time())}}
         except Exception:  # noqa: BLE001 - 다음 방법 시도
             continue
+    # 예비: ECOS 샘플 키. 그날 값은 다음 날 올라와 앞 날짜일 수 있다
+    days = ecos_days(end - timedelta(days=12), end)
+    if days:
+        ds = sorted(days)
+        out = {"USD": {"rate": days[ds[-1]], "date": ds[-1], "src": "한국은행 ECOS", "fetched": int(time.time())}}
+        if len(ds) > 1:
+            out["USD_prev"] = {"rate": days[ds[-2]], "date": ds[-2]}
+        return out
     return None
 
 
@@ -1164,10 +1172,21 @@ def update_mar_daily(log: list | None = None):
 
 def update_mar(log: list | None = None):
     m = fetch_mar()
-    if m:
+    kept = False
+    if m and m["USD"]["src"] == "한국은행 ECOS":
+        # 서울외국환중개에서 미리 받아 둔 더 새 고시는 하루 늦는 ECOS 값으로 덮지 않는다
+        old = (read_json(MAR, None) or {}).get("USD") or {}
+        kept = str(old.get("date", "")) >= m["USD"]["date"]
+    if m and not kept:
         write_json(MAR, m)
     if log is not None:
-        log.append({"ok": bool(m), "msg": f"매매기준율: {m['USD']['rate']}원 ({m['USD']['date']})" if m else "매매기준율: 받지 못함 (기존 환율로 대체)"})
+        if not m:
+            msg = "매매기준율: 받지 못함 (기존 환율로 대체)"
+        elif kept:
+            msg = f"매매기준율: {m['USD']['src']} {m['USD']['rate']}원 ({m['USD']['date']}) — 기존 파일이 같거나 더 새로워 그대로 둠"
+        else:
+            msg = f"매매기준율: {m['USD']['src']} {m['USD']['rate']}원 ({m['USD']['date']})"
+        log.append({"ok": bool(m), "msg": msg})
     update_mar_daily(log)
 
 
