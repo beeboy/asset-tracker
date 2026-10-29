@@ -42,6 +42,8 @@ QUOTES = DATA / "quotes.json"
 KR_STOCKS = DATA / "kr_stocks.json"  # 매일 모으는 국내 개별 종목 (tools/gen_stock_catalog.py 가 만든다)
 KR_DAILY = DATA / "kr_daily.json"  # 국내 개별 종목 날짜별 종가 (모으기 시작한 날부터 쌓는다, 최근 1년치)
 MAR = DATA / "mar.json"  # 매매기준율 (서울외국환중개 시장평균환율)
+MAR_DAILY = DATA / "mar_daily.json"  # 날짜별 매매기준율 3년 (서울외국환중개, 예비 한국은행 ECOS 샘플 키)
+ECOS_SAMPLE = "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1/10/731Y001/D/"  # 공개 샘플 키: 한 번에 10건
 SMBS = "http://www.smbs.biz/ExRate/"
 BACKUP = DATA / "backup"
 YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/"
@@ -1098,15 +1100,94 @@ def fetch_mar() -> dict | None:
                         return {"USD": {"rate": rate, "date": end.isoformat(), "src": "서울외국환중개", "fetched": int(time.time())}}
         except Exception:  # noqa: BLE001 - 다음 방법 시도
             continue
+    # 예비: ECOS 샘플 키. 그날 값은 다음 날 올라와 앞 날짜일 수 있다
+    days = ecos_days(end - timedelta(days=12), end)
+    if days:
+        ds = sorted(days)
+        out = {"USD": {"rate": days[ds[-1]], "date": ds[-1], "src": "한국은행 ECOS", "fetched": int(time.time())}}
+        if len(ds) > 1:
+            out["USD_prev"] = {"rate": days[ds[-2]], "date": ds[-2]}
+        return out
     return None
+
+
+def smbs_days(start, end) -> dict:
+    """서울외국환중개 날짜별 매매기준율 {YYYY-MM-DD: 값}. 표 날짜는 두 자리 연도(YY.MM.DD), 글자는 EUC-KR. 못 받으면 빈 dict"""
+    import re
+    url = SMBS + f"StdExRate_xml.jsp?arr_value=USD_{start.isoformat()}_{end.isoformat()}"
+    try:
+        req = urllib.request.Request(url, headers={**UA, "Accept": "*/*", "Referer": SMBS + "StdExRate.jsp"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            txt = r.read().decode("euc-kr", "ignore")
+    except Exception:  # noqa: BLE001 - 예비로 넘어간다
+        return {}
+    out = {}
+    for lab, val in re.findall(r"label=['\"]([^'\"]+)['\"][^>]*?value=['\"]([\d,.]+)['\"]", txt):
+        m = re.findall(r"\d+", lab)
+        rate = float(val.replace(",", ""))
+        if len(m) >= 3 and 500 < rate < 5000:
+            out[f"{int(m[0]) + (2000 if int(m[0]) < 100 else 0):04d}-{int(m[1]):02d}-{int(m[2]):02d}"] = rate
+    return out
+
+
+def ecos_days(start, end) -> dict:
+    """예비: 한국은행 ECOS 공개 샘플 키 (원/미국달러 매매기준율, 731Y001). 한 번에 10건이라 최근 10건만. 그날 값은 다음 날 올라온다"""
+    url = ECOS_SAMPLE + f"{start.strftime('%Y%m%d')}/{end.strftime('%Y%m%d')}/0000001"
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
+            rows = (json.loads(r.read()).get("StatisticSearch") or {}).get("row") or []
+    except Exception:  # noqa: BLE001
+        return {}
+    out = {}
+    for row in rows:
+        t, v = str(row.get("TIME", "")), row.get("DATA_VALUE")
+        try:
+            rate = float(str(v).replace(",", ""))
+        except ValueError:
+            continue
+        if len(t) == 8 and 500 < rate < 5000:
+            out[f"{t[:4]}-{t[4:6]}-{t[6:]}"] = rate
+    return out
+
+
+def update_mar_daily(log: list | None = None):
+    """data/mar_daily.json: 날짜별 매매기준율 3년 {"src","updated","d","c"}. 처음엔 3년 치를 한 번에, 그다음엔 최근 14일을 받아 합친다 (같은 날짜는 덮어씀).
+    서울외국환중개가 안 되면 ECOS 샘플 키로 최근 10건. 둘 다 안 되면 파일을 그대로 둔다"""
+    end = datetime.now(timezone(timedelta(hours=9))).date()
+    cut = (end - timedelta(days=3 * 365)).isoformat()
+    old = read_json(MAR_DAILY, None) or {}
+    days = dict(zip(old.get("d") or [], old.get("c") or []))
+    start = end - timedelta(days=14 if len(days) > 600 else 3 * 365)
+    got, src = smbs_days(start, end), "서울외국환중개"
+    if not got:
+        # 샘플 키는 오래된 날부터 10건까지: 13일(평일 많아야 10일)만 물어야 최근 날이 잘리지 않는다
+        got, src = ecos_days(end - timedelta(days=12), end), "한국은행 ECOS"
+    if got:
+        days.update(got)
+        ds = sorted(d for d in days if d >= cut)
+        write_json(MAR_DAILY, {"src": src, "updated": int(time.time()), "d": ds, "c": [days[d] for d in ds]}, compact=True)
+    if log is not None:
+        log.append({"ok": bool(got), "msg": f"날짜별 매매기준율: {src} {len(got)}건 합침" if got else "날짜별 매매기준율: 받지 못함 (기존 파일 그대로)"})
 
 
 def update_mar(log: list | None = None):
     m = fetch_mar()
-    if m:
+    kept = False
+    if m and m["USD"]["src"] == "한국은행 ECOS":
+        # 서울외국환중개에서 미리 받아 둔 더 새 고시는 하루 늦는 ECOS 값으로 덮지 않는다
+        old = (read_json(MAR, None) or {}).get("USD") or {}
+        kept = str(old.get("date", "")) >= m["USD"]["date"]
+    if m and not kept:
         write_json(MAR, m)
     if log is not None:
-        log.append({"ok": bool(m), "msg": f"매매기준율: {m['USD']['rate']}원 ({m['USD']['date']})" if m else "매매기준율: 받지 못함 (기존 환율로 대체)"})
+        if not m:
+            msg = "매매기준율: 받지 못함 (기존 환율로 대체)"
+        elif kept:
+            msg = f"매매기준율: {m['USD']['src']} {m['USD']['rate']}원 ({m['USD']['date']}) — 기존 파일이 같거나 더 새로워 그대로 둠"
+        else:
+            msg = f"매매기준율: {m['USD']['src']} {m['USD']['rate']}원 ({m['USD']['date']})"
+        log.append({"ok": bool(m), "msg": msg})
+    update_mar_daily(log)
 
 
 def collect(symbols: list[str], years: float, quotes_only: bool) -> dict:
