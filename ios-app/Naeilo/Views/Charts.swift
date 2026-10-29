@@ -51,7 +51,7 @@ struct Sparkline: View {
                     Circle().fill(c).frame(width: 8, height: 8).position(x: px, y: y(points[i]))
                     // 그림처럼: 위에 날짜·시각(작게, 회색), 밑에 시세(크게). 테두리 없이 카드 바탕만 깔아 제목 글자를 가린다
                     VStack(spacing: 2) {
-                        Text(Scrub.fmt.string(from: s.date(Double(i) / Double(n)))).appFont(12).monospacedDigit().foregroundStyle(Theme.muted)
+                        Text(s.label?(i) ?? Scrub.fmt.string(from: s.date(Double(i) / Double(n)))).appFont(12).monospacedDigit().foregroundStyle(Theme.muted)
                         Text(s.value(points[i])).appFont(20, .bold).monospacedDigit().foregroundStyle(Theme.ink)
                     }
                     .lineLimit(1).fixedSize()
@@ -74,12 +74,20 @@ struct Sparkline: View {
 struct Scrub {
     let date: (Double) -> Date
     let value: (Double) -> String
+    var label: ((Int) -> String)? = nil   // 있으면 점 번호 → 날짜 글자 (점마다 실제 날짜)
     static let fmt: DateFormatter = { let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "yyyy.MM.dd HH:mm"; return f }()
     /// 기간 그래프: 왼쪽 끝 = 기간 전, 오른쪽 끝 = 지금
     static func period(_ p: Period, _ value: @escaping (Double) -> String) -> Scrub {
         let days: Double = p == .d1 ? 1 : p == .w1 ? 7 : p.span * 1095
         let now = Date()
         return Scrub(date: { now.addingTimeInterval(-(1 - $0) * days * 86400) }, value: value)
+    }
+    /// 점마다 날짜가 있는 그래프: "yyyy.MM.dd" 만 (시각 없음). 날짜가 nil 인 점(맨 끝)은 '지금'
+    static func days(_ ds: [String?], _ value: @escaping (Double) -> String) -> Scrub {
+        Scrub(date: { _ in Date() }, value: value, label: { i in
+            guard i >= 0, i < ds.count, let d = ds[i] else { return String(localized: "지금") }
+            return d.replacingOccurrences(of: "-", with: ".")
+        })
     }
 }
 

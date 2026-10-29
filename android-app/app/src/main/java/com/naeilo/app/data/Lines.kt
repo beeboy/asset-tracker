@@ -88,6 +88,17 @@ object Lines {
         return s   // ios: Data/Lines.swift:54
     }
 
+    /** 인물 who 의 모든 상황 줄 (빈칸 없는 것만). 동네 주민이 엉뚱한 맛으로 빌려 쓴다. 다 읽기 전에는 빈 목록 */
+    // ios: Data/Lines.swift:58
+    fun every(who: String): List<String> {
+        everyCache[who]?.let { return it }   // ios: Data/Lines.swift:59
+        val src = all; if (src.isEmpty()) return emptyList()
+        val l = src.filterKeys { it.endsWith(".$who") }.toSortedMap().values.flatten().filter { !it.contains("{") }   // ios: Data/Lines.swift:60
+        everyCache[who] = l   // ios: Data/Lines.swift:61
+        return l
+    }
+    private val everyCache = HashMap<String, List<String>>()   // ios: Data/Lines.swift:64
+
     /** 전체 줄 수 (설정 등에서 보여 줄 때) */
     val count: Int get() = all.values.fold(0) { a, l -> a + l.size }   // ios: Data/Lines.swift:58
 }

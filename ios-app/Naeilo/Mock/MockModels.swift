@@ -155,6 +155,7 @@ struct MockHit: Codable, Equatable, Identifiable {
     var volNew: Double? = nil    // 시각 보정 거래량 배수 (이 시각까지 보통 쌓이는 양 대비). 장중 훑기만
     var amount: Double? = nil    // 오늘 누적 거래대금 (억원)
     var amt20: Double? = nil     // 지난 20일 하루 평균 거래대금 (억원, 오늘 봉 뺌). 거래대금 바닥에 쓴다
+    var range20: Double? = nil   // 지난 20일 하루 폭 평균 ((고 − 저) ÷ 종가, 오늘 봉 뺌). 흔들림 손절에 쓴다
 }
 
 /// 관찰에 한 번 걸린 기록 (종목별 관찰 기록)
@@ -189,6 +190,8 @@ struct MockScan: Codable, Equatable, Identifiable {
     var frac: Double? = nil      // 이 시각 하루 거래량 누적 비율 (곡선 기준). 있으면 새 배수도 쟀다
     var newHits: [String]? = nil // 새 배수로 걸린 종목 코드 (옛 결과와 나란히 견주기용, 고르기에는 안 쓴다)
     var full: Bool? = nil        // 전체 훑기 (거짓 = 가까운 종목만)
+    var skipped: [MockCalc.Skip]? = nil  // 걸렸지만 종목 판단(거래대금·재확인·유의사항·시장 날씨)에서 거른 종목. hits 는 거른 뒤
+    var fails: [String: Int]? = nil      // 일봉을 못 받은 이유 → 종목 수 (못 받은 종목은 걸리지 않는다)
 }
 
 /// 관찰 조건 하나 (알약). 켠 조건을 모두 맞는 종목이 걸린다
@@ -201,7 +204,7 @@ struct MockCond: Codable, Equatable, Identifiable {
 /// 고르기 조건 하나 (알약): 순서·상위 · 종목당 한도 · 현금 남김
 struct MockRuleCond: Codable, Equatable, Identifiable {
     enum Kind: String, Codable, CaseIterable, Identifiable {
-        case top, per, cash, cap, slip
+        case top, per, cash, cap, slip, split
         var id: String { rawValue }
         var name: String {
             switch self {
@@ -210,8 +213,11 @@ struct MockRuleCond: Codable, Equatable, Identifiable {
             case .cash: return "현금 남김"
             case .cap: return "폭등 거르기"
             case .slip: return "미끄러짐 한도"
+            case .split: return "나눠 사기"
             }
         }
+        /// 넣을 수 있는 것. 폭등 거르기는 종목 판단이라 관찰 조건으로 옮겼다 (2026-10-29, 옛 상태 읽기용으로만 남김)
+        static var choices: [Kind] { [.top, .per, .cash, .slip, .split] }
     }
     var id = UUID()
     var kind: Kind
@@ -228,6 +234,7 @@ struct MockRuleCond: Codable, Equatable, Identifiable {
         case .cash: return "현금 \(Int((pct * 100).rounded()))% 남김"
         case .cap: return capKind == .rise ? "최근 5일 ≤ +\(MockFmt.num(lim))%" : "거래량 ≤ \(MockFmt.num(lim))배"
         case .slip: return "미끄러짐 ≤\(MockFmt.num(pct * 100))%"
+        case .split: return "나눠 사기 · 한 번 \(Int((pct * 100).rounded()))%"
         }
     }
     /// cap: 걸린 종목이 이 조건을 넘나 (값이 없으면 넘지 않은 것으로 본다)
@@ -241,26 +248,38 @@ struct MockRuleCond: Codable, Equatable, Identifiable {
 /// 팔기 조건 알약 하나 (켠 알약으로 sell 값을 맞춘다)
 struct MockSellCond: Codable, Equatable, Identifiable {
     enum Kind: String, Codable, CaseIterable, Identifiable {
-        case loss, gain, days
+        case loss, gain, days, idle, gone, close, trail, vol
         var id: String { rawValue }
         var name: String {
             switch self {
             case .loss: return "손절"
             case .gain: return "익절"
             case .days: return "오래 들면"
+            case .idle: return "움직임 없음"
+            case .gone: return "이유 꺼짐"
+            case .close: return "마감 정리"
+            case .trail: return "고점 되밀림"
+            case .vol: return "흔들림 손절"
             }
         }
+        /// 넣을 수 있는 것. 단타라 '보유 n일'은 뺐다 (2026-10-29, 옛 상태 읽기용으로만 남김)
+        static var choices: [Kind] { [.loss, .gain, .trail, .idle, .gone, .close, .vol] }
     }
     var id = UUID()
     var kind: Kind
     var on: Bool = true
-    var pct: Double = 0.05   // loss · gain: 산 값 대비
-    var n: Int = 5           // days: 산 뒤 거래일
+    var pct: Double = 0.05   // loss · gain: 산 값 대비 · idle: 산 값 위아래 이 안 · trail: 고점 대비 · vol: 하루 폭의 몇 배
+    var n: Int = 5           // days: 산 뒤 거래일 · idle: 산 뒤 분
     var text: String {
         switch kind {
         case .loss: return "손절 −\(MockFmt.num((pct * 100).rounded()))%"
         case .gain: return "익절 +\(MockFmt.num((pct * 100).rounded()))%"
         case .days: return "보유 \(n)일 넘음"
+        case .idle: return "\(n)분 ±\(MockFmt.num(pct * 100))% 안이면"
+        case .gone: return "산 이유 꺼지면"
+        case .close: return "\(MockClock.hm(MockClock.tidyFrom)) 모두 정리"
+        case .trail: return "반 판 뒤 고점 −\(MockFmt.num(pct * 100))%"
+        case .vol: return "손절 · 하루 폭 ×\(MockFmt.num(pct))"
         }
     }
 }
@@ -290,6 +309,8 @@ struct MockSelectRule: Codable, Equatable {
     var maxPer: Double = 0.20     // 한 종목 최대 (평가액 대비)
     var keepCash: Double = 0.20   // 남길 현금 (평가액 대비)
     var roundMax: Double? = nil   // 한 번 고를 때 모두 합쳐 살 몫 (평가액 대비, 없으면 10%)
+    /// 나눠 사기: 한 종목 몫 중 한 번에 살 비율 (0.34 = 세 번에 나눔, 없으면 한 번에). 더 담기는 이익 중에 다시 걸렸을 때만
+    var split: Double? = nil
     /// 검토 문: 기본은 닫는다(켬 = 고른 뒤 내가 보고 주문, 끔 = 고르면 바로 주문)
     var review: Bool = true
     /// 미끄러짐 한도 (0.005 = 0.5%). 시장가를 끝까지 채우면 평균 단가가 1호가에서 이만큼 넘게 벗어날 때 나눠 산다·판다 (없으면 끔)
@@ -300,8 +321,14 @@ struct MockSelectRule: Codable, Equatable {
 struct MockSellRule: Codable, Equatable {
     var stopLoss: Double? = nil   // 0.05 = 산 값보다 5% 내리면
     var takeProfit: Double? = nil // 0.10 = 10% 오르면
-    var maxDays: Int? = nil       // 산 뒤 거래일 N일이 지나면
-    var on: Bool { stopLoss != nil || takeProfit != nil || maxDays != nil }
+    var maxDays: Int? = nil       // 산 뒤 거래일 N일이 지나면 (옛 값, 단타로 바꾸며 뺐다)
+    var idleMin: Int? = nil       // 산 뒤 N분이 지나도
+    var idleBand: Double? = nil   // 산 값 위아래 이 안이면 (0.01 = ±1%)
+    var gone: Bool? = nil         // 산 이유(관찰 조건)가 약해져 꺼지면
+    var closeOut: Bool? = nil     // 정리 구간(15:00)에 남은 몫 모두
+    var trail: Double? = nil      // 익절로 반을 판 뒤, 남은 몫이 장중 고점에서 이만큼 내려오면 (0.02 = 2%)
+    var volK: Double? = nil       // 흔들림 손절: 산 값 − 지난 20일 하루 폭 × k 아래로 (산 때 폭을 모르면 안 본다)
+    var on: Bool { stopLoss != nil || takeProfit != nil || maxDays != nil || idleMin != nil || gone == true || closeOut == true || trail != nil || volK != nil }
 }
 
 /// 안전장치 (실전 전에 꼭 필요한 막음). 기본: 하루 손실 −3%, 한 번 주문 300만원
@@ -309,6 +336,9 @@ struct MockGuards: Codable, Equatable {
     var dayLoss: Double = 0.03        // 오늘 시작 평가액보다 이만큼 내리면 새로 사지 않는다
     var orderCap: Double = 3_000_000  // 한 번 매수 주문 금액 상한 (원, 수수료 포함)
     var apiPerSec: Double? = nil      // 토스 시세 호출 한도 (초당 번, 없으면 5)
+    var marketDrop: Double? = nil     // 시장 날씨: 그 종목 시장(코스피·코스닥 ETF)이 오늘 이만큼 넘게 내리면 새로 사지 않는다 (0.01 = −1%, 없으면 끔)
+    var lossStreak: Int? = nil        // 그날 손절이 N번 연달아면 새로 사지 않는다 (없으면 끔)
+    var bookWall: Double? = nil       // 사기 직전 매도 잔량이 매수 잔량의 N배를 넘으면 미룬다 (없으면 끔)
     var perSec: Double { apiPerSec ?? 5 }
 }
 
@@ -350,6 +380,12 @@ struct MockPosition: Codable, Equatable, Identifiable {
     var tQty: Int? = nil         // 그중 시험 몫 (없으면 옛 상태라 전부 시험으로 본다)
     var tCost: Double? = nil
     var tGross: Double? = nil
+    var why: String? = nil       // 처음 산 이유 (선정 줄 글: 순위 · 걸린 값)
+    var conds: String? = nil     // 처음 살 때 켜진 관찰 조건 글
+    var took: Bool? = nil        // 익절로 반을 이미 팔았나 (남은 몫은 되밀림·이유 꺼짐·마감에)
+    var peak: Double? = nil      // 산 뒤 본 가장 높은 가격 (되밀림)
+    var low: Double? = nil       // 산 뒤 본 가장 낮은 가격 (흔들림 손절을 켰다면 어땠을지)
+    var entry: MockBuyNote? = nil  // 처음 살 때 잰 값
     var avg: Double { qty > 0 ? gross / Double(qty) : 0 }
 }
 
@@ -375,6 +411,8 @@ struct MockOrder: Codable, Equatable, Identifiable {
     var auction: Bool? = nil     // 마감 동시호가에 접수: 15:30 단일가로 체결
     var expect: Double? = nil    // 주문 순간 호가로 잰 예상 평균가 (체결가와 견주기)
     var tossId: String? = nil    // 실전: 토스 주문번호
+    var conds: String? = nil     // 매수: 그때 켜진 관찰 조건 글 (보유에 옮겨 판 성적을 조건으로 돌린다)
+    var entry: MockBuyNote? = nil  // 매수: 살 때 잰 값
 }
 
 /// 결제 대기 돈 한 건: 판 날부터 2영업일 뒤(T+2)에 현금이 된다
@@ -454,6 +492,33 @@ struct MockEvent: Codable, Equatable, Identifiable {
     var ai: MockAIUse? = nil
     var expect: Double? = nil              // 주문 · 체결: 주문 순간 예상 평균가
     var tossId: String? = nil              // 실전 주문 · 체결: 토스 주문번호
+    var conds: String? = nil               // 매도 체결: 그 몫을 살 때 켜진 관찰 조건
+    var buyWhy: String? = nil              // 매도 체결: 그 몫을 산 이유
+    var exit: String? = nil                // 매도 체결: 판 이유 (손절·익절·되밀림·움직임 없음·이유 꺼짐·마감 정리·손 주문)
+    var entry: MockBuyNote? = nil            // 매도 체결: 그 몫을 살 때 잰 값
+    var low: Double? = nil                 // 매도 체결: 들고 있는 동안 본 가장 낮은 가격
+}
+
+/// 살 때 잰 값. 꺼 둔 조건(흔들림 손절·연속 손절 멈춤·호가 벽)도 늘 적어, 켰다면 어땠을지 나중에 센다 (2026-10-29)
+struct MockBuyNote: Codable, Equatable {
+    var range20: Double? = nil   // 지난 20일 하루 폭 평균
+    var streak: Int? = nil       // 그날 그때까지 연속 손절 수
+    var wall: Double? = nil      // 매도 잔량 ÷ 매수 잔량 (호가 전 단)
+    var market: Double? = nil    // 그 종목 시장 ETF 오늘 등락 (비율)
+    var minute: Int? = nil       // 산 시각 (하루 분)
+}
+
+/// 걸린 종목 뒤 흐름: 오늘 처음 걸린 값과 30분·1시간·마감 값 (산 것과 안 산 것을 견준다)
+struct MockFollow: Codable, Equatable {
+    var day: String
+    var code: String
+    var name: String
+    var at: Date
+    var p0: Double
+    var p30: Double? = nil
+    var p60: Double? = nil
+    var pEnd: Double? = nil
+    func ret(_ p: Double?) -> Double? { p.flatMap { p0 > 0 ? $0 / p0 - 1 : nil } }
 }
 
 /// AI 한 번 쓴 기록
@@ -540,7 +605,7 @@ enum MockLive {
         Rule(name: "호가 잔량", how: "1호가부터 차례로 채우고, 먹은 잔량은 1분 동안 빼고 셈한다",
              gap: "다른 사람 주문으로 잔량이 다시 차는 것은 모른다"),
         Rule(name: "시장가 · 지정가", how: "지정가는 호가 단위(2023년 표)에 맞춘다. 매수는 내림, 매도는 올림", gap: nil),
-        Rule(name: "미끄러짐 한도", how: "다 채운 평균 단가가 1호가에서 0.5% 넘게 벗어나면 그 값의 지정가로 나누고, 남은 몫은 30분 뒤 취소. 손절 매도는 한 번에",
+        Rule(name: "미끄러짐 한도", how: "다 채운 평균 단가가 1호가에서 0.5% 넘게 벗어나면 그 값의 지정가로 나누고, 남은 몫은 30분 뒤 취소. 손절·마감 정리 매도는 한 번에",
              gap: nil, at: [.select]),
         Rule(name: "수수료 · 세금", how: "수수료 0.015% (사고팔 때), 매도 세금 0.20%. 설정에서 고친다",
              gap: "증권사 우대 수수료·세율이 바뀌면 손으로 맞춘다", at: [.journal]),
@@ -563,6 +628,12 @@ enum MockLive {
              gap: "토스 실제 한도 숫자는 확인 못 했다. 서버 쪽 한도는 따로"),
         Rule(name: "하루 구간", how: "9:00 지켜보기(훑기만) · 9:15 고르고 주문 · 15:00 정리(새로 사지 않음) · 15:30 마감. 자동 고르기·매수는 고르고 주문 구간에서만, 팔기·손절은 늘 돈다",
              gap: nil, at: [.observe, .select]),
+        Rule(name: "하루 안에 끝냄", how: "단타라 하루를 넘겨 들지 않는다. 15:00 정리 구간에 남은 몫은 손익과 상관없이 시장가로 모두 판다. 앱이 꺼져 놓친 몫은 다음 장이 열리면 바로 판다",
+             gap: "앱이 열려 있고 돌리기·팔기 알약이 켜져 있을 때만 돈다", at: [.journal]),
+        Rule(name: "나눠 사고팔기", how: "한 종목 몫의 34%씩 산다. 더 담기는 이익 중에 다시 걸렸을 때만. 익절은 처음에 반만 팔고, 남은 몫은 고점 되밀림·이유 꺼짐·마감에 판다",
+             gap: nil, at: [.select, .journal]),
+        Rule(name: "시장 날씨", how: "코스피는 KODEX 200, 코스닥은 KODEX 코스닥150 의 오늘 등락으로 잰다. 그 종목 시장이 −1%(설정) 넘게 내리면 고르기 전에 거른다",
+             gap: "지수 시세 길이 없어 ETF 로 대신한다. 장 전에는 모른다로 두고 거르지 않는다", at: [.observe]),
         Rule(name: "실전 장 밖", how: "실전이 켜져 있으면 장 밖에는 주문하지 않는다", gap: "장 개시 단일가(OPG)·장 마감 지정가(CLS) 주문, 웹소켓 체결 알림은 아직 쓰지 않는다"),
         Rule(name: "주문 정정", how: "대기 주문의 수량·지정가를 고친다(정정하면 지정가). 매수는 묶은 돈을 새로 셈하고, 실전이면 토스 정정을 먼저 보낸다",
              gap: "부분 체결 뒤 정정 수량을 토스가 남은 수량으로 보는지는 실주문으로 확인 전"),

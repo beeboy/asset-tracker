@@ -479,7 +479,7 @@ class Remind private constructor() {
         val a = ArrayList<RemindItem>()   // ios: Data/Remind.swift:347
         // ios: Data/Remind.swift:348
         badges.lastOrNull { it.n <= (log.guessHits ?: 0) }?.let { b ->
-            a.add(RemindItem(id = "badge.${b.n}", cat = RemindCat.done, text = "맞혀보기 배지 ‘${b.name}’를 받았어요. 예보를 ${b.n}번 맞혔어요.", go = RemindGo.week))   // Data/Remind.swift:349 (검사 예외: 같은 글)
+            a.add(RemindItem(id = "badge.${b.n}", cat = RemindCat.done, text = "맞혀보기 배지 ‘${b.name}’을 받았어요. 예보를 ${b.n}번 맞혔어요.", go = RemindGo.week))   // Data/Remind.swift:349 (검사 예외: 같은 글)
         }
         val last = ended.lastOrNull() ?: return a; val r = w[last] ?: return a   // ios: Data/Remind.swift:351
         val inside = r.last >= r.lo && r.last <= r.hi   // ios: Data/Remind.swift:352
@@ -541,7 +541,7 @@ class Remind private constructor() {
         (0 until Shelter.chapters.size).firstOrNull { m.chapterOn(it) && !story.isDone(StoryBook.side, it) }?.let { i ->
             val ch = Shelter.chapters[i]; val started = m.readPos.contains(i)   // ios: Data/Remind.swift:396
             // Data/Remind.swift:400 (검사 예외: 같은 글)
-            a.add(RemindItem(id = "read.$i", cat = RemindCat.doing, text = "서재에 외전 ${ch.title} ‘${ch.name}’이 기다리고 있어요." + (if (started) " 이어 읽을래요?" else ""),
+            a.add(RemindItem(id = "read.$i", cat = RemindCat.doing, text = (if (com.naeilo.app.ui.town.TownLook.batchim(ch.name)) "서재에 외전 ${ch.title} ‘${ch.name}’이 기다리고 있어요." else "서재에 외전 ${ch.title} ‘${ch.name}’가 기다리고 있어요.") + (if (started) " 이어 읽을래요?" else ""),
                              go = RemindGo.reader(i), once = false))   // ios: Data/Remind.swift:398
         }
         return a   // ios: Data/Remind.swift:400

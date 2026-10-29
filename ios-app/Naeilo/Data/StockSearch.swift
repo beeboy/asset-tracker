@@ -173,7 +173,7 @@ enum KrxList {
 /// 사이트가 매일 모으는 국내 개별 종목 종가 (data/kr_daily.json, server.py collect_kr). 모으기 시작한 날부터 하루 한 칸, 최근 1년
 enum KrDaily {
     struct Row: Codable { let d: [String]; let c: [Double] }
-    struct File: Codable { var got: Double = 0; var s: [String: Row] }
+    struct File: Codable { var got: Double = 0; var s: [String: Row]; var updated: String? = nil }
     static let name = "kr_daily.json"
     /// 이만큼(약 한 달) 쌓이기 전에는 "기록 모으는 중"
     static let enough = 20
@@ -195,6 +195,18 @@ enum KrDaily {
         f.got = Date().timeIntervalSince1970
         Store.write(f, name)
         return f
+    }
+}
+
+extension KrDaily.File {
+    /// 사이트 파일에는 got 칸이 없다: 없으면 파일의 updated 시각, 그것도 없으면 지금(받은 시각). 기기에 저장한 파일은 got 이 있다
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        s = try c.decode([String: KrDaily.Row].self, forKey: .s)
+        updated = try c.decodeIfPresent(String.self, forKey: .updated)
+        got = try c.decodeIfPresent(Double.self, forKey: .got)
+            ?? updated.flatMap { ISO8601DateFormatter().date(from: $0) }?.timeIntervalSince1970
+            ?? Date().timeIntervalSince1970
     }
 }
 

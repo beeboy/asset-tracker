@@ -76,6 +76,7 @@
 		9F9ED7709E516D30CFB4424C /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0331F7703E5FBD6276E1B388 /* Theme.swift */; };
 		A1B2C3D4E5F60718293A4B01 /* WaveEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B02 /* WaveEngine.swift */; };
 		A1B2C3D4E5F60718293A4B5C /* Lots.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* Lots.swift */; };
+		7055A0000000000000000A01 /* TossSum.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7055A0000000000000000A02 /* TossSum.swift */; };
 		A2B3098A96833AB4427043CB /* ShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1A8DE32227186611CAE0D0 /* ShareCard.swift */; };
 		A6396DE3BF6732A5DE643156 /* Locked.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3472380FBBE2CD64AFBA542 /* Locked.swift */; };
 		A77C2429FF39A011128656D3 /* Progress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4681D1DBCFDCF3A8FD1D69ED /* Progress.swift */; };
@@ -263,6 +264,7 @@
 		A122F1E67A8269B4AF802387 /* SettingsDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsDetail.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B02 /* WaveEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveEngine.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5D /* Lots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lots.swift; sourceTree = "<group>"; };
+		7055A0000000000000000A02 /* TossSum.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TossSum.swift; sourceTree = "<group>"; };
 		A34C703A77797FBE1F14AB80 /* story_ko.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = story_ko.json; sourceTree = "<group>"; };
 		A582148F29787AC4A7C10DE2 /* MeViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeViews.swift; sourceTree = "<group>"; };
 		A7C3D2E1F0B9A8C7D6E5F402 /* CharMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharMotion.swift; sourceTree = "<group>"; };
@@ -384,6 +386,7 @@
 				EB4F2FD4AB2264F597B6817D /* ForecastEngine.swift */,
 				89DD14CB2396A6A77E94DBE3 /* MonteCarlo.swift */,
 				A1B2C3D4E5F60718293A4B5D /* Lots.swift */,
+				7055A0000000000000000A02 /* TossSum.swift */,
 				119A53A8985910EE71D6B0B9 /* MyRecord.swift */,
 				B1C2D3E4F5061728394A5B6D /* Parallel.swift */,
 				D1E2F3A4B5C6D7E8F9A0B1C5 /* InvestEvents.swift */,
@@ -891,6 +894,7 @@
 				D1E2F3A4B5C6D7E8F9A0B1C4 /* InvestEvents.swift in Sources */,
 				D1E2F3A4B5C6D7E8F9A0B1C2 /* Invest.swift in Sources */,
 				A1B2C3D4E5F60718293A4B5C /* Lots.swift in Sources */,
+				7055A0000000000000000A01 /* TossSum.swift in Sources */,
 				F11B0000000000000000A002 /* Flip.swift in Sources */,
 				5DF46E2B4E8263C2CDE8D7DF /* Reward.swift in Sources */,
 				02D7A588AC677280C686D8DD /* SampleData.swift in Sources */,

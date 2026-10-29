@@ -351,9 +351,9 @@ data class Calm(
             k == "" -> "아직 모르겠습니다. 기록 ${s.n}/${minEvents}."  // ios: Data/Calm.swift:243
             k == "seri" && st == 1 -> "관찰 중. 평정 지수 ${n}."  // ios: Data/Calm.swift:244
             k == "seri" && st == 2 -> "평정 지수는 ${n}입니다. 계속 보겠습니다."  // ios: Data/Calm.swift:245
-            k == "seri" -> "평정 지수 ${n}이에요. 같이 봐 와서 알아요."  // ios: Data/Calm.swift:246
+            k == "seri" -> (if (com.naeilo.app.ui.town.TownLook.batchim("$n")) "평정 지수 ${n}이에요. 같이 봐 와서 알아요." else "평정 지수 ${n}예요. 같이 봐 와서 알아요.")  // ios: Data/Calm.swift:246
             k == "sio" && st == 1 -> "${n}. 세어 둘게."  // ios: Data/Calm.swift:247
-            k == "sio" && st == 2 -> "${n}이야. 어제보다 하루 더 셌어."  // ios: Data/Calm.swift:248
+            k == "sio" && st == 2 -> (if (com.naeilo.app.ui.town.TownLook.batchim("$n")) "${n}이야. 어제보다 하루 더 셌어." else "${n}야. 어제보다 하루 더 셌어.")  // ios: Data/Calm.swift:248
             k == "sio" -> "${n}. 같이 센 날이 ${d}일이야."  // ios: Data/Calm.swift:249
             k == "seonbae" && st == 1 -> "평정 지수 ${n}. 너는 이 숫자를 어떻게 생각해?"  // ios: Data/Calm.swift:250
             k == "seonbae" && st == 2 -> "${n}이네. 지난달의 너라면 뭘 했을까?"  // ios: Data/Calm.swift:251
@@ -361,9 +361,9 @@ data class Calm(
             k == "ir" && st == 1 -> "${n}. 나도 빨랐어."  // ios: Data/Calm.swift:253
             k == "ir" && st == 2 -> "${n}. 넘치기 전에 멈춘 날이 늘고 있어."  // ios: Data/Calm.swift:254
             k == "ir" -> "${n}. 너는 나처럼 되지 않았어."  // ios: Data/Calm.swift:255
-            k == "sua" && st == 1 -> "${n}이에요. 아직 고르는 중이에요."  // ios: Data/Calm.swift:256
-            k == "sua" && st == 2 -> "${n}이에요. 제때 오는 게 느껴져요."  // ios: Data/Calm.swift:257
-            else -> "${n}이에요. 또 올게요. 약속은 아니에요."  // ios: Data/Calm.swift:258
+            k == "sua" && st == 1 -> (if (com.naeilo.app.ui.town.TownLook.batchim("$n")) "${n}이에요. 아직 고르는 중이에요." else "${n}예요. 아직 고르는 중이에요.")  // ios: Data/Calm.swift:256
+            k == "sua" && st == 2 -> (if (com.naeilo.app.ui.town.TownLook.batchim("$n")) "${n}이에요. 제때 오는 게 느껴져요." else "${n}예요. 제때 오는 게 느껴져요.")  // ios: Data/Calm.swift:257
+            else -> (if (com.naeilo.app.ui.town.TownLook.batchim("$n")) "${n}이에요. 또 올게요. 약속은 아니에요." else "${n}예요. 또 올게요. 약속은 아니에요.")  // ios: Data/Calm.swift:258
         }
     }
 

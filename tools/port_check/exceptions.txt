@@ -49,8 +49,8 @@ Data/Calm.swift:446 보간 안의 ?? "" 따옴표가 겹쳐 검사기가 조각�
 # D 단계 (시세·동기화): Data/Market·StockSearch·StockCatalog·SiteStats·Sync·Backup·StoreAPI → net/
 Data/StockSearch.swift:26 검사기 한계: 정규식 글자 \\( 를 보간 \( 으로 읽음 (옮김, StockSearch.kt KoreaEstimate.hedged 같은 글자)
 Data/StockSearch.swift:86 검사기 한계: 보간 속 따옴표 (옮김, StockSearch.kt KoreaEstimate.note)
-Data/StockSearch.swift:210 플랫폼: applicationSupportDirectory 대신 앱 내부 폴더 filesDir (StockSearch.kt CustomSymbols.file)
-Data/StockSearch.swift:374 검사기 한계: 보간 속 따옴표 ?? "" (옮김, StockSearch.kt krStamp)
+Data/StockSearch.swift:222 플랫폼: applicationSupportDirectory 대신 앱 내부 폴더 filesDir (StockSearch.kt CustomSymbols.file)
+Data/StockSearch.swift:386 검사기 한계: 보간 속 따옴표 ?? "" (옮김, StockSearch.kt krStamp)
 Data/SiteStats.swift:7-10 플랫폼: Kotlin 은 object 안에 typealias 를 둘 수 없다. MC.Stats.Ticker·Defaults·Corr·MC.Stats 를 그대로 쓴다
 Data/Sync.swift:217 플랫폼: CryptoKit SealedBox 는 암호문·태그(16바이트)를 나눠 받고, javax.crypto GCM 은 붙인 채로 받는다 (Sync.kt open)
 Data/Sync.swift:493 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, Sync.kt apply skipped)
@@ -80,7 +80,7 @@ Views/HoldingsView.swift:1160 검사기 한계: 보간 속 따옴표 (옮김, Ho
 Views/HoldingsView.swift:1230 검사기 한계: 보간 속 따옴표 String(format:) (옮김, HoldingsView.kt CompareCard 시장보다 글)
 Views/HoldingsView.swift:1271 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 고점까지 글)
 Views/HoldingsView.swift:1274 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 저점 위 글)
-Views/HoldingsView.swift:127 검사기 한계: 보간 속 따옴표 separator: ", " (옮김, HoldingsView.kt TotalChart 과거 시세 없음 글)
+Views/HoldingsView.swift:141 검사기 한계: 보간 속 따옴표 separator: ", " (옮김, HoldingsView.kt TotalChart 과거 시세 없음 글)
 # F2 단계 (종목 상세·추가): Views/HoldingsView@262-726 → ui/hold/HoldingDetail.kt
 Views/HoldingsView.swift:774 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt KoreaSumCard 안내 글)
 Views/HoldingsView.swift:979 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt AddHoldingView 평균 단가 칸 이름)
@@ -268,3 +268,5 @@ Views/HoldingsView.swift:91 플랫폼: 취소 단추는 ConfirmSheet 가 cancel 
 Views/FlowView.swift:506 플랫폼: 1×1 자리 틀(Color.clear.frame) 대신 Compose layout 이 말풍선을 누른 자리 p 에 바로 놓는다 (FlowView.kt Bubble)
 Views/FlowView.swift:533 플랫폼: Compose 그림자는 shadow(8.dp) 높이로 아래로 진다 (y 4 따로 없음, Bubble)
 Views/FlowView.swift:538 플랫폼: .transition(.opacity) 는 애니메이션 없이 바뀌는 term 이라 아이폰도 바로 나타난다 (Compose 도 바로)
+Data/TossSum.swift:72-73 플랫폼: java.time ZonedDateTime 은 연·월·일·시가 늘 있어 Calendar 기본값(1970·1·0)이 없다 (TossSum.kt lastLine)
+Data/TossSum.swift:136 플랫폼: 날짜 글자는 Locale.ROOT 로 (en_US_POSIX 와 같은 숫자 꼴)

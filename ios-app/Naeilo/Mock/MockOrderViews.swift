@@ -409,6 +409,8 @@ struct MockAccountView: View {
     var body: some View {
         let d = MockDesk.shared
         MockScreen(tab: .account, gear: { settings = true }) {
+            winCard(d)
+            followCard(d)
             ordersCard(d)
             gapCard(d)
             lights(d)
@@ -560,6 +562,91 @@ struct MockAccountView: View {
             }
         }
         .frame(height: 120)
+    }
+
+    // MARK: 하루 승률 — 날마다 막대 하나 (높이 = 승률, 색 = 그날 손익). 아래는 판 이유별 성적
+
+    private func winCard(_ d: MockDesk) -> some View {
+        let es = d.ledgerEvents(d.shown), id = d.ledger(d.shown).id
+        let days = Array(MockCalc.periods(es, ledger: id, unit: .day).prefix(10).reversed())
+        let all = MockCalc.stat(es, ledger: id)
+        let exits = Self.exits(es)
+        func rate(_ r: Double?) -> String { r.map { "\(Int(($0 * 100).rounded()))%" } ?? "—" }
+        func color(_ x: Double) -> Color { x > 0 ? Theme.up : x < 0 ? Theme.down : Theme.sub }
+        return Card {
+            head("하루 승률", all.trades > 0 ? "전체 " + rate(all.winRate) + " · \(all.wins)/\(all.trades)건" : "판 매매 없음")
+            if days.isEmpty {
+                mt("아직 판 매매 없음").appFont(13).foregroundStyle(Theme.muted)
+            } else {
+                HStack(alignment: .bottom, spacing: 6) {
+                    ForEach(days, id: \.key) { x in
+                        VStack(spacing: 3) {
+                            mt(rate(x.stat.winRate)).appFont(10, .semibold).monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
+                            RoundedRectangle(cornerRadius: 4).fill(color(x.stat.pnl))
+                                .frame(maxWidth: 26).frame(height: max(3, 80 * (x.stat.winRate ?? 0)))
+                            mt(x.key).appFont(10).foregroundStyle(Theme.muted).lineLimit(1).minimumScaleFactor(0.6)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .frame(height: 120, alignment: .bottom)
+                mt("높이는 승률, 빨강은 그날 손익 +, 파랑은 −").appFont(11).foregroundStyle(Theme.muted)
+                Divider().overlay(Theme.line)
+                ForEach(exits, id: \.name) { x in
+                    HStack {
+                        mt(x.name).appFont(13, .semibold)
+                        Spacer()
+                        mt("\(x.st.trades)건 · " + rate(x.st.winRate) + " · ").appFont(12).foregroundStyle(Theme.sub).monospacedDigit()
+                        mt(MockFmt.signedWon(x.st.pnl)).appFont(12, .semibold).foregroundStyle(color(x.st.pnl)).monospacedDigit()
+                    }
+                }
+            }
+        }
+    }
+
+    /// 판 이유별 성적 (정식 체결만, 많은 순)
+    static func exits(_ es: [MockEvent]) -> [(name: String, st: MockCalc.Stat)] {
+        var by: [String: MockCalc.Stat] = [:]
+        for e in es where e.kind == .fill && e.side == .sell && !e.test { by[e.exit ?? "예전 기록", default: MockCalc.Stat()].add(e) }
+        return by.map { (name: $0.key, st: $0.value) }.sorted { $0.st.trades != $1.st.trades ? $0.st.trades > $1.st.trades : $0.name < $1.name }
+    }
+
+    // MARK: 걸린 종목 뒤 흐름 — 고르기 전 거름을 지난 종목의 30분·1시간·마감 평균. 산 것과 안 산 것을 나란히
+
+    private func followCard(_ d: MockDesk) -> some View {
+        let fs = d.s.follows ?? []
+        let bought = Set(d.ledgerEvents(d.shown).filter { $0.kind == .fill && $0.side == .buy && !$0.test }.compactMap { e in e.code.map { MockFmt.day(e.at) + "|" + $0 } })
+        let yes = fs.filter { bought.contains($0.day + "|" + $0.code) }, no = fs.filter { !bought.contains($0.day + "|" + $0.code) }
+        let dayN = Set(fs.map(\.day)).count
+        func avg(_ xs: [MockFollow], _ k: KeyPath<MockFollow, Double?>) -> Double? {
+            let rs = xs.compactMap { $0.ret($0[keyPath: k]) }
+            return rs.isEmpty ? nil : rs.reduce(0, +) / Double(rs.count)
+        }
+        func cell(_ r: Double?) -> some View {
+            mt(r.map { MockFmt.pct($0, digits: 1) } ?? "—").appFont(13, .semibold).monospacedDigit()
+                .foregroundStyle((r ?? 0) > 0 ? Theme.up : (r ?? 0) < 0 ? Theme.down : Theme.sub)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        func row(_ t: String, _ xs: [MockFollow]) -> some View {
+            HStack {
+                mt(t + " \(xs.count)").appFont(13).frame(width: 84, alignment: .leading)
+                cell(avg(xs, \.p30)); cell(avg(xs, \.p60)); cell(avg(xs, \.pEnd))
+            }
+        }
+        return Card {
+            head("걸린 종목 뒤 흐름", fs.isEmpty ? "쌓는 중" : "\(fs.count)종목 · \(dayN)일")
+            if fs.isEmpty {
+                mt("장중 훑기에서 걸린 종목부터 쌓여요").appFont(13).foregroundStyle(Theme.muted)
+            } else {
+                HStack {
+                    Color.clear.frame(width: 84, height: 1)
+                    ForEach(["30분", "1시간", "마감"], id: \.self) { mt($0).appFont(11).foregroundStyle(Theme.muted).frame(maxWidth: .infinity, alignment: .trailing) }
+                }
+                row("산", yes)
+                row("안 산", no)
+                mt("처음 걸린 값 대비 평균. 안 산 쪽이 더 오르면 선정이 좋은 종목을 놓친 거예요").appFont(11).foregroundStyle(Theme.muted)
+            }
+        }
     }
 
     // MARK: 체결 차이 — 체결 한 건이 막대 하나. 비싸게 사면(불리) 위, 싸게 사면 아래
@@ -835,6 +922,17 @@ struct MockSettingsView: View {
             Stepper(value: Binding(get: { guards.perSec }, set: { guards.apiPerSec = $0 }), in: 1...20, step: 1) {
                 mt("토스 시세 호출 초당 " + MockFmt.num(guards.perSec) + "번까지").appFont(14)
             }
+            optStep(on: guards.marketDrop != nil, toggle: { guards.marketDrop = $0 ? 0.01 : nil },
+                    value: Binding(get: { guards.marketDrop ?? 0.01 }, set: { guards.marketDrop = $0 }), range: 0.005...0.05, step: 0.005,
+                    text: "시장 날씨 · 그 시장 ETF −" + MockFmt.num((guards.marketDrop ?? 0.01) * 100) + "% 넘게 내리면 안 삼")
+            optStep(on: guards.lossStreak != nil, toggle: { guards.lossStreak = $0 ? 3 : nil },
+                    value: Binding(get: { Double(guards.lossStreak ?? 3) }, set: { guards.lossStreak = Int($0) }), range: 2...6, step: 1,
+                    text: "오늘 손절 \(guards.lossStreak ?? 3)번 연달아면 그날 안 삼")
+            optStep(on: guards.bookWall != nil, toggle: { guards.bookWall = $0 ? 3 : nil },
+                    value: Binding(get: { guards.bookWall ?? 3 }, set: { guards.bookWall = $0 }), range: 1.5...10, step: 0.5,
+                    text: "호가 벽 · 매도 잔량이 매수의 " + MockFmt.num(guards.bookWall ?? 3) + "배 넘으면 미룸")
+            mt("꺼 둔 것도 살 때마다 값을 적어요. 매매 \(MockCalc.armTrades)건·\(MockCalc.armDays)일이 쌓이고 켰다면 나았으면 저절로 켜요. 손으로 만진 것은 그대로 둬요.")
+                .appFont(12).foregroundStyle(Theme.muted)
             Toggle(isOn: Binding(get: { d.fillAlert }, set: { d.setFillAlert($0) })) {
                 mt("체결 알림 (체결·부분 체결·거부)").appFont(14)
             }
@@ -856,6 +954,15 @@ struct MockSettingsView: View {
             .buttonStyle(.plain)
             mt(d.halted ? "멈춤 중: 한 바퀴·돌리기·자동 팔기와 규칙 주문을 막아요. 손 주문은 돼요."
                         : "누르면 모든 대기 주문을 취소하고 자동매매를 멈춰요.").appFont(12).foregroundStyle(Theme.muted)
+        }
+    }
+
+    /// 켜고 끄는 안전장치 한 줄: 켜면 값 계단이 붙는다
+    @ViewBuilder private func optStep(on: Bool, toggle: @escaping (Bool) -> Void, value: Binding<Double>, range: ClosedRange<Double>, step: Double, text: String) -> some View {
+        Toggle(isOn: Binding(get: { on }, set: toggle)) { mt(text).appFont(14) }
+            .tint(Theme.teal)
+        if on {
+            Stepper(value: value, in: range, step: step) { mt("값 바꾸기").appFont(12).foregroundStyle(Theme.muted) }
         }
     }
 
@@ -883,7 +990,12 @@ struct MockSettingsView: View {
         if fees != d.s.fees { what.append("수수료 " + String(format: "%.3f%%", fees.commission * 100) + " · 세금 " + String(format: "%.2f%%", fees.sellTax * 100)) }
         if auto != d.s.auto { what.append(auto == 0 ? "자동 끔" : "자동 \(auto)분") }
         if guards != d.guards {
-            what.append("하루 손실 한도 −" + MockFmt.num(guards.dayLoss * 100) + "% · 한 번 주문 " + MockFmt.man(guards.orderCap) + " · 시세 호출 초당 " + MockFmt.num(guards.perSec) + "번")
+            what.append("하루 손실 한도 −" + MockFmt.num(guards.dayLoss * 100) + "% · 한 번 주문 " + MockFmt.man(guards.orderCap) + " · 시세 호출 초당 " + MockFmt.num(guards.perSec) + "번"
+                        + " · 시장 날씨 " + (guards.marketDrop.map { "−" + MockFmt.num($0 * 100) + "%" } ?? "끔")
+                        + " · 연속 손절 " + (guards.lossStreak.map { "\($0)번" } ?? "끔")
+                        + " · 호가 벽 " + (guards.bookWall.map { MockFmt.num($0) + "배" } ?? "끔"))
+            if guards.lossStreak != d.guards.lossStreak { d.touchArm("streak") }
+            if guards.bookWall != d.guards.bookWall { d.touchArm("wall") }
             let n = guards.perSec
             Task { await MockGate.shared.set(n) }
         }

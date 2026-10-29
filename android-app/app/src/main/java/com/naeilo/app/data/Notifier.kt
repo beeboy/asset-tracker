@@ -205,7 +205,7 @@ object Notifier {
         val need = m.keyValue / max(1.0, m.trackValue) - 1   // ios: Data/Notifier.swift:111
         val move = "어제 하루 ${AppModel.sgn(m.todayMove)}."   // ios: Data/Notifier.swift:112
         val p1 = cformat("%.1f", need * 100)   // Data/Notifier.swift:113 (검사 예외: 보간 속 따옴표 — 다음 줄에 옮김)
-        return if (need <= 0) "$move ${m.keyName}을 넘었어요." else "$move ${m.keyName}까지 $p1% 남았어요."
+        return if (need <= 0) (if (m.isGoal) "$move ${m.keyName}를 넘었어요." else "$move ${m.keyName}을 넘었어요.") else "$move ${m.keyName}까지 $p1% 더 올라야 해요."
     }
 
     // MARK: 조건 알림 (시세를 갱신할 때마다)

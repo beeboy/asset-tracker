@@ -29,6 +29,8 @@
 // 11) Claude 사용량 (/cu): 본인용 사용량 위젯 앱(usage-app/)이 15분마다 묻는다. 5시간·주간 한도 사용률(%)과 리셋 시각만 돌려준다.
 //       비밀값 CLAUDE_TOKEN = 맥 터미널에서 `claude setup-token` 으로 받은 토큰 (sk-ant-oat01-…, 1년). 폰에는 토큰을 두지 않는다.
 //       먼저 OAuth 사용량 주소를 묻고, 안 되면 가장 작은 메시지 한 번(1토큰)의 응답 머리글(unified 한도)에서 읽는다. 결과는 5분 기억.
+// 13) 동네 신문 (/heads): 구글 뉴스 한국판 전체 상위 기사 제목만 하루 한 번(한국 7시 뒤 첫 cron) 받아 5일 둔다.
+//       모두가 같은 값을 받는다 (KV 키 heads, 하루 쓰기 1번). 앱 동네 주민이 그 제목을 말한다. 비밀값 없음.
 const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/(v8\/finance\/chart|v1\/finance\/search)/;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
 const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
@@ -67,6 +69,7 @@ export default {
       if (u.pathname === "/push/test") { const r = await sendPush(env, b.sub || { endpoint: ep }, k.slice(2), { title: "naeilo 알림 시험", body: "알림이 잘 옵니다." }); return out({ ok: r.ok, status: r.status }); }
       return out({ error: "모르는 주소" }, 404);
     }
+    if (u.pathname === "/heads") { if (!env.VIEWS) return noKv(); const v = JSON.parse((await env.VIEWS.get("heads")) || '{"at":"","h":[]}'), keep = new Date(Date.now() + 9 * 3600e3 - 4 * 86400e3).toISOString().slice(0, 10); v.h = (Array.isArray(v.h) ? v.h : []).filter((x) => x.d >= keep); const r = out(v); r.headers.set("Cache-Control", "public, max-age=1800"); return r; } // 받기만 (모으기는 cron)
     if (u.pathname === "/mar") { const m = await mar(), r = out(m || { error: "매매기준율을 받지 못했습니다" }, 200); if (m) r.headers.set("Cache-Control", "public, max-age=600"); return r; } // 받은 값은 브라우저도 10분 기억
     if (u.pathname === "/collect") return out({ secret: !!env.GH_DISPATCH, last: env.VIEWS ? JSON.parse((await env.VIEWS.get("collect:last")) || "null") : "VIEWS 없음", crons: env.VIEWS ? JSON.parse((await env.VIEWS.get("cron:log")) || "[]") : null }); // 시세 수집 깨우기 확인 (10번)
     if (u.pathname === "/cu") return claudeUsage(env, out).catch((e) => out({ error: "사용량 오류: " + (e?.message || e) }, 502));
@@ -247,6 +250,7 @@ export default {
   async scheduled(event, env, ctx) {
     const now = new Date(), log = { cron: event.cron, at: now.toISOString() };
     ctx.waitUntil(wakeCollect(env, log)); // 수집 깨우기 (시간 판단은 wakeCollect 안에서)
+    if (env.VIEWS) ctx.waitUntil(heads(env).catch(() => null)); // 동네 신문 (하루 한 번은 heads 안에서)
     // cron 은 15분 하나뿐이라 (여러 개 두면 알림 cron 만 불렸다) 알림 검사는 평일 UTC 13~22시의 :00, :30 에만
     const wd = now.getUTCDay(), h = now.getUTCHours();
     if (!(wd >= 1 && wd <= 5 && h >= 13 && h <= 22 && now.getUTCMinutes() % 30 < 10)) return;
@@ -275,6 +279,28 @@ export default {
     } while (cursor);
   },
 };
+
+// 13) 동네 신문: 구글 뉴스 한국판 전체·분야별 상위 기사 제목. 하루 50개, 5일 둔다 (최대 250개)
+async function heads(env) {
+  const kst = new Date(Date.now() + 9 * 3600e3), today = kst.toISOString().slice(0, 10);
+  const old = JSON.parse((await env.VIEWS.get("heads")) || "null") || { at: "", h: [] };
+  if (old.at === today || kst.getUTCHours() < 7) return old;
+  const keep = new Date(kst.getTime() - 4 * 86400e3).toISOString().slice(0, 10); // 오늘 포함 5일
+  const dec = (t) => t.replace(/<!\[CDATA\[|\]\]>/g, "").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)).replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").trim();
+  // 전체 상위 한 줄은 30개 남짓이라, 분야별 상위를 차례로 섞어 하루 50개를 채운다 (받기 9번, 하루 한 번)
+  const feeds = ["", ...["NATION", "WORLD", "BUSINESS", "TECHNOLOGY", "SCIENCE", "HEALTH", "SPORTS", "ENTERTAINMENT"].map((t) => "/headlines/section/topic/" + t)];
+  const lists = await Promise.all(feeds.map(async (f) => {
+    const xml = await fetch(`https://news.google.com/rss${f}?hl=ko&gl=KR&ceid=KR:ko`, { headers: { "User-Agent": "Mozilla/5.0 naeilo-worker" }, signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.text() : "")).catch(() => "");
+    return [...xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>/g)].map((m) => dec(m[1]).replace(/\s+-\s+[^-]+$/, "").trim()).filter((t) => t.length >= 8 && t.length <= 70); // 제목만, " - 언론사" 꼬리는 뺀다
+  }));
+  const seen = new Set(), got = [];
+  for (let i = 0; got.length < 50 && lists.some((l) => i < l.length); i++) for (const l of lists) if (i < l.length && got.length < 50 && !seen.has(l[i])) { seen.add(l[i]); got.push(l[i]); }
+  if (!got.length) return old; // 못 받으면 쓰지 않고 다음 cron 에 다시
+  const past = Array.isArray(old.h) ? old.h : [];
+  const v = { at: today, h: [...got.map((t) => ({ d: today, t })), ...past.filter((x) => x.d >= keep && !seen.has(x.t))].slice(0, 250) };
+  await env.VIEWS.put("heads", JSON.stringify(v));
+  return v;
+}
 
 // 10) 시세 수집 깨우기: GitHub 예약 실행은 밀리거나 빠질 때가 많아서, 이 중계의 Cron 이 collect 작업을 직접 실행시킨다.
 //       cron 은 proxy/wrangler.toml 의 15분 하나. 비밀값 GH_DISPATCH =

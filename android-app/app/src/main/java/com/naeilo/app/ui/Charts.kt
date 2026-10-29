@@ -1,6 +1,7 @@
 package com.naeilo.app.ui
 
 import androidx.compose.animation.AnimatedContent
+import com.naeilo.app.core.tr
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -168,7 +169,7 @@ fun Sparkline(
                     }.background(Theme.card).padding(horizontal = 8.dp, vertical = 2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    T(Scrub.fmt.format(scrub.date(i.toDouble() / n)), style = appFont(12f), color = muted, maxLines = 1)   // ios: Views/Charts.swift:54,57
+                    T(scrub.label?.invoke(i) ?: Scrub.fmt.format(scrub.date(i.toDouble() / n)), style = appFont(12f), color = muted, maxLines = 1)   // ios: Views/Charts.swift:54,57
                     T(scrub.value(points[i]), style = appFont(20f, FontWeight.Bold), color = Theme.ink, maxLines = 1)   // ios: Views/Charts.swift:55
                 }
             }
@@ -196,39 +197,46 @@ internal fun thin(p: List<Double>, w: Int): List<Int> {
 class Scrub(
     val date: (Double) -> Instant,   // ios: Views/Charts.swift:75
     val value: (Double) -> String,   // ios: Views/Charts.swift:76
+    val label: ((Int) -> String)? = null,   // ios: Views/Charts.swift:77 있으면 점 번호 → 날짜 글자 (점마다 실제 날짜)
 ) {
     companion object {
-        // ios: Views/Charts.swift:77
+        // ios: Views/Charts.swift:78
         val fmt: DateTimeFormatter by lazy { DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm", AppModel.dateLocale).withZone(ZoneId.systemDefault()) }
         /** 기간 그래프: 왼쪽 끝 = 기간 전, 오른쪽 끝 = 지금 */
-        // ios: Views/Charts.swift:79
+        // ios: Views/Charts.swift:80
         fun period(p: Period, value: (Double) -> String): Scrub {
-            val days: Double = if (p == Period.d1) 1.0 else if (p == Period.w1) 7.0 else p.span * 1095   // ios: Views/Charts.swift:80
-            val now = Instant.now()   // ios: Views/Charts.swift:81
-            return Scrub(date = { now.minusMillis(((1 - it) * days * 86400 * 1000).toLong()) }, value = value)   // ios: Views/Charts.swift:82
+            val days: Double = if (p == Period.d1) 1.0 else if (p == Period.w1) 7.0 else p.span * 1095   // ios: Views/Charts.swift:81
+            val now = Instant.now()   // ios: Views/Charts.swift:82
+            return Scrub(date = { now.minusMillis(((1 - it) * days * 86400 * 1000).toLong()) }, value = value)   // ios: Views/Charts.swift:83
         }
+        /** 점마다 날짜가 있는 그래프: "yyyy.MM.dd" 만 (시각 없음). 날짜가 null 인 점(맨 끝)은 '지금' */
+        fun days(ds: List<String?>, value: (Double) -> String): Scrub =   // ios: Views/Charts.swift:86
+            Scrub(date = { Instant.now() }, value = value, label = { i ->   // ios: Views/Charts.swift:87
+                val d = if (i >= 0 && i < ds.size) ds[i] else null; if (d == null) tr("지금")   // ios: Views/Charts.swift:88
+                else d.replace("-", ".")   // ios: Views/Charts.swift:89
+            })
     }
 }
 
 // 글자 마크 로고 (상표 로고 아님). DRNK 는 드링커 도트 로고.
-// ios: Views/Charts.swift:87,90
+// ios: Views/Charts.swift:95,98
 @Composable
 fun LogoTile(
-    symbol: String,   // ios: Views/Charts.swift:88
-    size: Dp = 36.dp,   // ios: Views/Charts.swift:89
+    symbol: String,   // ios: Views/Charts.swift:96
+    size: Dp = 36.dp,   // ios: Views/Charts.swift:97
 ) {
-    val p = Sample.profiles[symbol]   // ios: Views/Charts.swift:91
+    val p = Sample.profiles[symbol]   // ios: Views/Charts.swift:99
     val ctx = LocalContext.current
-    // ios: Views/Charts.swift:92,93,103,104
+    // ios: Views/Charts.swift:100,101,111,112
     Box(Modifier.size(size).background(hex(p?.color ?: 0x5B6670), RoundedCornerShape(size * 0.28f)).semantics { hideFromAccessibility() }, contentAlignment = Alignment.Center) {
         val img = p?.logoImage
-        // ios: Views/Charts.swift:94,95
+        // ios: Views/Charts.swift:102,103
         if (img != null) {
             Image(ImageBitmap.imageResource(drawableId(ctx, img)), null, Modifier.size(size * 0.86f, size * 0.86f), filterQuality = FilterQuality.None)
-        } else {   // ios: Views/Charts.swift:96
+        } else {   // ios: Views/Charts.swift:104
             // 추가한 종목은 이름 첫 글자
-            val mono = p?.mono ?: (Sample.symbol(symbol)?.name ?: StockCatalog.all.firstOrNull { it.id == symbol }?.name ?: symbol).take(1).uppercase()   // ios: Views/Charts.swift:98
-            // ios: Views/Charts.swift:99,100 (.font(.system(size:)) 는 큰 글자를 따르지 않는다)
+            val mono = p?.mono ?: (Sample.symbol(symbol)?.name ?: StockCatalog.all.firstOrNull { it.id == symbol }?.name ?: symbol).take(1).uppercase()   // ios: Views/Charts.swift:106
+            // ios: Views/Charts.swift:107,108 (.font(.system(size:)) 는 큰 글자를 따르지 않는다)
             BasicText(mono, style = TextStyle(fontSize = (size.value * (if (mono.length > 1) 0.36f else 0.46f)).sp, fontWeight = FontWeight.Black, color = hex(p?.fg ?: 0xFFFFFF)))
         }
     }
@@ -236,24 +244,24 @@ fun LogoTile(
 
 object LogoTile {
     /** 그림 로고가 있나 (없으면 이름 첫 글자 로고. 종목 탭은 글자 로고를 쓰지 않는다) */
-    fun has(symbol: String): Boolean = Sample.profiles[symbol]?.logoImage != null   // ios: Views/Charts.swift:91
+    fun has(symbol: String): Boolean = Sample.profiles[symbol]?.logoImage != null   // ios: Views/Charts.swift:99
 }
 
 // 현재 점 심장 박동: 점에서 점 색 동심원이 두 번(두근) 살짝 퍼지다 사라지고 잠깐 쉰다.
 // 원만 그리기 단계에서 그려서, 움직이는 동안 그래프(안쪽 층)는 다시 그리지 않는다
-// ios: Views/Charts.swift:110
+// ios: Views/Charts.swift:118
 object Pulse {
-    const val period = 1.6; const val spread = 0.9; const val gap = 0.2   // ios: Views/Charts.swift:111
+    const val period = 1.6; const val spread = 0.9; const val gap = 0.2   // ios: Views/Charts.swift:119
 }
 
 /** 지금 시각(초)을 1/30초마다: 그리기 단계에서만 읽는다. 동작 줄이기·숨은 탭이면 멈춘다 (null).
  *  beats 를 주면 (안드로이드) 그만큼만 뛰고 멈춘다: 멈추면 null 이라 다시 그리지 않는다. key 가 바뀌면 다시 뛴다 */
 @Composable
 private fun pulseClock(beats: Int? = null, key: Any? = null): androidx.compose.runtime.FloatState? {
-    val still = LocalReduceMotion.current || !LocalTabActive.current   // ios: Views/Charts.swift:118,120
+    val still = LocalReduceMotion.current || !LocalTabActive.current   // ios: Views/Charts.swift:126,128
     val t = remember { mutableFloatStateOf(0f) }
     var done by remember(key) { mutableStateOf(false) }
-    // Views/Charts.swift:121 TimelineView(.animation(minimumInterval: 1 / 30)): 화면 프레임 시계를 1/30초마다만 받는다 (검사 예외)
+    // Views/Charts.swift:129 TimelineView(.animation(minimumInterval: 1 / 30)): 화면 프레임 시계를 1/30초마다만 받는다 (검사 예외)
     LaunchedEffect(still, key) {
         if (still) { done = false; return@LaunchedEffect }   // 탭으로 돌아오면 다시 뛴다
         var last = 0L; val gap = (1.0 / 30 * 1e9).toLong(); var t0 = 0L
@@ -273,42 +281,42 @@ private fun pulseClock(beats: Int? = null, key: Any? = null): androidx.compose.r
 
 /** 박동 원 그리기 (가운데 c, 점 지름 d) */
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.ring(color: Color, d: Float, c: Offset, now: Float) {
-    val ph = now.toDouble() % Pulse.period   // ios: Views/Charts.swift:124
-    // ios: Views/Charts.swift:122,125
+    val ph = now.toDouble() % Pulse.period   // ios: Views/Charts.swift:132
+    // ios: Views/Charts.swift:130,133
     for (k in 0 until 2) {
-        val a = (ph - k.toDouble() * Pulse.gap) / Pulse.spread   // ios: Views/Charts.swift:126
-        if (!(a > 0 && a < 1)) continue   // ios: Views/Charts.swift:127
-        val r = d / 2 + a.toFloat() * d * 1.5f   // ios: Views/Charts.swift:128
-        // ios: Views/Charts.swift:129,130
+        val a = (ph - k.toDouble() * Pulse.gap) / Pulse.spread   // ios: Views/Charts.swift:134
+        if (!(a > 0 && a < 1)) continue   // ios: Views/Charts.swift:135
+        val r = d / 2 + a.toFloat() * d * 1.5f   // ios: Views/Charts.swift:136
+        // ios: Views/Charts.swift:137,138
         drawOval(color.copy(alpha = (0.6 * (1 - a)).toFloat()), Offset(c.x - r, c.y - r), Size(r * 2, r * 2), style = Stroke(width = 1.5f * density))
     }
 }
 
 /** 퍼지는 원만 (가운데 = 점 자리). 동작 줄이기를 켜면 안 그린다 */
-// ios: Views/Charts.swift:115,119
+// ios: Views/Charts.swift:123,127
 @Composable
 fun PulseRing(
-    color: Color,   // ios: Views/Charts.swift:116
-    dot: Dp = 7.dp,   // ios: Views/Charts.swift:117
+    color: Color,   // ios: Views/Charts.swift:124
+    dot: Dp = 7.dp,   // ios: Views/Charts.swift:125
     modifier: Modifier = Modifier,
 ) {
     val t = pulseClock() ?: return
-    // ios: Views/Charts.swift:123,134,135
+    // ios: Views/Charts.swift:131,142,143
     Canvas(modifier.size(dot * 4.2f, dot * 4.2f)) { ring(color, dot.toPx(), Offset(size.width / 2, size.height / 2), t.floatValue) }
 }
 
 /** SwiftUI 쪽에서 쓰는 박동 점 (원 + 점) */
-// ios: Views/Charts.swift:141,144
+// ios: Views/Charts.swift:149,152
 @Composable
 fun PulseDot(
-    color: Color,   // ios: Views/Charts.swift:142
-    dot: Dp = 7.dp,   // ios: Views/Charts.swift:143
+    color: Color,   // ios: Views/Charts.swift:150
+    dot: Dp = 7.dp,   // ios: Views/Charts.swift:151
     modifier: Modifier = Modifier,
 ) {
-    // ios: Views/Charts.swift:145
+    // ios: Views/Charts.swift:153
     Box(modifier.size(dot * 4.2f), contentAlignment = Alignment.Center) {
-        PulseRing(color = color, dot = dot)   // ios: Views/Charts.swift:146
-        Box(Modifier.size(dot, dot).background(color, androidx.compose.foundation.shape.CircleShape))   // ios: Views/Charts.swift:147
+        PulseRing(color = color, dot = dot)   // ios: Views/Charts.swift:154
+        Box(Modifier.size(dot, dot).background(color, androidx.compose.foundation.shape.CircleShape))   // ios: Views/Charts.swift:155
     }
 }
 
@@ -316,19 +324,19 @@ fun PulseDot(
  * 그래프(Canvas) 위에 박동 원만 얹는다. at: 그래프 크기 → 점 자리 (없으면 null).
  * 시간은 그리기 단계에서만 읽어 화면을 다시 짜지 않는다. 안쪽 그래프는 따로 층이라 원만 다시 그린다.
  */
-// ios: Views/Charts.swift:152,154,155,156,159
+// ios: Views/Charts.swift:160,162,163,164,167
 @Composable
 fun Modifier.pulse(color: Color, dot: Dp, beats: Int? = null, key: Any? = null, at: (Size) -> Offset?): Modifier {
     val t = pulseClock(beats, key) ?: return this
     return this.drawWithContent {
         drawContent()
-        val c = at(size) ?: return@drawWithContent   // ios: Views/Charts.swift:157
+        val c = at(size) ?: return@drawWithContent   // ios: Views/Charts.swift:165
         ring(color, dot.toPx(), c, t.floatValue)
     }.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }   // 안쪽 그래프는 한 번 그린 그림으로 두고 원만 매번 그린다
 }
 
 // 금액이 바뀔 때 숫자가 한 자리씩 위아래로 넘어가며 바뀐다 (플립). 글로 된 숫자(분석 카드 값 등)도 같다
-// ios: Views/Charts.swift:165,166,167,171,173,174
+// ios: Views/Charts.swift:173,174,175,179,181,182
 @Composable
 fun RollText(text: String, value: Any, modifier: Modifier = Modifier, style: TextStyle) =
     RollText(androidx.compose.ui.text.AnnotatedString(text), value, modifier, style)

@@ -516,7 +516,7 @@ final class Sync {
         siteState = st
         localAt = at
         lastSig = signature(m)
-        if !skipped.isEmpty { state = .failed(String(localized: "시세를 못 받은 종목 \(String(describing: skipped.joined(separator: ", ")))는 사이트에만 있어요")) }
+        if !skipped.isEmpty { state = .failed((TownLook.batchim(skipped.last ?? "") ? String(localized: "시세를 못 받은 종목 \(String(describing: skipped.joined(separator: ", ")))은 사이트에만 있어요") : String(localized: "시세를 못 받은 종목 \(String(describing: skipped.joined(separator: ", ")))는 사이트에만 있어요"))) }
     }
 
     // MARK: 동네 (app.town)
