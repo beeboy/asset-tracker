@@ -69,7 +69,7 @@ export default {
       if (u.pathname === "/push/test") { const r = await sendPush(env, b.sub || { endpoint: ep }, k.slice(2), { title: "naeilo 알림 시험", body: "알림이 잘 옵니다." }); return out({ ok: r.ok, status: r.status }); }
       return out({ error: "모르는 주소" }, 404);
     }
-    if (u.pathname === "/heads") { if (!env.VIEWS) return noKv(); const v = JSON.parse((await env.VIEWS.get("heads")) || '{"at":"","h":[]}'), keep = new Date(Date.now() + 9 * 3600e3 - 4 * 86400e3).toISOString().slice(0, 10); v.h = (Array.isArray(v.h) ? v.h : []).filter((x) => x.d >= keep); const r = out(v); r.headers.set("Cache-Control", "public, max-age=1800"); return r; } // 받기만 (모으기는 cron)
+    if (u.pathname === "/heads") { if (!env.VIEWS) return noKv(); const v = JSON.parse((await env.VIEWS.get("heads")) || '{"at":"","h":[]}'), keep = new Date(Date.now() + 9 * 3600e3 - 4 * 86400e3).toISOString().slice(0, 10); for (const k of ["h", "e"]) v[k] = (Array.isArray(v[k]) ? v[k] : []).filter((x) => x.d >= keep); const r = out(v); r.headers.set("Cache-Control", "public, max-age=1800"); return r; } // 받기만 (모으기는 cron)
     if (u.pathname === "/mar") { const m = await mar(), r = out(m || { error: "매매기준율을 받지 못했습니다" }, 200); if (m) r.headers.set("Cache-Control", "public, max-age=600"); return r; } // 받은 값은 브라우저도 10분 기억
     if (u.pathname === "/collect") return out({ secret: !!env.GH_DISPATCH, last: env.VIEWS ? JSON.parse((await env.VIEWS.get("collect:last")) || "null") : "VIEWS 없음", crons: env.VIEWS ? JSON.parse((await env.VIEWS.get("cron:log")) || "[]") : null }); // 시세 수집 깨우기 확인 (10번)
     if (u.pathname === "/cu") return claudeUsage(env, out).catch((e) => out({ error: "사용량 오류: " + (e?.message || e) }, 502));
@@ -280,7 +280,7 @@ export default {
   },
 };
 
-// 13) 동네 신문: 구글 뉴스 한국판 전체·분야별 상위 기사 제목. 하루 50개, 5일 둔다 (최대 250개)
+// 13) 동네 신문: 구글 뉴스 한국판(h)·미국판(e, 영어 앱) 전체·분야별 상위 기사 제목. 하루 50개씩, 5일 둔다 (최대 250개씩)
 async function heads(env) {
   const kst = new Date(Date.now() + 9 * 3600e3), today = kst.toISOString().slice(0, 10);
   const old = JSON.parse((await env.VIEWS.get("heads")) || "null") || { at: "", h: [] };
@@ -289,15 +289,20 @@ async function heads(env) {
   const dec = (t) => t.replace(/<!\[CDATA\[|\]\]>/g, "").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)).replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").trim();
   // 전체 상위 한 줄은 30개 남짓이라, 분야별 상위를 차례로 섞어 하루 50개를 채운다 (받기 9번, 하루 한 번)
   const feeds = ["", ...["NATION", "WORLD", "BUSINESS", "TECHNOLOGY", "SCIENCE", "HEALTH", "SPORTS", "ENTERTAINMENT"].map((t) => "/headlines/section/topic/" + t)];
-  const lists = await Promise.all(feeds.map(async (f) => {
-    const xml = await fetch(`https://news.google.com/rss${f}?hl=ko&gl=KR&ceid=KR:ko`, { headers: { "User-Agent": "Mozilla/5.0 naeilo-worker" }, signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.text() : "")).catch(() => "");
-    return [...xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>/g)].map((m) => dec(m[1]).replace(/\s+-\s+[^-]+$/, "").trim()).filter((t) => t.length >= 8 && t.length <= 70); // 제목만, " - 언론사" 꼬리는 뺀다
-  }));
-  const seen = new Set(), got = [];
-  for (let i = 0; got.length < 50 && lists.some((l) => i < l.length); i++) for (const l of lists) if (i < l.length && got.length < 50 && !seen.has(l[i])) { seen.add(l[i]); got.push(l[i]); }
-  if (!got.length) return old; // 못 받으면 쓰지 않고 다음 cron 에 다시
-  const past = Array.isArray(old.h) ? old.h : [];
-  const v = { at: today, h: [...got.map((t) => ({ d: today, t })), ...past.filter((x) => x.d >= keep && !seen.has(x.t))].slice(0, 250) };
+  // 한국판(h)과 영어 앱용 미국판(e)을 같은 방식으로 (받기 18번, 하루 한 번)
+  const pull = async (loc, max) => {
+    const lists = await Promise.all(feeds.map(async (f) => {
+      const xml = await fetch(`https://news.google.com/rss${f}?${loc}`, { headers: { "User-Agent": "Mozilla/5.0 naeilo-worker" }, signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.text() : "")).catch(() => "");
+      return [...xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>/g)].map((m) => dec(m[1]).replace(/\s+-\s+[^-]+$/, "").trim()).filter((t) => t.length >= 8 && t.length <= max); // 제목만, " - 언론사" 꼬리는 뺀다
+    }));
+    const seen = new Set(), got = [];
+    for (let i = 0; got.length < 50 && lists.some((l) => i < l.length); i++) for (const l of lists) if (i < l.length && got.length < 50 && !seen.has(l[i])) { seen.add(l[i]); got.push(l[i]); }
+    return got;
+  };
+  const [ko, en] = await Promise.all([pull("hl=ko&gl=KR&ceid=KR:ko", 70), pull("hl=en-US&gl=US&ceid=US:en", 110)]);
+  if (!ko.length && !en.length) return old; // 못 받으면 쓰지 않고 다음 cron 에 다시
+  const merge = (got, past) => { const seen = new Set(got); return [...got.map((t) => ({ d: today, t })), ...(Array.isArray(past) ? past : []).filter((x) => x.d >= keep && !seen.has(x.t))].slice(0, 250); };
+  const v = { at: today, h: merge(ko, old.h), e: merge(en, old.e) };
   await env.VIEWS.put("heads", JSON.stringify(v));
   return v;
 }
