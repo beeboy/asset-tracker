@@ -528,7 +528,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
                             right = wt.indices.maxByOrNull { wt[it] } ?: 0,   // ios: Data/AppModel.swift:530
                             fb = { wtList }))   // ios: Data/AppModel.swift:531
             val top = byW[0]; val w = top.value / tot; val n = near3(w, step = 0.2, lo = 0.2, hi = 1.0, salt = 1)   // ios: Data/AppModel.swift:532
-            qs.add(Question(id = "topshare", tag = "비중 퀴즈", q = "${top.sym.short}는 내 평가액의 몇 %쯤일까요?", opts = n.opts.map { "약 ${pct(it)}" }, right = n.right,   // ios: Data/AppModel.swift:533
+            qs.add(Question(id = "topshare", tag = "비중 퀴즈", q = (if (com.naeilo.app.ui.town.TownLook.batchim(top.sym.short)) "${top.sym.short}은 내 평가액의 몇 %쯤일까요?" else "${top.sym.short}는 내 평가액의 몇 %쯤일까요?"), opts = n.opts.map { "약 ${pct(it)}" }, right = n.right,   // ios: Data/AppModel.swift:533
                             fb = { "${top.sym.short} ${won(top.value)} ÷ 전체 ${won(tot)} = ${pct(w)}." }))   // ios: Data/AppModel.swift:534
         }
         // 환율: 달러 종목이 있을 때
@@ -564,7 +564,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
                                 right = if (now > y) 0 else if (now == y) 1 else 2,   // ios: Data/AppModel.swift:566
                                 fb = { "어제 ${y}칸 → 오늘 ${now}칸. 1칸은 ${won(unit)}이에요." }))   // ios: Data/AppModel.swift:567
                 val wr = weekRange; val v = trackValue   // ios: Data/AppModel.swift:568
-                qs.add(Question(id = "week", tag = "주간 예보", q = "이번 주 예보 범위는 ${won(wr.lo)}~${won(wr.hi)}예요. 지금 평가액은 그 안일까요?",   // ios: Data/AppModel.swift:569
+                qs.add(Question(id = "week", tag = "주간 예보", q = "이번 주 예보 범위는 ${won(wr.lo)}~${won(wr.hi)}이에요. 지금 평가액은 그 안일까요?",   // ios: Data/AppModel.swift:569
                                 opts = listOf("안이에요", "밖이에요"), right = if (v >= wr.lo && v <= wr.hi) 0 else 1,   // ios: Data/AppModel.swift:570
                                 fb = { "지금 ${won(v)}. 예보 범위는 절반쯤 맞도록 잡은 폭이라, 밖으로 나가는 날도 자주 있어요." }))   // ios: Data/AppModel.swift:571
             }

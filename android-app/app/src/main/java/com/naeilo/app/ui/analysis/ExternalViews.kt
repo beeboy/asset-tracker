@@ -213,7 +213,7 @@ object ExternalView {
         val rest = strong.drop(1).fold(0.0) { a, x -> a + x.amt }   // ios: Views/AnalysisDetail.swift:764
         if (strong.size == 1) return "사실상 ${name} 하나"   // ios: Views/AnalysisDetail.swift:765
         if (rest < top.amt / 3) return "거의 ${name} 때문 · 나머지 합쳐도 1/3 미만"   // ios: Views/AnalysisDetail.swift:766
-        if (rest < top.amt) return "${name}이 가장 큼 · 나머지 합보다 큼"   // ios: Views/AnalysisDetail.swift:767
+        if (rest < top.amt) return (if (com.naeilo.app.ui.town.TownLook.batchim(name)) "${name}이 가장 큼 · 나머지 합보다 큼" else "${name}가 가장 큼 · 나머지 합보다 큼")   // ios: Views/AnalysisDetail.swift:767
         val name2 = FactorDetailView.names[strong[1].k] ?: ""; return "${name}·${name2} 비슷"   // Views/AnalysisDetail.swift:878 (검사 예외: 같은 글)
     }
 

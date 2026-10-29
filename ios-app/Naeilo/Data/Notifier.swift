@@ -110,7 +110,7 @@ enum Notifier {
         // 남은 거리 = 지금에서 몇 % 더 올라야 본전(목표)인지 (시안 알림 미리보기와 같은 식)
         let need = m.keyValue / max(1, m.trackValue) - 1
         let move = String(localized: "어제 하루 \(String(describing: AppModel.sgn(m.todayMove))).")
-        return need <= 0 ? String(localized: "\(String(describing: move)) \(String(describing: m.keyName))을 넘었어요.") : String(localized: "\(String(describing: move)) \(String(describing: m.keyName))까지 \(String(describing: String(format: "%.1f", need * 100)))% 남았어요.")
+        return need <= 0 ? (m.isGoal ? String(localized: "\(String(describing: move)) \(String(describing: m.keyName))를 넘었어요.") : String(localized: "\(String(describing: move)) \(String(describing: m.keyName))을 넘었어요.")) : String(localized: "\(String(describing: move)) \(String(describing: m.keyName))까지 \(String(describing: String(format: "%.1f", need * 100)))% 더 올라야 해요.")
     }
 
     // MARK: 조건 알림 (시세를 갱신할 때마다)

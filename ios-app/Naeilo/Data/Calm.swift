@@ -243,9 +243,9 @@ struct Calm: Codable, Equatable {
         case ("", _): return String(localized: "아직 모르겠습니다. 기록 \(String(describing: s.n))/\(String(describing: Self.minEvents)).")
         case ("seri", 1): return String(localized: "관찰 중. 평정 지수 \(String(describing: n)).")
         case ("seri", 2): return String(localized: "평정 지수는 \(String(describing: n))입니다. 계속 보겠습니다.")
-        case ("seri", _): return String(localized: "평정 지수 \(String(describing: n))이에요. 같이 봐 와서 알아요.")
+        case ("seri", _): return (TownLook.batchim("\(n)") ? String(localized: "평정 지수 \(String(describing: n))이에요. 같이 봐 와서 알아요.") : String(localized: "평정 지수 \(String(describing: n))예요. 같이 봐 와서 알아요."))
         case ("sio", 1): return String(localized: "\(String(describing: n)). 세어 둘게.")
-        case ("sio", 2): return String(localized: "\(String(describing: n))이야. 어제보다 하루 더 셌어.")
+        case ("sio", 2): return (TownLook.batchim("\(n)") ? String(localized: "\(String(describing: n))이야. 어제보다 하루 더 셌어.") : String(localized: "\(String(describing: n))야. 어제보다 하루 더 셌어."))
         case ("sio", _): return String(localized: "\(String(describing: n)). 같이 센 날이 \(String(describing: d))일이야.")
         case ("seonbae", 1): return String(localized: "평정 지수 \(String(describing: n)). 너는 이 숫자를 어떻게 생각해?")
         case ("seonbae", 2): return String(localized: "\(String(describing: n))이네. 지난달의 너라면 뭘 했을까?")
@@ -253,9 +253,9 @@ struct Calm: Codable, Equatable {
         case ("ir", 1): return String(localized: "\(String(describing: n)). 나도 빨랐어.")
         case ("ir", 2): return String(localized: "\(String(describing: n)). 넘치기 전에 멈춘 날이 늘고 있어.")
         case ("ir", _): return String(localized: "\(String(describing: n)). 너는 나처럼 되지 않았어.")
-        case ("sua", 1): return String(localized: "\(String(describing: n))이에요. 아직 고르는 중이에요.")
-        case ("sua", 2): return String(localized: "\(String(describing: n))이에요. 제때 오는 게 느껴져요.")
-        default: return String(localized: "\(String(describing: n))이에요. 또 올게요. 약속은 아니에요.")
+        case ("sua", 1): return (TownLook.batchim("\(n)") ? String(localized: "\(String(describing: n))이에요. 아직 고르는 중이에요.") : String(localized: "\(String(describing: n))예요. 아직 고르는 중이에요."))
+        case ("sua", 2): return (TownLook.batchim("\(n)") ? String(localized: "\(String(describing: n))이에요. 제때 오는 게 느껴져요.") : String(localized: "\(String(describing: n))예요. 제때 오는 게 느껴져요."))
+        default: return (TownLook.batchim("\(n)") ? String(localized: "\(String(describing: n))이에요. 또 올게요. 약속은 아니에요.") : String(localized: "\(String(describing: n))예요. 또 올게요. 약속은 아니에요."))
         }
     }
 

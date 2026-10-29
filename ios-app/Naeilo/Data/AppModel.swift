@@ -533,7 +533,7 @@ final class AppModel {
                             right: wt.indices.max { wt[$0] < wt[$1] } ?? 0,
                             fb: { _ in wtList }))
             let top = byW[0], w = top.value / tot, n = Self.near3(w, step: 0.2, lo: 0.2, hi: 1, salt: 1)
-            qs.append(.init(id: "topshare", tag: String(localized: "비중 퀴즈"), q: String(localized: "\(String(describing: top.sym.short))는 내 평가액의 몇 %쯤일까요?"), opts: n.opts.map { String(localized: "약 \(String(describing: Self.pct($0)))") }, right: n.right,
+            qs.append(.init(id: "topshare", tag: String(localized: "비중 퀴즈"), q: (TownLook.batchim(top.sym.short) ? String(localized: "\(String(describing: top.sym.short))은 내 평가액의 몇 %쯤일까요?") : String(localized: "\(String(describing: top.sym.short))는 내 평가액의 몇 %쯤일까요?")), opts: n.opts.map { String(localized: "약 \(String(describing: Self.pct($0)))") }, right: n.right,
                             fb: { _ in String(localized: "\(String(describing: top.sym.short)) \(String(describing: Self.won(top.value))) ÷ 전체 \(String(describing: Self.won(tot))) = \(String(describing: Self.pct(w))).") }))
         }
         // 환율: 달러 종목이 있을 때
@@ -569,7 +569,7 @@ final class AppModel {
                                 right: now > y ? 0 : now == y ? 1 : 2,
                                 fb: { _ in String(localized: "어제 \(String(describing: y))칸 → 오늘 \(String(describing: now))칸. 1칸은 \(String(describing: Self.won(unit)))이에요.") }))
                 let wr = weekRange, v = trackValue
-                qs.append(.init(id: "week", tag: String(localized: "주간 예보"), q: String(localized: "이번 주 예보 범위는 \(String(describing: Self.won(wr.lo)))~\(String(describing: Self.won(wr.hi)))예요. 지금 평가액은 그 안일까요?"),
+                qs.append(.init(id: "week", tag: String(localized: "주간 예보"), q: String(localized: "이번 주 예보 범위는 \(String(describing: Self.won(wr.lo)))~\(String(describing: Self.won(wr.hi)))이에요. 지금 평가액은 그 안일까요?"),
                                 opts: [String(localized: "안이에요"), String(localized: "밖이에요")], right: v >= wr.lo && v <= wr.hi ? 0 : 1,
                                 fb: { _ in String(localized: "지금 \(String(describing: Self.won(v))). 예보 범위는 절반쯤 맞도록 잡은 폭이라, 밖으로 나가는 날도 자주 있어요.") }))
             }

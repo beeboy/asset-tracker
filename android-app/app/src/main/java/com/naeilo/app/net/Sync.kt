@@ -613,7 +613,7 @@ class Sync {   // ios: Data/Sync.swift:17,18
         siteState = st   // ios: Data/Sync.swift:490
         localAt = at   // ios: Data/Sync.swift:491
         lastSig = signature(m)   // ios: Data/Sync.swift:492
-        if (skipped.isNotEmpty()) state = State.failed("시세를 못 받은 종목 ${skipped.joinToString(", ")}는 사이트에만 있어요")   // Data/Sync.swift:470 (검사 예외: 옮김)
+        if (skipped.isNotEmpty()) state = State.failed((if (com.naeilo.app.ui.town.TownLook.batchim(skipped.lastOrNull() ?: "")) "시세를 못 받은 종목 ${skipped.joinToString(", ")}은 사이트에만 있어요" else "시세를 못 받은 종목 ${skipped.joinToString(", ")}는 사이트에만 있어요"))   // Data/Sync.swift:470 (검사 예외: 옮김)
     }
 
     /** 동기화할 값이 바뀌었는지 (종목 + 진행 + 내 기록 날짜 수. 날짜 칸은 빼고). 이 기기 안에서만 비교한다 */

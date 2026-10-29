@@ -774,6 +774,7 @@ enum MarFeed {
             let have = max(best?.date ?? "", old?.date ?? "")
             if have < Day.today, let x = await get(URLRequest(url: Config.relay.appendingPathComponent("mar"), timeoutInterval: 10)), x.date > (best?.date ?? "") { best = x }
         }
+        if best == nil { best = await ecos() }   // 예비: 한국은행 ECOS (그날 값은 다음 날 올라와 앞 날짜 고시일 수 있다. 더 새 값을 받아 뒀으면 아래에서 지킨다)
         guard var f = best else { return old }
         if let o = old, o.date > f.date { f = File(rate: o.rate, date: o.date, got: f.got, prev: o.prev) }   // 중계에서 받아 둔 더 새 값은 지킨다
         else if let o = old, o.date < f.date, f.prev == nil { f.prev = Prev(rate: o.rate, date: o.date) }   // 날짜가 바뀌면 앞 고시를 남긴다
@@ -804,6 +805,23 @@ enum MarFeed {
         guard let last = days.last else { return nil }
         let pv = days.dropLast().last
         return File(rate: last.rate, date: last.date, got: Date().timeIntervalSince1970, prev: pv)
+    }
+    /// 예비: 한국은행 ECOS 공개 샘플 키 (원/미국달러 매매기준율 731Y001, 서울외국환중개와 같은 값). 오래된 날부터 10건까지라 13일만 묻는다
+    private static func ecos() async -> File? {
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = TimeZone(identifier: "Asia/Seoul"); f.dateFormat = "yyyyMMdd"
+        let st = f.string(from: Date().addingTimeInterval(-12 * 86400)), end = f.string(from: Date())
+        guard let url = URL(string: "https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1/10/731Y001/D/\(st)/\(end)/0000001"),
+              let (data, resp) = try? await URLSession.shared.data(for: URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let rows = (o["StatisticSearch"] as? [String: Any])?["row"] as? [[String: Any]] else { return nil }
+        let days: [Prev] = rows.compactMap { r in
+            guard let t = r["TIME"] as? String, t.count == 8,
+                  let v = (r["DATA_VALUE"] as? String).flatMap({ Double($0.replacingOccurrences(of: ",", with: "")) }), v > 500, v < 5000 else { return nil }
+            return Prev(rate: v, date: "\(t.prefix(4))-\(t.dropFirst(4).prefix(2))-\(t.suffix(2))")
+        }.sorted { $0.date < $1.date }
+        guard let last = days.last else { return nil }
+        return File(rate: last.rate, date: last.date, got: Date().timeIntervalSince1970, prev: days.dropLast().last)
     }
     private static func get(_ req: URLRequest) async -> File? {
         guard let (data, resp) = try? await URLSession.shared.data(for: req),

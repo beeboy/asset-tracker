@@ -840,14 +840,14 @@ internal object ThemeBand {
 }
 
 /** 새 테마 몫 띠: 바깥 틀 (안쪽 띠는 band 가 그린다) */
-// ios: Views/HoldingsView.swift:436,437,438,439,440,441,442,443,444,445,446,447,448,449
+// ios: Views/HoldingsView.swift:438,439,440,441,442,443,444,445,446,447,448,449,450,451
 @Composable
 internal fun ThemeBandFrame(look: BoxLook, band: @Composable (height: Dp, radius: Dp) -> Unit) {
     val dk = boxDark()
     when (look) {
         BoxLook.dory -> Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(ThemeBand.glass(dk)).border(1.5.dp, ThemeBand.glassRim(dk), RoundedCornerShape(50)).padding(2.dp)) { band(8.dp, 4.dp) }
         BoxLook.pino -> Box(Modifier.fillMaxWidth().background(ThemeBand.wood, ThemeBand.pinoShape).padding(2.dp)) { band(7.dp, 3.dp) }
-        BoxLook.mug -> Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(ThemeBand.sphereTrack(dk)).padding(2.dp)) { band(6.dp, 3.dp) }   // ios: Views/HoldingsView.swift:464
+        BoxLook.mug -> Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(ThemeBand.sphereTrack(dk)).padding(2.dp)) { band(6.dp, 3.dp) }   // ios: Views/HoldingsView.swift:466
         else -> Column(Modifier.fillMaxWidth().border(1.dp, ThemeBand.dirtRim(dk))) {
             Box(Modifier.fillMaxWidth().height(2.dp).background(ThemeBand.chalk(dk)))
             Box(Modifier.fillMaxWidth().background(ThemeBand.dirt(dk)).padding(vertical = 3.dp)) { band(4.dp, 0.dp) }

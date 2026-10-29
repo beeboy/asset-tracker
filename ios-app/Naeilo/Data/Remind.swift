@@ -351,7 +351,7 @@ final class Remind {
         let w = log.weeks, ended = Self.endedWeeks(w)
         var a: [RemindItem] = []
         if let b = Self.badges.last(where: { $0.n <= (log.guessHits ?? 0) }) {
-            a.append(.init(id: "badge.\(b.n)", cat: .done, text: String(localized: "맞혀보기 배지 ‘\(String(describing: b.name))’를 받았어요. 예보를 \(String(describing: b.n))번 맞혔어요."), go: .week))
+            a.append(.init(id: "badge.\(b.n)", cat: .done, text: String(localized: "맞혀보기 배지 ‘\(String(describing: b.name))’을 받았어요. 예보를 \(String(describing: b.n))번 맞혔어요."), go: .week))
         }
         guard let last = ended.last, let r = w[last] else { return a }
         let inside = r.last >= r.lo && r.last <= r.hi
@@ -399,7 +399,7 @@ final class Remind {
         let story = Story.shared
         if let i = (0..<Shelter.chapters.count).first(where: { m.chapterOn($0) && !story.isDone(.side, $0) }) {
             let ch = Shelter.chapters[i], started = m.readPos.contains(i)
-            a.append(.init(id: "read.\(i)", cat: .doing, text: String(localized: "서재에 외전 \(String(describing: ch.title)) ‘\(String(describing: ch.name))’이 기다리고 있어요.") + (started ? String(localized: " 이어 읽을래요?") : ""),
+            a.append(.init(id: "read.\(i)", cat: .doing, text: (TownLook.batchim(ch.name) ? String(localized: "서재에 외전 \(String(describing: ch.title)) ‘\(String(describing: ch.name))’이 기다리고 있어요.") : String(localized: "서재에 외전 \(String(describing: ch.title)) ‘\(String(describing: ch.name))’가 기다리고 있어요.")) + (started ? String(localized: " 이어 읽을래요?") : ""),
                            go: .reader(i), once: false))
         }
         return a

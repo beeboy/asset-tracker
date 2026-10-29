@@ -861,6 +861,7 @@ object MarFeed {   // ios: Data/Market.swift:541
             val have = maxOf(best?.date ?: "", old?.date ?: "")   // ios: Data/Market.swift:566
             if (have < Day.today) { val x = get(FeedReq(URL(Config.relay, "mar").toString(), timeout = 10.0)); if (x != null && x.date > (best?.date ?: "")) best = x }   // ios: Data/Market.swift:567
         }
+        if (best == null) best = ecos()   // 예비: 한국은행 ECOS (그날 값은 다음 날 올라와 앞 날짜 고시일 수 있다. 더 새 값을 받아 뒀으면 아래에서 지킨다)   // ios: Data/Market.swift MarFeed.fetch
         val f = best ?: return@withContext old   // ios: Data/Market.swift:569
         var out = f
         if (old != null && old.date > f.date) out = File(rate = old.rate, date = old.date, got = f.got, prev = old.prev)   // 중계에서 받아 둔 더 새 값은 지킨다   // ios: Data/Market.swift:570
@@ -895,6 +896,22 @@ object MarFeed {   // ios: Data/Market.swift:541
         val last = days.lastOrNull() ?: return null   // ios: Data/Market.swift:596
         val pv = days.dropLast(1).lastOrNull()   // ios: Data/Market.swift:597
         return File(rate = last.rate, date = last.date, got = got, prev = pv)   // ios: Data/Market.swift:598
+    }
+    /** 예비: 한국은행 ECOS 공개 샘플 키 (원/미국달러 매매기준율 731Y001, 서울외국환중개와 같은 값). 오래된 날부터 10건까지라 13일만 묻는다 */
+    internal suspend fun ecos(): File? {   // ios: Data/Market.swift MarFeed.ecos
+        val f = DateTimeFormatter.ofPattern("yyyyMMdd", posix("en_US_POSIX")).withZone(ZoneId.of("Asia/Seoul"))
+        val st = f.format(Instant.now().minusSeconds(12 * 86400L)); val end = f.format(Instant.now())
+        val (code, data) = runCatching { FeedReq("https://ecos.bok.or.kr/api/StatisticSearch/sample/json/kr/1/10/731Y001/D/$st/$end/0000001", timeout = 8.0).send() }.getOrNull() ?: return null
+        if (code != 200) return null
+        val rows = jArr(jObj(jObj(feedJson(data))?.get("StatisticSearch"))?.get("row")) ?: return null
+        val days = rows.mapNotNull { x ->
+            val r = jObj(x) ?: return@mapNotNull null
+            val t = (r["TIME"] as? String)?.takeIf { it.length == 8 } ?: return@mapNotNull null
+            val v = (r["DATA_VALUE"] as? String)?.replace(",", "")?.toDoubleOrNull()?.takeIf { it > 500 && it < 5000 } ?: return@mapNotNull null
+            Prev(rate = v, date = "${t.substring(0, 4)}-${t.substring(4, 6)}-${t.substring(6, 8)}")
+        }.sortedBy { it.date }
+        val last = days.lastOrNull() ?: return null
+        return File(rate = last.rate, date = last.date, got = nowSec(), prev = days.dropLast(1).lastOrNull())
     }
     internal suspend fun get(req: FeedReq): File? {   // ios: Data/Market.swift:600
         val (code, data) = runCatching { req.send() }.getOrNull() ?: return null   // ios: Data/Market.swift:601

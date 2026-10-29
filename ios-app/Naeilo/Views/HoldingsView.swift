@@ -15,6 +15,7 @@ struct HoldingsView: View {
     @State private var adding = false               // '+ 종목 추가' 상자: 팝업 대신 목록 맨 아래에 펼친다
     @State private var colW: [Int: CGFloat] = [:]   // 목록 칸 폭: 같은 칸은 묶음을 넘어 줄마다 같은 폭
     @State private var narrow = false   // 작은 폰: 평단가(수량)를 이름 아래로 내려 이름 칸을 넓힌다 (2026-10-28)
+    @State private var marDaily: MarDaily.File? = MarDaily.cached()   // 합산 그래프: 날짜별 매매기준율 (하루 한 번 받는다)
     @AppStorage("holdUsd") private var inUsd = false // 미국 종목을 달러로 볼지
     @AppStorage("holdValue") private var valueMode = false   // 보기: 현재가 | 평가금
     @AppStorage("holdDown") private var downFirst = false    // 정렬: 오른 순(기본) ↔ 내린 순
@@ -83,6 +84,7 @@ struct HoldingsView: View {
         .detailSheet(period: period, takesHoldOpen: true)
         .sheet(item: $editSym) { s in PopupStack { HoldingEditView(sym: s) }.environment(m) }   // 길게 누르기 '종목 고치기'도 팝업
         .sheet(item: $river) { EarningsRiverSheet(target: $0) }
+        .task { marDaily = await MarDaily.fetch() }   // 합산 그래프 날짜별 매매기준율 (하루 한 번)
         .alert("내 투자 습관", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil } })) {
             Button("확인") {}
         } message: { Text(said ?? "") }
@@ -120,11 +122,11 @@ struct HoldingsView: View {
                         parts: [w { $0 > 0 }, w { $0 == 0 }, w { $0 < 0 }], gain: gain, ret: m.ret)
     }
 
-    // 지금 비중을 기간 전부터 가졌다면: 백테스트 평가액. 축에는 시작 금액·달라진 금액 꼬리표만 (시안 v22)
+    // 토스증권 날짜별 합산과 같은 줄 (Data/TossSum.swift). 축에는 시작 금액·달라진 금액 꼬리표만 (시안 v22)
     private func totalChart(_ rows: [AppModel.Row]) -> some View {
-        let series = rows.map { r in m.prices.series(r.sym, period: period).map { m.krw(r.sym, $0 * r.h.qty) } }
-        let n = series.map(\.count).max() ?? 0   // 가장 긴 종목 기준. 짧으면(상장 뒤 첫날 전) 첫 값으로 평평하게
-        let tot = (0..<n).map { i in series.reduce(0) { $1.isEmpty ? $0 : $0 + $1[max(0, $1.count - n + i)] } }   // 끝(오늘)을 맞춰 더한다
+        let pts = TossSum.points(m.tossSumItems(), lots: m.lots, mar: MarDaily.rates(marDaily, Market.shared.mar),
+                                 period: period, last: TossSum.lastLine(Date()), now: m.total)
+        let tot = pts.map(\.value)
         let first = tot.first ?? 0, last = tot.last ?? 0, up = last >= first
         let start = Calendar.current.date(byAdding: .day, value: -Int(period.span * 1095), to: Date()) ?? Date()
         let d0 = period.span < 1 ? String(localized: "\(String(describing: Calendar.current.component(.month, from: start)))월") : "\(Calendar.current.component(.year, from: start).formatted(.number.grouping(.never))).\(Calendar.current.component(.month, from: start))"
@@ -132,7 +134,7 @@ struct HoldingsView: View {
             TagChart(points: tot, height: 120, tags: [
                 .init(at: first, text: HoldFmt.won(first), bg: TagChart.gray),
                 .init(at: last, text: (up ? "+" : "−") + HoldFmt.won(abs(last - first)), bg: up ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2)),
-            ], left: d0, right: String(localized: "오늘"), scrub: .period(period) { AppModel.man($0) + String(localized: "원") })
+            ], left: d0, right: String(localized: "오늘"), scrub: .days(pts.map(\.date)) { AppModel.man($0) + String(localized: "원") })
             ChipRow(items: Self.periods.map { ($0, $0.label) }, selection: $period, fill: true)
             let noHist = rows.filter { !m.prices.hasHistory($0.sym) }.map(\.sym.name)
             if !noHist.isEmpty {
@@ -1269,7 +1271,7 @@ enum HoldingEdit {
             bad = !(qi >= 0 && pi > 0); if !bad { q1 = qi; p1 = pi }
         case "buy":
             bad = !(qi > 0 && pi > 0)
-            if !bad { q1 = q0 + qi; p1 = (q0 * p0 + qi * pi) / q1; note = String(localized: "\(String(describing: AppModel.price(sym, pi)))에 \(String(describing: qi.formatted()))주 더 사서 평균 단가가 \(String(describing: AppModel.price(sym, p1)))가 돼요.") }
+            if !bad { q1 = q0 + qi; p1 = (q0 * p0 + qi * pi) / q1; note = (sym.currency == .usd ? String(localized: "\(String(describing: AppModel.price(sym, pi)))에 \(String(describing: qi.formatted()))주 더 사서 평균 단가가 \(String(describing: AppModel.price(sym, p1)))가 돼요.") : String(localized: "\(String(describing: AppModel.price(sym, pi)))에 \(String(describing: qi.formatted()))주 더 사서 평균 단가가 \(String(describing: AppModel.price(sym, p1)))이 돼요.")) }
         default:
             bad = !(qi > 0 && qi <= q0 && pi > 0)
             if !bad {
@@ -1478,6 +1480,9 @@ struct TownView: View {
     @State private var pace: [String: Double] = [:]    // 이번 걸음에 걸리는 초 (거리 ÷ 시안 속도)
     @State private var seats: [String: CGPoint] = [:]  // 주민 제자리 (pt). 가까운 이웃 찾을 때만 쓴다
     private struct Meet { let a: String, b: String, home: CGSize, side: CGFloat, until: Int; var met = false, back = false }
+    @State private var duet: Duet? = nil                // 말풍선 주고받기: 내 캐릭터가 곁에 가거나, 주민끼리 붙어 섰을 때 (한 마디에 2칸)
+    @State private var quiet: [String: Int] = [:]       // 방금 이야기한 짝은 30초(15칸) 쉰다
+    private struct Duet { let ids: Set<String>; let lines: [(who: String, text: String)]; var i = 0; var until: Int }
     @State private var order = Array(0..<13)           // 주민 → 자리 번호 (앱에 다시 들어올 때마다 섞는다)
     @Environment(\.scenePhase) private var phase
     private var book: TownBook { TownBook.shared }
@@ -1497,9 +1502,24 @@ struct TownView: View {
         let k = TownLook.meID, w = walk[k] ?? .zero
         let d = max(0.3, hypot(to.width - w.width, to.height - w.height) / 40)
         face[k] = CharDir.of(to.width - w.width, to.height - w.height)
-        pace[k] = d; moving.insert(k)
+        pace[k] = d; moving.insert(k); duet = nil
         withAnimation(.linear(duration: d)) { walk[k] = to }
-        Task { try? await Task.sleep(nanoseconds: UInt64(d * 1e9)); if walk[k] == to { moving.remove(k); face[k] = .down } }
+        Task {
+            try? await Task.sleep(nanoseconds: UInt64(d * 1e9))
+            guard walk[k] == to else { return }
+            moving.remove(k); face[k] = .down
+            // 도착한 곳 56pt 안에 주민이 있으면 서로 마주 보고 말을 주고받는다
+            guard let st = seats[k] else { return }
+            let me = CGPoint(x: st.x + to.width, y: st.y + to.height)
+            let near = seats.compactMap { e -> (String, CGPoint)? in
+                guard e.key != k, !moving.contains(e.key), TownSay.folk[e.key] != nil else { return nil }
+                return (e.key, CGPoint(x: e.value.x + (walk[e.key]?.width ?? 0), y: e.value.y + (walk[e.key]?.height ?? 0)))
+            }.min { hypot($0.1.x - me.x, $0.1.y - me.y) < hypot($1.1.x - me.x, $1.1.y - me.y) }
+            guard let nb = near, hypot(nb.1.x - me.x, nb.1.y - me.y) < 56, let r = TownSay.folk[nb.0] else { return }
+            let id = nb.0, p = nb.1
+            face[k] = p.x < me.x ? .left : .right; face[id] = p.x < me.x ? .right : .left
+            duet = Duet(ids: [k, id], lines: TownSay.duet(r).map { ($0.me ? k : id, $0.text) }, until: tick + 2)
+        }
     }
     private static let meSpot = CGPoint(x: 0.50, y: 0.64)         // 나는 길가 가운데 (모임 날)
     private static let warshSpot = CGPoint(x: 0.16, y: 0.28)      // 워시는 왼쪽 위 나무 곁
@@ -1535,6 +1555,8 @@ struct TownView: View {
             ZStack {
                 Color.clear.task(id: folk.map { "\($0.0.id)\($0.1.x)\($0.1.y)" }.joined() + "\(g.size)") {
                     seats = Dictionary(folk.map { ($0.0.id, CGPoint(x: $0.1.x * g.size.width, y: $0.1.y * g.size.height)) }) { a, _ in a }
+                    TownSay.folk = Dictionary(folk.map { ($0.0.id, $0.0) }) { a, _ in a }
+                    await TownNews.fetch()   // 동네 신문 (6시간에 한 번)
                 }
                 Group {
                     if bg == 0 { ground(g.size) } else { TownGround(kind: bg, season: TownLook.season()) }
@@ -1550,10 +1572,11 @@ struct TownView: View {
                     }
                 ForEach(folk.indices, id: \.self) { i in
                     let r = folk[i].0, p = folk[i].1
-                    // 잡담: 4칸(8초)마다 한 명이 2칸 동안 말풍선
-                    // 수다 중이면 찾아간 이웃만 말한다
-                    let chat = talk == nil && (meet.map { $0.met && !$0.back && $0.b == r.id }
-                        ?? (tick % 4 < 2 && Int(TownLook.seed("chat\(tick / 4)") % UInt64(max(1, folk.count))) == i))
+                    // 말풍선은 내 캐릭터가 주민 곁에 갔을 때만: 지금 말할 차례인 쪽만 (나 · 그 주민)
+                    let duo: String? = duet.flatMap { d in
+                        let l = d.lines[min(d.i, d.lines.count - 1)]
+                        return l.who == r.id ? l.text : nil
+                    }
                     Button { if r.id == TownLook.meID { hop = r.id } else { talk = r } } label: {   // 나는 눌러도 대사창 없이 폴짝
                         TownWalker(id: r.id, note: book.note(r.id), dir: face[r.id] ?? .down, walking: moving.contains(r.id))
                             .animation(nil, value: face[r.id])   // 방향 바꿀 때 좌우 뒤집기가 돌아가는 것처럼 보이지 않게 바로 바꾼다
@@ -1567,12 +1590,15 @@ struct TownView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(TownLook.shown(r, book.note(r.id)))
                     .overlay(alignment: .top) {
-                        if chat {
-                            Text(TownLook.chat(r, tick / 4)).appFont(11).foregroundStyle(.black).lineLimit(1).fixedSize()
+                        if let t = duo {
+                            Text(t).appFont(11).foregroundStyle(.black).lineLimit(3).multilineTextAlignment(.center)
+                                .frame(width: min(180, CGFloat(t.count) * 11 + 4))
+                                .fixedSize(horizontal: false, vertical: true)
                                 .padding(.horizontal, 6).padding(.vertical, 3)
                                 .background(.white, in: RoundedRectangle(cornerRadius: 6))
                                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.black.opacity(0.6), lineWidth: 1.5))
-                                .offset(y: -24).transition(.opacity).allowsHitTesting(false)
+                                .fixedSize().alignmentGuide(.top) { $0[.bottom] + 4 }   // 줄이 늘면 위로 자란다
+                                .transition(.opacity).allowsHitTesting(false)
                         }
                     }
                     .animation(.easeInOut(duration: 0.4), value: tick)
@@ -1580,6 +1606,7 @@ struct TownView: View {
                     .animation(.spring(response: 0.28, dampingFraction: 0.45), value: hop)
                     .offset(walk[r.id] ?? .zero)   // 걷는 보간은 go()의 withAnimation이 맡는다
                     .position(x: p.x * g.size.width, y: p.y * g.size.height - 34)
+                    .zIndex(duo == nil ? 0 : 1)   // 말하는 쪽은 앞으로 (말풍선이 다른 주민 뒤에 가리지 않게)
                 }
                 TownWeather(kind: sky.kind).allowsHitTesting(false)
                 // 배경 바꾸기: 누를 때마다 다음 그림
@@ -1608,7 +1635,7 @@ struct TownView: View {
                     VStack {
                         Spacer()
                         TownTalk(res: r, note: look ?? book.note(r.id), hello: fresh.contains(r.id), typing: $typing, line: line, tab: tab, ask: ask,
-                                 dress: { tab = tab == 2 ? 0 : 2 }, us: { tab = tab == 1 ? 0 : 1 }) { talk = nil; typing = false }
+                                 dress: { tab = tab == 2 ? 1 : 2 }) { talk = nil; typing = false }
                             .offset(y: lift)
                             .animation(.easeOut(duration: 0.25), value: lift)
                     }
@@ -1618,19 +1645,20 @@ struct TownView: View {
                             .onAppear { talkBottom = p.frame(in: .global).maxY - 10 }
                             .onChange(of: p.frame(in: .global).maxY) { _, v in talkBottom = v - 10 }
                     })
+                    .zIndex(2)   // 대사창은 말하는 주민(1)보다 앞
                 }
             }
         }
         .frame(height: 440)   // 말 걸어도 동네 판 크기는 그대로, 대사창은 판 위에 뜨고 아래 칸은 그 밑에
-        // 대사창 아래 칸: 오늘의 한 줄·할 말 고르기 / 우리 사이 / 꾸미기 (지난 대화는 우리 사이 → 전체 보기)
-        if let r = talk {
+        // 대사창 아래 칸: 우리 사이 / 꾸미기. 이장·워시는 아래 칸 없음 (지난 대화는 우리 사이 → 전체 보기)
+        if let r = talk, r.id != TownLook.mayorID && r.id != TownLook.warshID {
             // 우리 사이·꾸미기는 넉넉히 280 (페이지가 스크롤되니 화면 높이에 매이지 않는다)
             TownPanel(res: r, tab: $tab, line: $line, look: $look, ask: $ask, height: tab == 0 ? TownPanel.height : 280)
             Color.clear.frame(height: 4).id("townPanel")   // 스크롤 맞춤 자리 (칸 아랫변이 탭바에 붙지 않게)
         }
         }
         .onChange(of: talk?.id) { _, v in
-            tab = 0; line = nil; look = nil
+            tab = 1; line = nil; look = nil   // 우리 사이가 기본
             if v != nil { Task { try? await Task.sleep(nanoseconds: 50_000_000); withAnimation(.easeOut(duration: 0.3)) { scroll?.scrollTo("townPanel", anchor: .bottom) } } }
         }
         .onChange(of: tab) { _, t in if t != 0 { withAnimation(.easeOut(duration: 0.3)) { scroll?.scrollTo("townPanel", anchor: .bottom) } } }
@@ -1650,6 +1678,26 @@ struct TownView: View {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 tick += 1
                 hop = nil
+                if var d = duet, tick >= d.until {
+                    d.i += 1; d.until = tick + 2
+                    duet = d.i < d.lines.count ? d : nil
+                    if duet == nil { quiet[d.ids.sorted().joined(separator: "|")] = tick + 15 }
+                }
+                // 주민끼리 겹치거나 붙어 서 있으면 (36pt 안) 둘이 말을 주고받는다
+                if duet == nil && talk == nil {
+                    let here = seats.compactMap { e -> (String, CGPoint)? in
+                        guard e.key != TownLook.meID, !moving.contains(e.key), TownSay.folk[e.key] != nil else { return nil }
+                        return (e.key, CGPoint(x: e.value.x + (walk[e.key]?.width ?? 0), y: e.value.y + (walk[e.key]?.height ?? 0)))
+                    }.sorted { $0.0 < $1.0 }
+                    pair: for x in here.indices { for y in here.indices where y > x {
+                        let a = here[x], b = here[y], q = [a.0, b.0].sorted().joined(separator: "|")
+                        guard hypot(a.1.x - b.1.x, a.1.y - b.1.y) < 36, (quiet[q] ?? 0) <= tick,
+                              let ra = TownSay.folk[a.0], let rb = TownSay.folk[b.0] else { continue }
+                        face[a.0] = a.1.x < b.1.x ? .right : .left; face[b.0] = a.1.x < b.1.x ? .left : .right
+                        duet = Duet(ids: [a.0, b.0], lines: TownSay.pair(ra, rb), until: tick + 2)
+                        break pair
+                    } }
+                }
                 // 걷기: 초당 16pt로 아주 천천히. 도착하면 그 주민만 멈춰 숨쉬기로
                 @MainActor func go(_ k: String, _ to: CGSize) {
                     let w = walk[k] ?? .zero, d = max(0.6, hypot(to.width - w.width, to.height - w.height) / 16)
@@ -1672,7 +1720,7 @@ struct TownView: View {
                 }
                 guard tick % 3 == 0 else { continue }
                 let ids = TownLook.residents(m.rows).prefix(Self.maxRes).map(\.id) + [TownLook.mayorID] + (TownLook.fomc() != nil ? [TownLook.warshID] : [])
-                guard let id = ids.randomElement() else { continue }
+                guard let id = ids.filter({ !(duet?.ids.contains($0) ?? false) }).randomElement() else { continue }   // 말하는 중인 주민은 그 자리에
                 let now = walk[id] ?? .zero
                 switch Int.random(in: 0..<10) {
                 case 0..<4:   // 둘러보기: 걷지 않고 옆으로만 돌아본다
@@ -1834,20 +1882,10 @@ enum TownLook {
         if n == 0 { return String(localized: "오늘 FOMC예요. 결과가 나오면 알려 줄게요.") }
         return String(localized: "FOMC 끝났어요. 며칠 더 머물다 갈게요.")
     }
-    static let mayorFrames = [String(localized: "동네는 오늘도 평화로워요. {fx}"), "{weather} {fx}", String(localized: "{fx}\n다들 잘 지내죠?"), String(localized: "이장이에요. {fx}"), String(localized: "{fx}\n바다 건너 소식도 챙겨요.")]
     /// 옛 이웃: 다 팔아 떠난 주민이 가끔 놀러 와 함께한 시간을 얘기한다
     static let oldFrames = [String(localized: "오랜만이에요! 놀러 왔어요.\n{days}일 함께했던 거 기억나요?"), String(localized: "지나가다 들렀어요. 다들 잘 지내죠?"), String(localized: "{weather} 옛날 생각나서 왔어요."),
                             String(localized: "여기 그대로네요. 반가워요!"), String(localized: "함께한 {days}일, 가끔 생각나요.")]
     /// 잡담 말풍선: 짧은 혼잣말 (기분·자리로 고름)
-    static func chat(_ res: Resident, _ k: Int) -> String {
-        let pool: [String]
-        if res.id == mayorID { pool = [String(localized: "환율 좀 봐!"), String(localized: "동네 최고!"), String(localized: "다들 잘하고 있어"), String(localized: "아주 훌륭해")] }
-        else if res.id == warshID { pool = [String(localized: "금리는…"), String(localized: "데이터를 봐야죠"), String(localized: "음, 물가가…"), String(localized: "곧 FOMC")] }
-        else if res.old != nil { pool = [String(localized: "그대로네"), String(localized: "반가워!"), String(localized: "놀러 왔어")] }
-        else if mood(res) < 0 { pool = [String(localized: "흑…"), String(localized: "괜찮아질 거야"), String(localized: "오늘은 쉬자"), "…"] }
-        else { pool = ["♪", String(localized: "날씨 좋다"), String(localized: "차트 봤어?"), String(localized: "음냐"), String(localized: "산책 중"), String(localized: "기분 좋아!"), String(localized: "하암…")] }
-        return pool[Int(seed(res.id + "\(k)") % UInt64(pool.count))]
-    }
     /// 계절: 0 봄 · 1 여름 · 2 가을 · 3 겨울 (실제 달력)
     static func season(_ d: Date = Date()) -> Int {
         let mo = Calendar.current.component(.month, from: d)
@@ -1868,7 +1906,7 @@ enum TownLook {
         }
         let h = holiday().map { String(localized: "오늘은 ") + $0 + (batchim($0) ? String(localized: "이에요!\n") : String(localized: "예요!\n")) } ?? ""
         if res.id == warshID { return h + warshLine() + "\n" + fxLine() }
-        if res.id == mayorID { return h + pick(mayorFrames).replacingOccurrences(of: "{fx}", with: fxLine()) }
+        if res.id == mayorID { return h + TownSay.mayorOpen() }   // 이장 첫마디는 동네 소식. 환율은 누르다 보면 가끔
         // 행사: 어닝콜 날은 모두 모여 그 주민의 한 줄을 듣는다. 전날엔 예측 한 줄을 부탁한다
         if res.old == nil, earnDay(res) != nil {
             let y = Day.str(Date().addingTimeInterval(-86400))
@@ -1914,6 +1952,7 @@ enum TownLook {
         return holidays[f.string(from: d)]
     }
     static func batchim(_ s: String) -> Bool {
+        if let d = s.last, d.isASCII, d.isNumber { return !"2459".contains(d) }   // 숫자는 읽는 소리로: 1일·3삼·6육·7칠·8팔·0십/백/영
         guard let c = s.unicodeScalars.last?.value, (0xAC00...0xD7A3).contains(c) else { return false }
         return (c - 0xAC00) % 28 != 0
     }
@@ -1959,19 +1998,19 @@ struct TownTalk: View {
     let note: TownBook.Note
     var hello = false
     @Binding var typing: Bool
-    var line: String? = nil          // 할 말 고르기·꾸미기에서 온 대답 (있으면 오늘 한마디 대신)
+    var line: String? = nil          // 꾸미기에서 온 대답 (있으면 오늘 한마디 대신)
     var tab = 0
     var ask = 0
     let dress: () -> Void
-    let us: () -> Void
     let close: () -> Void
+    @State private var more: String? = nil     // 대사창을 누를 때마다 다음 한마디 (TownSay)
     @State private var shown = 0
     @State private var me = ""
     @State private var reply = false          // 대사 박스를 누르면 답장 칸이 열린다
     @FocusState private var focus: Bool
     @State private var say = ""
     private var log: TownLog { TownLog.shared }
-    private var full: String { line ?? ((hello ? String(localized: "\(String(describing: TownLook.shown(res, note)))예요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n") : "") + say) }
+    private var full: String { more ?? line ?? ((hello ? (TownLook.batchim(TownLook.shown(res, note)) ? String(localized: "\(String(describing: TownLook.shown(res, note)))이에요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n") : String(localized: "\(String(describing: TownLook.shown(res, note)))예요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n")) : "") + say) }
     private let gold = Color(red: 1, green: 0.85, blue: 0.4)
     var body: some View {
         let full = self.full
@@ -1985,23 +2024,21 @@ struct TownTalk: View {
                         TextField("", text: $me, prompt: Text("한 줄 답 (예측·마음)").foregroundStyle(.white.opacity(0.4)))
                             .appFont(14).foregroundStyle(.white).submitLabel(.done)
                             .focused($focus)
-                            .onSubmit { log.answer(res.id, me, price: TownLook.price(res)) }
+                            .onSubmit { send() }
                         if focus {
                             Button("그만") { focus = false }.appFont(13).foregroundStyle(.white.opacity(0.7))
-                            Button("남기기") { log.answer(res.id, me, price: TownLook.price(res)); focus = false }
+                            Button("남기기") { send(); focus = false }
                                 .appFont(13, .bold).foregroundStyle(gold)
                         }
                     }
                     .padding(.horizontal, 8).padding(.vertical, 6)
                     .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
                 }
-                // 우리 사이·꾸미기: 대사 박스 안 오른쪽 아래에 붙인다
-                if res.id != TownLook.mayorID && res.id != TownLook.warshID {
-                    HStack(spacing: 6) {
-                        Spacer(minLength: 0)
-                        chip(String(localized: "우리 사이"), tab == 1, us)
-                        chip(String(localized: "꾸미기"), tab == 2, dress)
-                    }
+                // 대답하기·꾸미기: 대사 박스 안 오른쪽 아래에 붙인다 (우리 사이는 아래 칸에 늘 보인다)
+                HStack(spacing: 6) {
+                    Spacer(minLength: 0)
+                    if !say.isEmpty { chip(String(localized: "대답하기"), reply, { reply = true; focus = true }) }
+                    if res.id != TownLook.mayorID && res.id != TownLook.warshID { chip(String(localized: "꾸미기"), tab == 2, dress) }
                 }
             }
             .padding(.leading, 128).padding(.trailing, 12).padding(.vertical, 12)
@@ -2009,9 +2046,9 @@ struct TownTalk: View {
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white, lineWidth: 2))
             .contentShape(Rectangle())
             .onTapGesture {
-                // 글자가 다 안 나왔으면 다 보여 주고, 다 나왔으면 답장 칸을 연다
+                // 글자가 다 안 나왔으면 다 보여 주고, 다 나왔으면 다음 한마디 (겹치지 않게 갈래를 돌린다)
                 if shown < full.count { shown = full.count }
-                else if !say.isEmpty { reply = true; focus = true }
+                else { more = TownSay.next(res, note) }
             }
             // 큰 초상화: 박스 왼쪽에서 위로 솟는다 (누르는 건 박스가 받는다)
             VStack(spacing: -10) {
@@ -2031,11 +2068,15 @@ struct TownTalk: View {
             if !v { me = log.log(res.id).last.flatMap { $0.day == TownLog.day ? $0.me : nil } ?? "" }
         }
         .onChange(of: ask) { _, _ in if !say.isEmpty { reply = true; focus = true } }
-        .task(id: res.id + "|" + (line ?? "")) {
-            // 오늘 처음 말을 걸 때 한마디를 정해 기록에 남긴다 (하루 동안 같은 말)
+        .onChange(of: line) { _, _ in more = nil }
+        .onChange(of: res.id) { _, _ in more = nil }
+        .task(id: res.id + "|" + (line ?? "") + "|" + (more ?? "")) {
+            // 오늘 처음 말을 걸 때 한마디를 정해 기록에 남긴다. 그 뒤로 다시 열면 열 때마다 새 한마디
+            let had = log.log(res.id).last?.day == TownLog.day
             let e = log.today(res.id) { TownLook.daily(res, note) }
-            say = e.say; me = e.me ?? ""
-            reply = !me.isEmpty      // 오늘 남긴 답이 있으면 칸을 열어 둔다
+            if had && !hello && line == nil && more == nil { more = TownSay.next(res, note); return }
+            say = e.say
+            if !focus { me = e.me ?? ""; reply = !me.isEmpty }      // 오늘 남긴 답이 있으면 칸을 열어 둔다 (쓰는 중이면 그대로)
             shown = 0
             let n = self.full.count
             while shown < n {
@@ -2046,6 +2087,12 @@ struct TownTalk: View {
         }
     }
 
+    /// 오늘 첫 답이면 고맙다는 말로
+    private func send() {
+        let first = !(log.log(res.id).last.map { $0.day == TownLog.day && $0.me != nil } ?? false)
+        log.answer(res.id, me, price: TownLook.price(res), say: more ?? line)
+        if first && !me.isEmpty { more = TownSay.praise }
+    }
     private func chip(_ t: String, _ on: Bool, _ a: @escaping () -> Void) -> some View {
         Button(t, action: a).appFont(12, .bold).foregroundStyle(on ? Color(red: 0.10, green: 0.11, blue: 0.20) : .white)
             .padding(.horizontal, 8).padding(.vertical, 4)
@@ -2057,6 +2104,7 @@ struct TownTalk: View {
 /// 지난 대화: 주민 말·내 답을 목록으로 (최근 것이 위). 내가 답한 것만
 struct TownPast: View {
     let id: String
+    var tall = false      // 전체 보기 시트: 남는 높이를 다 쓰고 시트 안에서 스크롤
     private var log: TownLog { TownLog.shared }
     var body: some View {
         let past = log.log(id).filter { $0.me != nil }.reversed()
@@ -2086,7 +2134,7 @@ struct TownPast: View {
                     }
                     .padding(12)
                 }
-                .frame(maxHeight: 260)
+                .frame(maxHeight: tall ? .infinity : 260)
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
             }
         }
@@ -2294,14 +2342,15 @@ struct TownWeather: View {
         save()
         return e
     }
-    /// 오늘 내 답 한 줄 (빈 칸이면 지움)
-    func answer(_ id: String, _ me: String, price: Double? = nil) {
+    /// 오늘 내 답 한 줄 (빈 칸이면 지움). say: 그때 대사창에 떠 있던 말 (오늘 첫 답이면 그 말로 남긴다)
+    func answer(_ id: String, _ me: String, price: Double? = nil, say: String? = nil) {
         guard var l = logs[id], let last = l.last, last.day == Self.day else { return }
         let t = me.trimmingCharacters(in: .whitespacesAndNewlines)
         let v: String? = t.isEmpty ? nil : String(t.prefix(60))
         guard v != last.me else { return }
         l[l.count - 1].me = v
         l[l.count - 1].p = v == nil ? nil : (last.p ?? price)
+        if last.me == nil, v != nil, let s = say { l[l.count - 1].say = s }
         logs[id] = l
         save()
         if v != nil { TownBook.shared.earn(id) }

@@ -54,6 +54,15 @@ enum Lines {
         return s
     }
 
+    /// 인물 who 의 모든 상황 줄 (빈칸 없는 것만). 동네 주민이 엉뚱한 맛으로 빌려 쓴다
+    static func every(_ who: String) -> [String] {
+        if let c = everyCache[who] { return c }
+        let l = all.filter { $0.key.hasSuffix("." + who) }.sorted { $0.key < $1.key }.flatMap(\.value).filter { !$0.contains("{") }
+        everyCache[who] = l
+        return l
+    }
+    private static var everyCache: [String: [String]] = [:]
+
     /// 전체 줄 수 (설정 등에서 보여 줄 때)
     static var count: Int { all.values.reduce(0) { $0 + $1.count } }
 }

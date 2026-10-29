@@ -556,6 +556,9 @@ struct MockRuleDraft: Equatable {
         case .slip:
             guard let x = MockNum.parse(pct), x > 0, x <= 10 else { return nil }
             c.pct = x / 100
+        case .split:
+            guard let x = MockNum.parse(pct), x >= 10, x < 100 else { return nil }
+            c.pct = x / 100
         }
         return c
     }
@@ -570,7 +573,7 @@ struct MockRuleForm: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             FlowRow(spacing: 6) {
-                ForEach(MockRuleCond.Kind.allCases) { k in
+                ForEach(MockRuleCond.Kind.choices + (draft.kind == .cap ? [MockRuleCond.Kind.cap] : [])) { k in
                     MockKindChip(name: k.name, on: draft.kind == k) { draft.kind = k }
                 }
             }
@@ -621,6 +624,12 @@ struct MockRuleForm: View {
                 MockNumField(text: $draft.pct, width: 56)
                 mt("% 넘게 벗어나면 나눔").appFont(14)
             }
+        case .split:
+            HStack(spacing: 6) {
+                mt("종목 몫의").appFont(14)
+                MockNumField(text: $draft.pct, width: 56)
+                mt("%씩 · 더 담기는 이익 중에만").appFont(14)
+            }
         }
     }
 }
@@ -635,7 +644,25 @@ struct MockSellDraft: Equatable {
     init() {}
     init(_ c: MockSellCond) {
         edit = c.id; kind = c.kind
-        pct = MockFmt.num((c.pct * 100).rounded()); n = "\(c.n)"
+        switch c.kind {
+        case .vol: pct = MockFmt.num(c.pct)
+        case .idle, .trail: pct = MockFmt.num((c.pct * 1000).rounded() / 10)
+        default: pct = MockFmt.num((c.pct * 100).rounded())
+        }
+        n = "\(c.n)"
+    }
+
+    /// 종류를 바꾸면 그 종류의 기본값으로 (손절 5 · 익절 10 · 움직임 60분 ±1 · 되밀림 2 · 흔들림 ×1)
+    mutating func fill(_ k: MockSellCond.Kind) {
+        guard edit == nil else { return }
+        switch k {
+        case .loss: pct = "5"
+        case .gain: pct = "10"
+        case .idle: pct = "1"; n = "60"
+        case .trail: pct = "2"
+        case .vol: pct = "1"
+        default: break
+        }
     }
 
     var cond: MockSellCond? {
@@ -647,6 +674,16 @@ struct MockSellDraft: Equatable {
         case .days:
             guard let x = Int(n), x >= 1, x <= 60 else { return nil }
             c.n = x
+        case .idle:
+            guard let m = Int(n), m >= 5, m <= 360, let x = MockNum.parse(pct), x > 0, x <= 10 else { return nil }
+            c.n = m; c.pct = x / 100
+        case .trail:
+            guard let x = MockNum.parse(pct), x >= 0.5, x <= 20 else { return nil }
+            c.pct = x / 100
+        case .vol:
+            guard let x = MockNum.parse(pct), x >= 0.3, x <= 5 else { return nil }
+            c.pct = x
+        case .gone, .close: break
         }
         return c
     }
@@ -661,8 +698,8 @@ struct MockSellForm: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             FlowRow(spacing: 6) {
-                ForEach(MockSellCond.Kind.allCases) { k in
-                    MockKindChip(name: k.name, on: draft.kind == k) { draft.kind = k }
+                ForEach(MockSellCond.Kind.choices + (draft.kind == .days ? [MockSellCond.Kind.days] : [])) { k in
+                    MockKindChip(name: k.name, on: draft.kind == k) { draft.kind = k; draft.fill(k) }
                 }
             }
             HStack(spacing: 6) {
@@ -679,6 +716,24 @@ struct MockSellForm: View {
                     mt("산 뒤 거래일").appFont(14)
                     MockNumField(text: $draft.n, width: 48)
                     mt("일 넘으면").appFont(14)
+                case .idle:
+                    mt("산 뒤").appFont(14)
+                    MockNumField(text: $draft.n, width: 48)
+                    mt("분 지나도 ±").appFont(14)
+                    MockNumField(text: $draft.pct, width: 48)
+                    mt("% 안이면").appFont(14)
+                case .trail:
+                    mt("반 판 뒤 고점보다").appFont(14)
+                    MockNumField(text: $draft.pct, width: 56)
+                    mt("% 내리면").appFont(14)
+                case .vol:
+                    mt("산 값 − 지난 20일 하루 폭 ×").appFont(14)
+                    MockNumField(text: $draft.pct, width: 48)
+                    mt("아래로").appFont(14)
+                case .gone:
+                    mt("켠 관찰 조건이 약한 쪽으로 풀리면").appFont(14)
+                case .close:
+                    mt("\(MockClock.hm(MockClock.tidyFrom)) 정리 구간에 남은 몫 모두").appFont(14)
                 }
             }
             MockFormButtons(commitTitle: draft.edit == nil ? "넣기" : "고치기", canCommit: draft.cond != nil, close: close) {
@@ -774,9 +829,10 @@ struct MockStockRow<Right: View>: View {
     var price: String? = nil
     var band: Double = 0           // 띠 몫 (0~1)
     var struck = false
-    var dot = false                // 이름 옆 작은 빨간 점 (오늘 관찰에 2번 넘게 걸림)
+    var seen = 0                   // 오늘 관찰에 걸린 횟수. 2번부터 이름 뒤 칸에 청록 숫자 알약
     var filled = false             // 이름 오른쪽 위 모서리 노란 점 (체결)
     var outside = false            // 이름 오른쪽 회색 점 (앱이 사지 않은 토스 보유)
+    var cut: String? = nil         // 거른 이유 (걸렸지만 종목 판단에서 거름). 이름 뒤 칸에 이유별 색 점, 뜻은 목록 아래 캡션
     var colW: [Int: CGFloat] = [:] // 칸 폭 (같은 칸은 줄마다 같은 폭, 오른쪽 맞춤)
     @ViewBuilder var right: Right
     @Environment(\.colorScheme) private var scheme
@@ -807,16 +863,23 @@ struct MockStockRow<Right: View>: View {
                                 .accessibilityLabel(Text(verbatim: "체결"))
                         }
                     }
-                if dot {
-                    Circle().fill(Theme.up).frame(width: 6, height: 6)
-                        .accessibilityLabel(Text(verbatim: "오늘 2번 넘게 걸림"))
-                }
                 if outside {
                     Circle().fill(Theme.muted).frame(width: 6, height: 6)
                         .accessibilityLabel(Text(verbatim: "외부"))
                 }
             }
             .frame(minWidth: 56, idealWidth: 56, maxWidth: .infinity, alignment: .leading)
+            // 걸린 횟수 숫자 · 거른 이유 점: 이름 뒤 한 칸에 모아 줄마다 같은 자리 (오른쪽 맞춤)
+            if seen >= 2 || cut != nil {
+                HStack(spacing: 4) {
+                    if seen >= 2 { MockSeenPill(n: seen) }
+                    if let cut {
+                        Circle().fill(MockCutTone.color(cut)).frame(width: 7, height: 7)
+                            .accessibilityLabel(Text(verbatim: "거름 · " + cut))
+                    }
+                }
+                .holdCol(4, colW)
+            }
             if show { mt(mid).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1).holdCol(0, colW) }
             mt(MockFmt.pct(pct)).appFont(14, .bold).monospacedDigit().lineLimit(1)
                 .foregroundStyle(pct > 0 ? Theme.up : pct < 0 ? Theme.down : Theme.sub)
@@ -848,8 +911,8 @@ struct MockQtyPill: View {
 }
 
 extension MockStockRow where Right == EmptyView {
-    init(code: String, name: String, mid: String, pct: Double, price: String? = nil, band: Double = 0, struck: Bool = false, dot: Bool = false, outside: Bool = false, colW: [Int: CGFloat] = [:]) {
-        self.init(code: code, name: name, mid: mid, pct: pct, price: price, band: band, struck: struck, dot: dot, outside: outside, colW: colW) { EmptyView() }
+    init(code: String, name: String, mid: String, pct: Double, price: String? = nil, band: Double = 0, struck: Bool = false, seen: Int = 0, outside: Bool = false, cut: String? = nil, colW: [Int: CGFloat] = [:]) {
+        self.init(code: code, name: name, mid: mid, pct: pct, price: price, band: band, struck: struck, seen: seen, outside: outside, cut: cut, colW: colW) { EmptyView() }
     }
 }
 
@@ -978,6 +1041,7 @@ struct MockObserveView: View {
         let d = MockDesk.shared
         MockScreen(tab: .observe) {
             condCard(d)
+            board(d)
             if let sc = d.s.scan { hitsCard(sc) }
             MockCurveCard(curves: d.s.curves ?? [], note: d.s.curveNote)
         }
@@ -994,19 +1058,23 @@ struct MockObserveView: View {
                                  edit: { draft = MockPieceDraft(c.piece); adding = true },
                                  delete: { remove(d, c) })
                 }
+                // 새 배수: 곡선이 다 쌓이기 전엔 못 누르고 쌓인 날 수만, 다 쌓이면 저절로 켜진다
+                if d.curveDays < MockClock.newVolDays {
+                    MockCondPill(text: "새 배수 · 곡선 \(d.curveDays)/\(MockClock.newVolDays)일", on: false)
+                        .opacity(0.6)
+                } else {
+                    MockCondPill(text: "새 배수", on: d.s.newVol == true, tap: { d.setNewVol(d.s.newVol != true) })
+                }
                 MockAddPill { draft = MockPieceDraft(); adding = true }
             }
             if adding {
                 MockPieceForm(draft: $draft, close: { adding = false }) { commit(d, $0) }
             }
-            if let p = d.progress {
-                ProgressView(value: Double(p.done), total: Double(max(1, p.total))).tint(Theme.teal)
-                mt("일봉 받는 중 \(p.done.formatted()) / \(p.total.formatted())").appFont(12).foregroundStyle(Theme.muted)
-            }
             if let r = d.s.runs["observe"], !r.ok { MockRunLine(run: r) }
+            if let plan = d.scanPlan { mt(plan).appFont(12).foregroundStyle(Theme.muted).lineLimit(2) }
             HStack {
-                if let plan = d.scanPlan { mt(plan).appFont(12).foregroundStyle(Theme.muted).lineLimit(2) }
                 Spacer()
+                if d.nearOnly { MockGoPill(title: "전체 훑기") { await d.runObserve(full: true) } }
                 MockGoPill(title: "지금 훑기") { await d.runObserve() }
             }
         }
@@ -1036,41 +1104,90 @@ struct MockObserveView: View {
         adding = false
     }
 
+    /// 훑기 상자와 걸린 종목 상자 사이 전광판: 훑는 중엔 받음 · 걸린 · 못 받은, 끝나면 걸린 · 거른 · 못 받은
+    @ViewBuilder private func board(_ d: MockDesk) -> some View {
+        if let p = d.progress {
+            let l = d.scanLive ?? (0, 0)
+            MockFlipBoard(slots: [("받음", "\(p.done.formatted())/\(p.total.formatted())"), ("걸린", l.hits.formatted()), ("못 받은", l.fails.formatted())])
+        } else if let sc = d.s.scan {
+            let sk = sc.skipped ?? []
+            MockFlipBoard(slots: [("걸린", (sc.hits.count + sk.count).formatted()), ("거른", sk.count.formatted()), ("못 받은", (sc.fails ?? [:]).values.reduce(0, +).formatted())])
+        }
+    }
+
+    /// 목록 아래 점 캡션: 거른 이유별 색 점 · 수, 숫자 알약 = 오늘 걸린 횟수. 둘 다 없으면 숨긴다
+    @ViewBuilder private func cutCaption(cut: [String: String], seen: Bool) -> some View {
+        if !cut.isEmpty || seen {
+            let count = Dictionary(grouping: cut.values, by: { $0 }).mapValues(\.count)
+            let reasons = count.keys.sorted { (count[$0] ?? 0, $1) > (count[$1] ?? 0, $0) }
+            VStack(spacing: 0) {
+                Divider().overlay(Theme.line)
+                FlowRow(spacing: 10) {
+                    ForEach(reasons, id: \.self) { r in
+                        HStack(spacing: 4) {
+                            Circle().fill(MockCutTone.color(r)).frame(width: 7, height: 7)
+                            mt("\(r) \(count[r] ?? 0)").appFont(11).foregroundStyle(Theme.sub).lineLimit(1)
+                        }
+                    }
+                    if seen {
+                        HStack(spacing: 4) {
+                            MockSeenPill(n: nil)
+                            mt("오늘 걸린 횟수").appFont(11).foregroundStyle(Theme.sub).lineLimit(1)
+                        }
+                    }
+                }
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
     private func hitsCard(_ sc: MockScan) -> some View {
-        let ch = sc.hits.compactMap(\.change)
+        // 거른 종목도 함께 보인다 (이름 뒤 이유별 색 점, 뜻은 목록 아래 캡션). 고르기는 sc.hits 만 쓴다
+        let cut = Dictionary((sc.skipped ?? []).compactMap { k in k.hit.map { ($0.code, k.why.components(separatedBy: " · ").first ?? "") } }) { a, _ in a }
+        let all = sc.hits + (sc.skipped ?? []).compactMap(\.hit)
+        let ch = all.compactMap(\.change)
         let avg = ch.isEmpty ? 0 : ch.reduce(0, +) / Double(ch.count)
         let mx = ch.map(abs).max() ?? 0
-        let sorted = sc.hits.sorted { a, b in
+        let sorted = all.sorted { a, b in
             let x = a.change ?? 0, y = b.change ?? 0
             return downFirst ? x < y : x > y
         }
         let shown = Array(sorted.prefix(more ? 200 : 10))
-        let twice = MockDesk.shared.seenTwice
+        let twice = MockDesk.shared.seenToday
         return MockListCard {
-            mt("걸린 종목 \(sc.hits.count)").appFont(14, .bold)
+            mt("걸린 종목 \(all.count)").appFont(14, .bold)
             MockSortToggle(downFirst: $downFirst)
             Spacer()
             if !ch.isEmpty { MockMove(r: avg) }
         } rows: {
-            if sc.hits.isEmpty { MockEmptyRow(text: "걸린 종목이 없어요") }
+            if all.isEmpty { MockEmptyRow(text: "걸린 종목이 없어요") }
             ForEach(shown) { h in
                 let c = h.change ?? 0
                 Button { info = MockStockRef(code: h.code, name: h.name) } label: {
                     MockStockRow(code: h.code, name: h.name, mid: [h.vol.map { String(format: "%.1f배", $0) }, MockDesk.shared.warnText(h.code)].compactMap { $0 }.joined(separator: " · "),
-                                 pct: c, price: MockFmt.won(h.price), band: mx > 0 ? abs(c) / mx : 0, dot: twice.contains(h.code), colW: colW)
+                                 pct: c, price: MockFmt.won(h.price), band: mx > 0 ? abs(c) / mx : 0, seen: twice[h.code] ?? 0, cut: cut[h.code], colW: colW)
                 }
                 .buttonStyle(.plain)
+                .contextMenu {
+                    if (twice[h.code] ?? 0) >= 2 {
+                        Button(role: .destructive) { MockDesk.shared.clearSeenToday(h.code) } label: {
+                            Label { mt("걸린 횟수 지우기 (오늘 \(twice[h.code] ?? 0)번)") } icon: { Image(systemName: "arrow.counterclockwise") }
+                        }
+                    }
+                }
             }
-            if sc.hits.count > 10 {
+            if all.count > 10 {
                 VStack(spacing: 0) {
                     Divider().overlay(Theme.line)
                     Button { withAnimation(.snappy) { more.toggle() } } label: {
-                        mt(more ? "접기" : "\(sc.hits.count - 10)종목 더 보기").appFont(13, .semibold).foregroundStyle(Theme.teal)
+                        mt(more ? "접기" : "\(all.count - 10)종목 더 보기").appFont(13, .semibold).foregroundStyle(Theme.teal)
                             .frame(maxWidth: .infinity).frame(minHeight: 44).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
             }
+            cutCaption(cut: cut, seen: all.contains { (twice[$0.code] ?? 0) >= 2 })
         }
     }
 }
@@ -1790,14 +1907,20 @@ struct MockSeenLog: View {
     var body: some View {
         let xs = Array(MockDesk.shared.seen(code).reversed())
         let today = MockFmt.day(Date())
-        let n = xs.filter { MockFmt.day($0.at) == today }.count
+        let n = MockDesk.slots(xs, day: today)
         let days = Dictionary(grouping: xs) { MockFmt.day($0.at) }
         let keys = days.keys.sorted(by: >)
         Card {
             HStack {
                 mt("관찰 기록").appFont(16, .bold)
                 Spacer()
-                mt("오늘 \(n)번 · 7일 \(xs.count)번").appFont(12).foregroundStyle(n >= 2 ? Theme.up : Theme.muted)
+                mt("오늘 \(n)번 · 7일 \(xs.count)번").appFont(12).foregroundStyle(n >= 2 ? Theme.teal : Theme.muted)
+                if n > 0 {
+                    Button { MockDesk.shared.clearSeenToday(code) } label: {
+                        mt("오늘 지우기").appFont(12, .semibold).foregroundStyle(Theme.up)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             if xs.isEmpty { mt("아직 관찰에 걸린 기록이 없어요").appFont(13).foregroundStyle(Theme.muted) }
             // 날짜 한 줄, 그 아래 같은 날 걸린 때 (조건 글은 뺀다: 시각 · 가격 · 등락)
@@ -2051,3 +2174,78 @@ struct MockFillLog: View {
     }
 }
 #endif
+
+/// 훑기 전광판: 청록 띠 한 줄 (라이트·다크 모두 테마 색). 값이 바뀐 글자 칸만 위에서 아래로 넘어간다 (묶음마다 몇 초에 한 번)
+struct MockFlipBoard: View {
+    let slots: [(label: String, value: String)]
+    var body: some View {
+        HStack(spacing: 14) {
+            ForEach(Array(slots.enumerated()), id: \.offset) { _, s in
+                HStack(spacing: 6) {
+                    mt(s.label).appFont(10, .semibold).foregroundStyle(Theme.teal).lineLimit(1)
+                    HStack(spacing: 2) {
+                        let cs = Array(s.value)
+                        // 칸 자리는 오른쪽부터 센다: 9 → 10 처럼 자릿수가 늘어도 끝자리 칸이 그대로 남는다
+                        ForEach(Array(cs.enumerated()), id: \.offset) { i, c in
+                            MockFlipCell(ch: c).id(cs.count - i)
+                        }
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12).frame(height: 40)
+        .background(Theme.tealBg, in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(slots.map { "\($0.label) \($0.value)" }.joined(separator: ", "))
+    }
+}
+
+/// 전광판 글자 칸 하나. 글자가 바뀌면 반쯤 접혔다가 새 글자로 펴진다
+struct MockFlipCell: View {
+    let ch: Character
+    @State private var shown: Character?
+    @State private var angle = 0.0
+    @Environment(\.accessibilityReduceMotion) private var still
+    var body: some View {
+        let digit = (shown ?? ch).isNumber
+        Text(String(shown ?? ch))
+            .font(.system(size: 15, weight: .bold, design: .monospaced))
+            .foregroundStyle(Theme.tealDark)
+            .frame(width: digit ? 12 : 6, height: 24)
+            .background(digit ? Theme.card : .clear, in: RoundedRectangle(cornerRadius: 3))
+            .overlay { if digit { Rectangle().fill(Theme.line).frame(height: 1) } }
+            .rotation3DEffect(.degrees(angle), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+            .onAppear { shown = ch }
+            .onChange(of: ch) { _, new in
+                guard !still else { shown = new; return }
+                withAnimation(.easeIn(duration: 0.08)) { angle = -90 } completion: {
+                    shown = new; angle = 90
+                    withAnimation(.easeOut(duration: 0.1)) { angle = 0 }
+                }
+            }
+    }
+}
+
+/// 오늘 걸린 횟수 알약 (2번부터). n 이 없으면 캡션용 빈 알약 "n"
+struct MockSeenPill: View {
+    let n: Int?
+    var body: some View {
+        mt(n.map { "\($0)" } ?? "n").appFont(11, .bold).foregroundStyle(Theme.teal).monospacedDigit().lineLimit(1).fixedSize()
+            .padding(.horizontal, 6).frame(height: 18)
+            .background(Theme.tealBg, in: Capsule())
+            .accessibilityLabel(Text(verbatim: n.map { "오늘 \($0)번 걸림" } ?? "오늘 걸린 횟수"))
+    }
+}
+
+/// 거른 이유 점 색 (걸린 종목 줄 · 목록 아래 캡션이 같은 색을 쓴다)
+enum MockCutTone {
+    static func color(_ why: String) -> Color {
+        switch why {
+        case "시장 약함": return Theme.up
+        case "재확인 대기": return Theme.gold
+        case "거래대금 바닥": return Theme.down
+        default: return Theme.sub        // 유의사항 (VI · 투자경고 · 거래정지 …)
+        }
+    }
+}

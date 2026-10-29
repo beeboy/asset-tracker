@@ -33,7 +33,7 @@ do {
     check(MockPiece(kind: .rise, hi: 30, days: 5).text == "최근 5일 ≤ +30%", "최근 상승 글")
     check(MockRuleCond(kind: .cap, capKind: .volume, lim: 20).over(MockHit(code: "1", name: "a", price: 1, change: nil, score: 0, why: "", vol: 438.9)), "폭등 거르기: 거래량 배수")
     check(!MockRuleCond(kind: .cap, capKind: .rise, lim: 20).over(MockHit(code: "1", name: "a", price: 1, change: nil, score: 0, why: "", rise5: 12)), "폭등 거르기: 5일 상승 아래")
-    check(MockPiece(kind: .change, lo: 2, hi: 8).text == "등락률 +2% ~ +8%", "등락률 글")
+    check(MockPiece(kind: .change, lo: 2, hi: 8).text == "등락률 +2~8%", "등락률 글")
 }
 
 // 훑기
@@ -289,6 +289,10 @@ do {
     check(sc.hits.map(\.code) == ["000001", "000002"], "옛 결과는 그대로: \(sc.hits.map(\.code))")
     check(Set(sc.newHits ?? []) == ["000001", "000002", "000005"], "새 배수 걸린: \(sc.newHits ?? [])")
     check(near(sc.hits[0].volNew ?? 0, 3.1 / fr), "새 배수 값")
+    let scNew = MockCalc.scan(bundle, stocks: st2, bars: b2, excluded: [], at: at10, frac: fr, useNew: true)
+    check(Set(scNew.hits.map(\.code)) == ["000001", "000002", "000005"], "새 배수로 판단하면 새로 걸림: \(scNew.hits.map(\.code))")
+    let scNewOld = MockCalc.scan(bundle, stocks: st2, bars: b2, excluded: [], at: t0, frac: fr, useNew: true)
+    check(scNewOld.hits.map(\.code) == ["000001", "000002"], "오늘 봉이 아니면 새 배수 켜도 옛 배수로")
     let notToday = MockCalc.scan(bundle, stocks: st2, bars: b2, excluded: [], at: t0, frac: fr)
     check(notToday.frac == nil && notToday.newHits == nil && notToday.hits[0].volNew == nil, "오늘 봉이 아니면 새 배수 안 잼")
     check(MockCalc.big(b2, n: 2) == ["000003", "000002"], "큰 종목: \(MockCalc.big(b2, n: 2))")
@@ -325,6 +329,91 @@ do {
     let hp = MockPosition(code: "H", name: "H", qty: 10, cost: 100_015, gross: 100_000, opened: t0, openedDay: "2026-10-01", who: .hand, test: false)
     check(MockCalc.afterTax(hp, price: 11_000, fees: fz) == 110_000 - fz.fee(110_000) - fz.tax(110_000) - 100_015, "세후 손익")
     check(near(MockCalc.stopRoom(hp, price: 10_000, stop: 0.05), 10_000 / 9_500 - 1), "손절선까지")
+}
+
+// 단타 기준 (2026-10-29): 마감 정리 · 이유 꺼짐 · 익절 반 · 되밀림 · 움직임 없음 · 흔들림 손절
+do {
+    let today = MockFmt.day(t0)
+    var L = MockLedger(book: .rule, started: t0)
+    func pos(_ c: String, day: String = today, took: Bool? = nil, peak: Double? = nil, range: Double? = nil, qty: Int = 10) -> MockPosition {
+        var p = MockPosition(code: c, name: c, qty: qty, cost: Double(qty) * 10_001.5, gross: Double(qty) * 10_000, opened: t0, openedDay: day, who: .rule, test: false)
+        p.took = took; p.peak = peak; p.entry = MockBuyNote(range20: range)
+        return p
+    }
+    L.positions["A"] = pos("A")
+    let close = MockSellRule(closeOut: true)
+    check(MockCalc.sellSignals(L, rule: close, prices: ["A": 10_100], excluded: [:], today: today, seg: .pick).isEmpty, "고르고 주문 구간엔 마감 정리 안 함")
+    check(MockCalc.sellSignals(L, rule: close, prices: ["A": 10_100], excluded: [:], today: today, seg: .tidy).first?.why.hasPrefix("마감 정리") == true, "15:00 정리 구간엔 모두")
+    check(MockCalc.sellSignals(L, rule: close, prices: ["A": 10_100], excluded: [:], today: today, seg: .after).isEmpty, "장 끝 뒤엔 안 냄")
+    L.positions["A"] = pos("A", day: "2026-01-02")
+    check(MockCalc.sellSignals(L, rule: close, prices: ["A": 10_100], excluded: [:], today: today, seg: .watch).count == 1, "지난 날 산 몫은 장 열리면 바로")
+
+    L.positions["A"] = pos("A")
+    check(MockCalc.sellSignals(L, rule: MockSellRule(gone: true), prices: ["A": 10_000], excluded: [:], today: today, gone: ["A": "거래량 1.2배 (문턱 2)"]).first?.why == "이유 꺼짐 · 거래량 1.2배 (문턱 2)", "이유 꺼짐")
+    let g = MockCalc.sellSignals(L, rule: MockSellRule(takeProfit: 0.05), prices: ["A": 10_600], excluded: [:], today: today)
+    check(g.first?.qty == 5 && g.first?.why.hasSuffix("반") == true, "익절 첫 번은 반: \(g)")
+    L.positions["A"] = pos("A", took: true, peak: 11_000)
+    check(MockCalc.sellSignals(L, rule: MockSellRule(takeProfit: 0.05), prices: ["A": 10_600], excluded: [:], today: today).isEmpty, "반 판 뒤엔 익절 다시 안 함")
+    let tr = MockSellRule(takeProfit: 0.05, trail: 0.02)
+    check(MockCalc.sellSignals(L, rule: tr, prices: ["A": 10_700], excluded: [:], today: today).first?.why.hasPrefix("되밀림") == true, "고점 11,000 → 10,700 되밀림")
+    check(MockCalc.sellSignals(L, rule: tr, prices: ["A": 10_900], excluded: [:], today: today).isEmpty, "고점 −0.9% 는 그대로")
+    L.positions["A"] = pos("A", peak: 11_000)
+    check(MockCalc.sellSignals(L, rule: MockSellRule(trail: 0.02), prices: ["A": 10_700], excluded: [:], today: today).isEmpty, "반 팔기 전엔 되밀림 안 봄")
+
+    L.positions["A"] = pos("A")
+    let idle = MockSellRule(idleMin: 60, idleBand: 0.01)
+    check(MockCalc.sellSignals(L, rule: idle, prices: ["A": 10_050], excluded: [:], today: today, now: t0.addingTimeInterval(59 * 60)).isEmpty, "59분은 기다림")
+    check(MockCalc.sellSignals(L, rule: idle, prices: ["A": 10_050], excluded: [:], today: today, now: t0.addingTimeInterval(61 * 60)).first?.why.hasPrefix("움직임 없음") == true, "61분 ±0.5% 면 팜")
+    check(MockCalc.sellSignals(L, rule: idle, prices: ["A": 10_300], excluded: [:], today: today, now: t0.addingTimeInterval(61 * 60)).isEmpty, "움직였으면 안 팜")
+
+    L.positions["A"] = pos("A", range: 0.04)
+    let vs = MockSellRule(volK: 1)
+    check(MockCalc.sellSignals(L, rule: vs, prices: ["A": 9_650], excluded: [:], today: today).isEmpty, "하루 폭 4% 종목의 −3.5% 는 잡음")
+    check(MockCalc.sellSignals(L, rule: vs, prices: ["A": 9_550], excluded: [:], today: today).first?.why.hasPrefix("손절 · 흔들림") == true, "−4.5% 는 흔들림 손절")
+    check(MockCalc.exitName("손절 · 흔들림 · 하루 폭") == "손절" && MockCalc.exitName("마감 정리 · 산 값") == "마감 정리", "판 이유 이름")
+
+    // 이유 꺼짐: 아래 문턱 밑 · 이동평균 반대편만. 위 문턱을 넘는 것은 꺼짐이 아니다
+    let wb = MockBundle(name: "W", pieces: [MockPiece(kind: .change, lo: 2, hi: 8), MockPiece(kind: .ma, days: 20)])
+    check(MockCalc.weak(wb, bars(10_000, lastUp: 0.04, volMul: 1)) == nil, "+4% 는 그대로")
+    check(MockCalc.weak(wb, bars(10_000, lastUp: 0.12, volMul: 1)) == nil, "+12% (위 문턱 넘음) 는 꺼짐 아님")
+    check(MockCalc.weak(wb, bars(10_000, lastUp: 0.01, volMul: 1))?.hasPrefix("+1") == true, "+1% 는 꺼짐: \(MockCalc.weak(wb, bars(10_000, lastUp: 0.01, volMul: 1)) ?? "nil")")
+}
+
+// 나눠 사기: 처음엔 몫의 split 만, 든 종목은 이익 중일 때만 더 담기
+do {
+    var L = MockLedger(book: .rule, started: t0)
+    let sc = MockScan(at: t0, bundleId: UUID(), bundleName: "S", pieceTexts: [], barDay: "", total: 2,
+                      hits: [MockHit(code: "N", name: "N", price: 10_000, change: nil, score: 2, why: "새"), MockHit(code: "H", name: "H", price: 10_000, change: nil, score: 1, why: "든")],
+                      dropped: [:])
+    L.positions["H"] = MockPosition(code: "H", name: "H", qty: 10, cost: 105_016, gross: 105_000, opened: t0, openedDay: MockFmt.day(t0), who: .rule, test: false)
+    var r = MockSelectRule(); r.count = 2; r.keepCash = 0; r.maxPer = 0.5
+    let full = MockCalc.select(sc, ledger: L, rule: r, fees: fees, prices: ["N": 10_000, "H": 10_000], excluded: [:])
+    r.split = 0.34
+    let part = MockCalc.select(sc, ledger: L, rule: r, fees: fees, prices: ["N": 10_000, "H": 10_000], excluded: [:])
+    check(part.picks.map(\.code) == ["N"] && part.skips.contains { $0.code == "H" && $0.why.hasPrefix("더 담기 안 함") }, "손실 중 든 종목은 더 안 담음: \(part.skips)")
+    let n1 = full.picks.first { $0.code == "N" }?.budget ?? 0, n2 = part.picks.first { $0.code == "N" }?.budget ?? 0
+    let one = 0.10 * MockCalc.equity(L, prices: ["H": 10_000]) * 0.34
+    check(n2 > one - 10_100 && n2 <= one + 1 && n2 < n1, "첫 몫은 34%만: \(n1) → \(n2) (기대 \(one))")
+    let up = MockCalc.select(sc, ledger: L, rule: r, fees: fees, prices: ["N": 10_000, "H": 10_600], excluded: [:])
+    check(up.picks.contains { $0.code == "H" }, "이익 중이면 더 담음")
+}
+
+// 꺼 둔 조건 저절로 켜기: 켰다면 어땠을지
+do {
+    let lid = UUID()
+    func sell(_ day: Int, pnl: Double, streak: Int, wall: Double, range: Double, low: Double) -> MockEvent {
+        var e = MockEvent(at: t0.addingTimeInterval(Double(day) * 86_400), ledger: lid, book: .rule, kind: .fill, who: .rule, text: "", side: .sell,
+                          qty: 10, price: 10_000 + pnl / 10, amount: 100_000 + pnl, pnl: pnl, pnlGross: pnl, basis: 100_000, opener: .rule)
+        e.entry = MockBuyNote(range20: range, streak: streak, wall: wall); e.low = low
+        return e
+    }
+    var es: [MockEvent] = []
+    for i in 0..<30 { es.append(sell(i % 6, pnl: i < 5 ? -8_000 : 1_000, streak: i < 5 ? 3 : 0, wall: i < 5 ? 5 : 1, range: 0.03, low: i < 5 ? 9_000 : 9_900)) }
+    let (n, days, arms) = MockCalc.arms(es, ledger: lid, fees: fees, volK: 1, streak: 3, wall: 3)
+    check(n == 30 && days == 6, "매매 \(n) · \(days)일")
+    let s = arms.first { $0.key == "streak" }!, w = arms.first { $0.key == "wall" }!, v = arms.first { $0.key == "vol" }!
+    check(s.hits == 5 && near(s.gain, 40_000) && w.hits == 5 && near(w.gain, 40_000), "연속 손절·호가 벽: 진 매매 5건을 안 샀다면 +4만")
+    check(v.hits == 5 && v.gain > 0, "흔들림 손절: −10% 까지 간 5건을 −3% 에서 팔았다면 나음 \(v.gain)")
 }
 
 print(fails == 0 ? "ALL OK" : "\(fails) FAILED")

@@ -562,7 +562,7 @@ struct ExternalView: View {
         let rest = strong.dropFirst().reduce(0) { $0 + $1.amt }
         if strong.count == 1 { return String(localized: "사실상 \(String(describing: name)) 하나") }
         if rest < top.amt / 3 { return String(localized: "거의 \(String(describing: name)) 때문 · 나머지 합쳐도 1/3 미만") }
-        if rest < top.amt { return String(localized: "\(String(describing: name))이 가장 큼 · 나머지 합보다 큼") }
+        if rest < top.amt { return (TownLook.batchim(name) ? String(localized: "\(String(describing: name))이 가장 큼 · 나머지 합보다 큼") : String(localized: "\(String(describing: name))가 가장 큼 · 나머지 합보다 큼")) }
         return String(localized: "\(String(describing: name))·\(String(describing: FactorDetailView.names[strong[1].k] ?? "")) 비슷")
     }
 
