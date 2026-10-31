@@ -31,6 +31,8 @@
 //       먼저 OAuth 사용량 주소를 묻고, 안 되면 가장 작은 메시지 한 번(1토큰)의 응답 머리글(unified 한도)에서 읽는다. 결과는 5분 기억.
 // 13) 동네 신문 (/heads): 구글 뉴스 한국판 전체 상위 기사 제목만 하루 한 번(한국 7시 뒤 첫 cron) 받아 5일 둔다.
 //       모두가 같은 값을 받는다 (KV 키 heads, 하루 쓰기 1번). 앱 동네 주민이 그 제목을 말한다. 비밀값 없음.
+// 14) 결 섬 열쇠 (/gyeol): 개발자 기기끼리만 (/sync 와 같은 GitHub 토큰 확인). 아이폰 naeilo 가 결 섬을 띄울 때마다 바뀌는 푸시 열쇠를 올리고,
+//       맥 Hammerspoon(gyeol-island.lua)이 받아 가 섬에 몸짓을 보낸다. KV 키 g:<GitHub 계정>, 값은 열쇠 둘과 시각뿐.
 const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/(v8\/finance\/chart|v1\/finance\/search)/;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
 const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
@@ -87,6 +89,20 @@ export default {
       if (cur && cur.at > at) return out({ stale: true, at: cur.at });
       await env.VIEWS.put(key, body);
       return out({ ok: true, at });
+    }
+    if (u.pathname === "/gyeol") {
+      // GET /gyeol → { push, start, at },  POST /gyeol {"push","start"} → { ok, at } (16진 열쇠만 받는다)
+      if (!env.VIEWS) return noKv();
+      const who = await ghWho(env, (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim());
+      if (!who) return out({ error: "저장소 쓰기 권한이 있는 GitHub 토큰이 아닙니다" }, 403);
+      const key = "g:" + who, cur = JSON.parse((await env.VIEWS.get(key)) || "{}");
+      if (req.method === "GET") return out(cur);
+      if (req.method !== "POST") return out({ error: "GET 또는 POST" }, 400);
+      const b = await req.json().catch(() => ({})), hex = (s) => typeof s === "string" && /^[0-9a-f]{16,400}$/.test(s);
+      if (!hex(b.push) && !hex(b.start)) return out({ error: "열쇠가 없습니다" }, 400);
+      const v = { push: hex(b.push) ? b.push : cur.push || "", start: hex(b.start) ? b.start : cur.start || "", at: Date.now() };
+      await env.VIEWS.put(key, JSON.stringify(v));
+      return out({ ok: true, at: v.at });
     }
     if (u.pathname === "/esync") {
       // GET /esync?id= → { c, at },  POST /esync?id= {"c","at"} → { ok, at } (더 새 값이 이미 있으면 { stale: true })
