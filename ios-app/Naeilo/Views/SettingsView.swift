@@ -269,6 +269,12 @@ struct SettingsGroupView: View {
                         (String(localized: "알림"), onN > 0 ? String(localized: "\(String(describing: onN))개 켜짐") : String(localized: "모두 꺼짐"), .alerts),
                         (String(localized: "홈 화면 위젯"), String(localized: "\(String(describing: m.baseWidgets.count + Shelter.friends.count))가지 · 미리보기"), .widgets),
                     ])
+                    #if GYEOL
+                    GyeolSettings()   // 결 섬 (Gyeol/README.md)
+                    #endif
+                    #if GYEOLPIP
+                    GyeolPipSettings()   // 결 작은 창 (Naeilo/Gyeol/GyeolPip.swift)
+                    #endif
                 case .screenGroup:
                     Text("화면").appFont(22, .bold)
                     Text("밝기 모드").appFont(13, .bold).foregroundStyle(Theme.sub)

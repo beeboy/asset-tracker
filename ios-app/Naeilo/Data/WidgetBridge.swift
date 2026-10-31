@@ -104,6 +104,9 @@ enum WidgetBridge {
         Store.summarySource = "app"
         Store.widgetStep = m.playOn ? 3 : max(1, m.nxStep)   // 위젯은 미션 4에서 실제로 한 단계에 맞춰 하나씩 열린다 (개발자 계정도 같게)
         WidgetCenter.shared.reloadAllTimelines()
+        #if GYEOL
+        GyeolFeed.push()   // 결 섬 말풍선도 같은 숫자로 (Gyeol/README.md)
+        #endif
     }
 
     /// 작은 위젯 값: 내 길(실제는 40점 안쪽으로 줄인다, 계획선 41점, 앞섬)과 평행 세계 나·모의 바구니 수익률

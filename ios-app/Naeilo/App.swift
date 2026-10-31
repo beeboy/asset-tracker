@@ -35,6 +35,9 @@ struct RootView: View {
             .modifier(Hooks(model: model, phase: phase))
             .modifier(Links(model: model, phase: phase))
             .modifier(IconFollow())
+            #if GYEOL
+            .modifier(GyeolHooks(phase: phase))   // 결 섬 (Gyeol/README.md)
+            #endif
             #if MOCK
             .modifier(MockTabsHooks(mine: Set(model.holdings.map(\.symbol)), phase: phase))
             #endif

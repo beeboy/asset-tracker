@@ -243,6 +243,13 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
     // 보유 계산 (원화)
     /** 원화 평가: 웹 평가액처럼 매매기준율 (없거나 5일 넘게 묵었으면 지금 환율) */
     fun krw(s: Symbol, x: Double): Double = if (s.currency == Currency.usd) x * Market.shared.valFx else x   // ios: Data/AppModel.swift:246
+    /** 종목 하나가 오늘 움직인 금액 (원). 국내 주식 합계는 넣은 날만 바뀌어 뺀다. 종목 탭 '오늘' 박스·동네 제목 줄이 같이 쓴다 */
+    fun dayWon(r: Row): Double {   // ios: Data/AppModel.swift:248
+        val q = r.sym.quote   // ios: Data/AppModel.swift:249
+        if (r.id == KoreaEstimate.sumId || q.prevClose <= 0) return 0.0   // ios: Data/AppModel.swift:250
+        return r.value - krw(r.sym, r.h.qty * q.prevClose)   // ios: Data/AppModel.swift:251
+    }
+    val todayWon: Double get() = rows.fold(0.0) { a, r -> a + dayWon(r) }   // ios: Data/AppModel.swift:253
     /** 들어간 돈(원금) = 매수 단가 × 수량 × 지금 환율 (웹 본전 카드와 같다. 매수 때 환율은 모른다) */
     fun costKrw(s: Symbol, x: Double): Double = krw(s, x)   // ios: Data/AppModel.swift:248
     data class Row(val id: String, val sym: Symbol, val h: Holding, val value: Double, val cost: Double, val color: Color)   // ios: Data/AppModel.swift:249

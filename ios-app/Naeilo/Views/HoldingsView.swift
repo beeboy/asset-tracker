@@ -10,7 +10,7 @@ struct HoldingsView: View {
     @State private var said: String? = nil          // 지운 뒤 인물의 한 줄 (평정 지수)
     @State private var swiped: String? = nil        // 왼쪽으로 밀어 지우기 버튼이 보이는 종목
     @State private var askDel: Symbol? = nil        // 지울지 한 번 묻는 종목
-    @State private var river: EarnTarget? = nil     // 내 몫 실적 강 팝업 (금색 알약을 누르면)
+    @State private var river: EarnTarget? = nil     // 내 몫 실적 강 팝업 (금색 점 금액을 누르면)
     @State private var editSym: Symbol? = nil       // 길게 누르기 '종목 고치기'
     @State private var adding = false               // '+ 종목 추가' 상자: 팝업 대신 목록 맨 아래에 펼친다
     @State private var colW: [Int: CGFloat] = [:]   // 목록 칸 폭: 같은 칸은 묶음을 넘어 줄마다 같은 폭
@@ -35,26 +35,13 @@ struct HoldingsView: View {
         let us = sorted.filter { $0.sym.currency == .usd }
         let kr = sorted.filter { $0.sym.currency != .usd }
         let mx = rows.map { abs(dayPct($0)) }.max() ?? 0
-        let earn = rows.contains { EarningsFeed.shared.summary($0.sym, qty: $0.h.qty) != nil }
         ScrollViewReader { sv in
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: String(localized: "종목")).padding(.horizontal, -16)
                 todayBox(rows)
                 totalChart(rows)
-                listBar
-                if earn {
-                    HStack(spacing: 5) {
-                        Spacer()
-                        Capsule().fill(Self.gold).frame(width: 20, height: 10)
-                        Text("누르면 내 몫").appFont(12).foregroundStyle(Theme.sub)
-                    }
-                    .padding(.trailing, 14).padding(.vertical, -4)
-                    .accessibilityHidden(true)
-                }
-                if !us.isEmpty { group(String(localized: "미국"), us, mx) }
-                if !kr.isEmpty { group(String(localized: "국내"), kr, mx) }
-                // 맨 아래 한 줄: 왼쪽 시세 갱신, 오른쪽 '+ 종목 추가'
+                // 목록 위 바깥 한 줄: 왼쪽 시세 갱신, 오른쪽 '+ 종목 추가' (2026-10-29)
                 HStack(spacing: 8) {
                     Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
                         .lineLimit(2).minimumScaleFactor(0.8)
@@ -68,6 +55,11 @@ struct HoldingsView: View {
                     .buttonStyle(.plain).fixedSize()
                 }
                 if adding { AddHoldingView(inline: true, close: { withAnimation(.snappy) { adding = false } }).id("add") }
+                listBar
+                if !us.isEmpty { group(String(localized: "미국 주식"), us, mx) }
+                if !kr.isEmpty { group(String(localized: "국내 주식"), kr, mx) }
+                // 종목 한눈에 지도: 기간 · 지도 · 누르면 상세만 (2026-10-29)
+                GlanceView(compact: true, usd: inUsd)
                 SampleNote()   // 샘플 안내는 맨 아래 (2026-10-28)
                 Color.clear.frame(height: 24)   // 아래 탭바가 마지막 카드를 가리지 않게
             }
@@ -102,11 +94,7 @@ struct HoldingsView: View {
     }
 
     /// 종목 하나가 오늘 움직인 금액 (원). 국내 주식 합계는 넣은 날만 바뀌어 뺀다
-    private func move(_ r: AppModel.Row) -> Double {
-        let q = r.sym.quote
-        guard r.id != KoreaEstimate.sumId, q.prevClose > 0 else { return 0 }
-        return r.value - m.krw(r.sym, r.h.qty * q.prevClose)
-    }
+    private func move(_ r: AppModel.Row) -> Double { m.dayWon(r) }
 
     /// 줄 막대가 재는 값: 오늘 등락률 (줄에 보이는 %와 같다). 국내 주식 합계는 뺀다
     private func dayPct(_ r: AppModel.Row) -> Double {
@@ -177,7 +165,12 @@ struct HoldingsView: View {
         return VStack(spacing: 0) {
             // 머리줄: 묶음의 오늘 등락
             HStack {
-                Text("\(title) \(rs.count)").appFont(14, .bold)
+                HStack(spacing: 6) {
+                    Text(title).appFont(13, .bold)
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(Theme.line, in: RoundedRectangle(cornerRadius: 8))
+                    Text("\(rs.count)").appFont(14, .bold).foregroundStyle(Theme.sub)
+                }
                 Spacer()
                 (Text(mv > 0 ? "▲ " : mv < 0 ? "▼ " : "").font(.system(size: 9, weight: .bold))
                  + Text(HoldFmt.won(abs(mv)) + "  " + AppModel.sgn(pc)))
@@ -246,31 +239,27 @@ struct HoldingsView: View {
         let day = r.sym.quote.change
         let bp = r.cost > 0 ? r.value / r.cost - 1 : 0
         let v = valueMode, small: CGFloat = 14   // 평가금 보기도 현재가 보기와 같은 크기 (2026-10-27)
-        // 글자 로고는 쓰지 않는다 (그림 로고만). 오늘 실적 금색 점은 이름 오른쪽 위
+        // 글자 로고는 쓰지 않는다 (그림 로고만)
         let name = HStack(spacing: v ? 6 : 8) {
             if LogoTile.has(r.id) { LogoTile(symbol: r.id, size: 28) }
             Text(r.sym.name).appFont(15, .bold).lineLimit(1).truncationMode(.tail)
-        }
-        .overlay(alignment: .topTrailing) {
-            if es?.fresh == true {
-                Circle().fill(Self.gold).frame(width: 9, height: 9)
-                    .overlay(Circle().strokeBorder(Theme.card, lineWidth: 2)).offset(x: 8, y: -4)
-                    .accessibilityLabel("오늘 실적")
-            }
         }
         let mid = Text(v ? "\(r.h.qty.formatted())주" : px(r, r.h.avg)).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1)
         let chg = Text(v ? AppModel.sgn(bp) : AppModel.sgn2(day))   // 평가금 보기 괄호 금액은 뺐다 (2026-10-27)
         let pctC = v ? (bp > 0 ? Theme.up : bp < 0 ? Theme.down : Theme.sub) : (day > 0 ? Theme.up : day < 0 ? Theme.down : Theme.sub)
         let pct = chg.appFont(14, .bold).foregroundStyle(pctC).monospacedDigit().lineLimit(1).holdCol(1, colW)
-        let pill = Text(v ? amt(r, krw: r.value, native: r.h.qty * r.sym.last) : px(r, r.sym.last))
-            .appFont(small, .bold).monospacedDigit().lineLimit(1)
-            .foregroundStyle(es != nil ? Color.black : Theme.ink)
-            .padding(.horizontal, v ? 6 : 7).padding(.vertical, 2)
-            .background(es != nil ? Self.gold : .clear, in: Capsule())
+        // 실적이 있으면 금액 앞에 금색 점 (알약은 뺐다, 2026-10-29)
+        let pill = HStack(spacing: 4) {
+            if es != nil { Circle().fill(Self.gold).frame(width: 7, height: 7).accessibilityLabel("실적") }
+            Text(v ? amt(r, krw: r.value, native: r.h.qty * r.sym.last) : px(r, r.sym.last))
+                .appFont(small, .bold).monospacedDigit().lineLimit(1)
+                .foregroundStyle(Theme.ink)
+        }
+            .padding(.vertical, 2)
             .holdCol(2, colW)
         // 공개 베타·출시에서 내 키 시세가 없는 실제 종목: 가격·% 대신 키 안내 (평가액에서도 빠진다, Market.needsKey)
         let nk = Market.shared.needsKey(r.sym)
-        // 실적이 있으면 알약만 따로 누른다 (없으면 알약도 세부 링크 안)
+        // 실적이 있으면 금액만 따로 누른다 (없으면 금액도 세부 링크 안)
         let right = Group {
             if nk { Text("키를 연결하면 시세가 보여요").appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8) }
             else { HStack(spacing: v ? 5 : 8) { pct; if es == nil { pill } } }
@@ -1456,6 +1445,7 @@ private extension View {
 // 가볍게: 그림은 멈춰 있고(애니메이션 없음), 대사창이 열렸을 때만 글자를 찍는다. 새로 받는 것 없음 (이미 받은 시세만)
 struct TownView: View {
     var scroll: ScrollViewProxy? = nil               // 말 걸면 아래 칸이 보이게 페이지를 살짝 내린다
+    @ScaledMetric(relativeTo: .body) private var bub: CGFloat = 14   // 말풍선 글자 폭: appFont(14)와 같이 기기 글자 크기를 따라 커진다
     @Environment(AppModel.self) private var m
     @AppStorage("town.bg") private var bg = 0          // 동네 배경 (TownGround.names)
     @Environment(\.colorScheme) private var scheme
@@ -1520,6 +1510,18 @@ struct TownView: View {
             face[k] = p.x < me.x ? .left : .right; face[id] = p.x < me.x ? .right : .left
             duet = Duet(ids: [k, id], lines: TownSay.duet(r).map { ($0.me ? k : id, $0.text) }, until: tick + 2)
         }
+    }
+    /// 말풍선이 판 양옆 4pt 안에 들도록 옆으로 미는 만큼 (cx: 말하는 이 가운데)
+    private func bubbleShift(_ t: String, _ cx: CGFloat, _ w: CGFloat) -> CGFloat {
+        let half = (bubbleWidth(t) + 23) / 2   // 안쪽 여백 20 + 테두리
+        return max(4 + half - cx, min(0, w - 4 - half - cx))
+    }
+    /// 말풍선 폭: 글을 실제 글꼴로 재서 줄 수를 정하고, 줄마다 고르게 나눈다 (글자 수로 어림하면 여백이 남는다)
+    private func bubbleWidth(_ t: String) -> CGFloat {
+        let one = (t as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: bub)]).width
+        let maxW = 230 * bub / 14
+        let lines = min(3, (one / maxW).rounded(.up))   // lineLimit(3)
+        return ceil(lines <= 1 ? one + 2 : min(maxW, one / lines + bub * 1.5))   // 여러 줄이면 낱말 끊김 여유 한 글자 반
     }
     private static let meSpot = CGPoint(x: 0.50, y: 0.64)         // 나는 길가 가운데 (모임 날)
     private static let warshSpot = CGPoint(x: 0.16, y: 0.28)      // 워시는 왼쪽 위 나무 곁
@@ -1591,13 +1593,14 @@ struct TownView: View {
                     .accessibilityLabel(TownLook.shown(r, book.note(r.id)))
                     .overlay(alignment: .top) {
                         if let t = duo {
-                            Text(t).appFont(11).foregroundStyle(.black).lineLimit(3).multilineTextAlignment(.center)
-                                .frame(width: min(180, CGFloat(t.count) * 11 + 4))
+                            Text(t).appFont(14).foregroundStyle(.black).lineLimit(3).lineSpacing(2).multilineTextAlignment(.center)   // 대사창(15)보다 조금 작게
+                                .frame(width: bubbleWidth(t))
                                 .fixedSize(horizontal: false, vertical: true)
-                                .padding(.horizontal, 6).padding(.vertical, 3)
-                                .background(.white, in: RoundedRectangle(cornerRadius: 6))
-                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.black.opacity(0.6), lineWidth: 1.5))
+                                .padding(.horizontal, 10).padding(.vertical, 6)   // 글이 테두리에 붙지 않게 넉넉히
+                                .background(.white, in: RoundedRectangle(cornerRadius: 10))
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.black.opacity(0.6), lineWidth: 1.5))
                                 .fixedSize().alignmentGuide(.top) { $0[.bottom] + 4 }   // 줄이 늘면 위로 자란다
+                                .offset(x: bubbleShift(t, p.x * g.size.width + (walk[r.id]?.width ?? 0), g.size.width))   // 판 밖으로 나가지 않게
                                 .transition(.opacity).allowsHitTesting(false)
                         }
                     }
@@ -1650,6 +1653,7 @@ struct TownView: View {
             }
         }
         .frame(height: 440)   // 말 걸어도 동네 판 크기는 그대로, 대사창은 판 위에 뜨고 아래 칸은 그 밑에
+        TownTotal().frame(maxWidth: .infinity, alignment: .trailing)   // 점수판: 전체 내 평가액·오늘 등락 (판 밖 오른쪽 아래)
         // 대사창 아래 칸: 우리 사이 / 꾸미기. 이장·워시는 아래 칸 없음 (지난 대화는 우리 사이 → 전체 보기)
         if let r = talk, r.id != TownLook.mayorID && r.id != TownLook.warshID {
             // 우리 사이·꾸미기는 넉넉히 280 (페이지가 스크롤되니 화면 높이에 매이지 않는다)
@@ -1789,6 +1793,32 @@ struct TownView: View {
     }
 }
 
+/// 동네 판 밖 오른쪽 아래 점수판: 전체 내 평가액 + ▲▼(글자의 70%) 오늘 등락 금액·%. 종목 탭 '오늘' 박스와 같은 값
+struct TownTotal: View {
+    @Environment(AppModel.self) private var m
+    @AppStorage("hideAmt") private var hideAmt = false   // 홈에서 켠 금액 가리기를 따른다
+    var body: some View {
+        if m.total > 0 {
+            // 넓은 기기는 한 줄, 모자라면 두 줄
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) { total; move }
+                VStack(alignment: .trailing, spacing: 0) { total; move }
+            }
+            .lineLimit(1)
+        }
+    }
+    private var total: some View {
+        Text(hideAmt ? "••••••" : HoldFmt.won(m.total)).appFont(15, .bold).foregroundStyle(Theme.ink)
+    }
+    private var move: some View {
+        let mv = m.todayWon
+        return (Text(mv > 0 ? "▲ " : mv < 0 ? "▼ " : "").font(.system(size: 8, weight: .bold))
+                + Text((hideAmt ? "" : HoldFmt.won(abs(mv)) + " ") + String(format: "%.2f%%", abs(m.todayMove) * 100)))
+            .appFont(11, .semibold).monospacedDigit()
+            .foregroundStyle(mv > 0 ? Theme.up : mv < 0 ? Theme.down : Theme.sub)
+    }
+}
+
 /// 주민 얼굴: 종목 코드를 씨앗으로 캐릭터 생성 부품을 즉석 조합 (저장 없음, 같은 종목은 늘 같은 얼굴)
 enum TownLook {
     /// 주민 = 사람. 대표가 같은 종목(테슬라·스페이스X → 머스크)은 한 주민이 같이 맡는다. 대표 정보가 없으면 종목마다 한 명
@@ -1870,6 +1900,7 @@ enum TownLook {
     static let warshID = "warsh"
     /// 나: 캐릭터 만들기에서 만든 내 캐릭터가 동네에 같이 산다 (만들었을 때만)
     static let meID = "me"
+    static let extras: Set<String> = [mayorID, warshID, meID]   // 주민이 아닌 이들 (옛 이웃이 될 수 없다)
     static func fomc(_ now: Date = Date()) -> Int? {
         let from = Day.str(now.addingTimeInterval(-3 * 86400)), until = Day.str(now.addingTimeInterval(5 * 86400))
         guard let r = MarketEvents.rules.first(where: { $0.id == "x_fomc" }), let d = MarketEvents.dates(r, from: from, until: until).first else { return nil }
@@ -2091,7 +2122,7 @@ struct TownTalk: View {
     private func send() {
         let first = !(log.log(res.id).last.map { $0.day == TownLog.day && $0.me != nil } ?? false)
         log.answer(res.id, me, price: TownLook.price(res), say: more ?? line)
-        if first && !me.isEmpty { more = TownSay.praise }
+        if first && !me.isEmpty { more = TownSay.praise(res) }
     }
     private func chip(_ t: String, _ on: Bool, _ a: @escaping () -> Void) -> some View {
         Button(t, action: a).appFont(12, .bold).foregroundStyle(on ? Color(red: 0.10, green: 0.11, blue: 0.20) : .white)
@@ -2199,13 +2230,15 @@ struct TownPast: View {
             guard var n = notes[r.id] else { continue }
             if n.co != r.name || n.left != nil { n.co = r.name; n.left = nil; set(r.id, n) }
         }
-        for (id, var n) in notes where !now.contains(id) && n.left == nil && id != TownLook.mayorID {
+        // 이장·워시·나는 주민이 아니라 떠날 수 없다 (예전에 떠난 걸로 적혔으면 지운다: 옛 이웃으로 또 와서 둘이 서던 결함)
+        for (id, var n) in notes where TownLook.extras.contains(id) && n.left != nil { n.left = nil; set(id, n) }
+        for (id, var n) in notes where !now.contains(id) && n.left == nil && !TownLook.extras.contains(id) {
             n.left = TownLog.day; set(id, n)
         }
     }
     /// 오늘 놀러 온 옛 이웃 (사흘에 한 번쯤, 날마다 한 명). 지금 주민은 빼고
     func visitor(except now: Set<String>) -> String? {
-        let olds = notes.filter { $0.value.left != nil && !now.contains($0.key) }.keys.sorted()
+        let olds = notes.filter { $0.value.left != nil && !now.contains($0.key) && !TownLook.extras.contains($0.key) }.keys.sorted()
         let s = TownLook.seed("visit" + TownLog.day)
         guard !olds.isEmpty, s % 3 == 0 else { return nil }
         return olds[Int((s / 3) % UInt64(olds.count))]

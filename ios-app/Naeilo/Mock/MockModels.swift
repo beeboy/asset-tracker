@@ -328,6 +328,7 @@ struct MockSellRule: Codable, Equatable {
     var closeOut: Bool? = nil     // 정리 구간(15:00)에 남은 몫 모두
     var trail: Double? = nil      // 익절로 반을 판 뒤, 남은 몫이 장중 고점에서 이만큼 내려오면 (0.02 = 2%)
     var volK: Double? = nil       // 흔들림 손절: 산 값 − 지난 20일 하루 폭 × k 아래로 (산 때 폭을 모르면 안 본다)
+    var since: String? = nil      // 지금 팔기 규칙이 선 날. 그 전에 산 몫은 손절·익절만 본다 (2026-10-29)
     var on: Bool { stopLoss != nil || takeProfit != nil || maxDays != nil || idleMin != nil || gone == true || closeOut == true || trail != nil || volK != nil }
 }
 
@@ -495,6 +496,7 @@ struct MockEvent: Codable, Equatable, Identifiable {
     var conds: String? = nil               // 매도 체결: 그 몫을 살 때 켜진 관찰 조건
     var buyWhy: String? = nil              // 매도 체결: 그 몫을 산 이유
     var exit: String? = nil                // 매도 체결: 판 이유 (손절·익절·되밀림·움직임 없음·이유 꺼짐·마감 정리·손 주문)
+    var exitWhy: String? = nil             // 매도 체결: 판 이유 전문 ("마감 정리 · 10/27에 산 몫 · …")
     var entry: MockBuyNote? = nil            // 매도 체결: 그 몫을 살 때 잰 값
     var low: Double? = nil                 // 매도 체결: 들고 있는 동안 본 가장 낮은 가격
 }
@@ -519,6 +521,44 @@ struct MockFollow: Codable, Equatable {
     var p60: Double? = nil
     var pEnd: Double? = nil
     func ret(_ p: Double?) -> Double? { p.flatMap { p0 > 0 ? $0 / p0 - 1 : nil } }
+}
+
+/// 판 종목 뒤 흐름: 판 값과 판 뒤 30분·1시간·마감·다음 날 시가 (판 자리가 반환점이었나 본다, 2026-10-29)
+struct MockAfter: Codable, Equatable {
+    var day: String
+    var book: MockBook
+    var code: String
+    var name: String
+    var at: Date
+    var p0: Double               // 판 값 (평균 체결가)
+    var qty: Int
+    var exit: String             // 판 이유 이름 (손절·마감 정리 …)
+    var p30: Double? = nil
+    var p60: Double? = nil
+    var pEnd: Double? = nil
+    var pOpen: Double? = nil     // 다음 거래일 시가 무렵 (9:00~9:05)
+    /// 가장 늦게 채운 값과 그 이름
+    var last: (name: String, p: Double)? {
+        if let p = pOpen { return ("다음 날 시가", p) }
+        if let p = pEnd { return ("마감", p) }
+        if let p = p60 { return ("1시간 뒤", p) }
+        if let p = p30 { return ("30분 뒤", p) }
+        return nil
+    }
+    /// 판 뒤 오른 비율 (+면 기다렸으면 나았음)
+    var ret: Double? { last.map { p0 > 0 ? $0.p / p0 - 1 : 0 } }
+}
+
+/// 뒤 흐름 AI 읽기: 걸린 종목·판 종목 흐름을 단추로 부를 때만 읽어 준다 (2026-10-29). 사라·팔아라는 하지 않는다
+struct MockFlowRead: Codable, Equatable, Identifiable {
+    enum Kind: String, Codable { case follow, after }
+    var id = UUID()
+    var kind: Kind
+    var book: MockBook
+    var at: Date
+    var range: String             // 읽은 범위 ("10/20~10/29 · 판 23건")
+    var text: String              // 흐름 읽기
+    var terms: [[String]] = []    // [낱말, 뜻]
 }
 
 /// AI 한 번 쓴 기록

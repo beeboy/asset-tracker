@@ -346,7 +346,12 @@ do {
     check(MockCalc.sellSignals(L, rule: close, prices: ["A": 10_100], excluded: [:], today: today, seg: .tidy).first?.why.hasPrefix("마감 정리") == true, "15:00 정리 구간엔 모두")
     check(MockCalc.sellSignals(L, rule: close, prices: ["A": 10_100], excluded: [:], today: today, seg: .after).isEmpty, "장 끝 뒤엔 안 냄")
     L.positions["A"] = pos("A", day: "2026-01-02")
-    check(MockCalc.sellSignals(L, rule: close, prices: ["A": 10_100], excluded: [:], today: today, seg: .watch).count == 1, "지난 날 산 몫은 장 열리면 바로")
+    check(MockCalc.sellSignals(L, rule: close, prices: ["A": 10_100], excluded: [:], today: today, seg: .watch).isEmpty, "지난 날 산 몫도 장중에 바로 팔지 않음")
+    check(MockCalc.sellSignals(L, rule: close, prices: ["A": 10_100], excluded: [:], today: today, seg: .tidy).first?.why.contains("1/2에 산 몫") == true, "지난 날 산 몫은 15:00에 · 이유에 산 날")
+    var closeSince = close; closeSince.since = "2026-01-05"
+    check(MockCalc.sellSignals(L, rule: closeSince, prices: ["A": 10_100], excluded: [:], today: today, seg: .tidy).isEmpty, "규칙 서기 전 산 몫은 마감 정리 안 함")
+    var stopSince = MockSellRule(stopLoss: 0.05, closeOut: true); stopSince.since = "2026-01-05"
+    check(MockCalc.sellSignals(L, rule: stopSince, prices: ["A": 9_400], excluded: [:], today: today, seg: .watch).first?.why.hasPrefix("손절") == true, "규칙 서기 전 산 몫도 손절은 함")
 
     L.positions["A"] = pos("A")
     check(MockCalc.sellSignals(L, rule: MockSellRule(gone: true), prices: ["A": 10_000], excluded: [:], today: today, gone: ["A": "거래량 1.2배 (문턱 2)"]).first?.why == "이유 꺼짐 · 거래량 1.2배 (문턱 2)", "이유 꺼짐")
