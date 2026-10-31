@@ -15,14 +15,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: KV ID 넣기
         env:
           KV: ${{ vars.CF_KV_VIEWS_ID }}
         run: |
           test -n "$KV" || { echo "저장소 변수 CF_KV_VIEWS_ID 가 없습니다"; exit 1; }
           sed -i "s/__KV_VIEWS_ID__/$KV/" proxy/wrangler.toml
-      - uses: cloudflare/wrangler-action@v3
+      - uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ vars.CF_ACCOUNT_ID }}

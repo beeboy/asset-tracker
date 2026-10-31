@@ -12,3 +12,12 @@ id = "__KV_VIEWS_ID__"   # 배포할 때 GitHub 저장소 변수 CF_KV_VIEWS_ID 
 # cron 하나 (15분). 여러 개를 두면 "*/30 13-22 * * 1-5" 만 불리고 나머지는 한 번도 안 불렸다 (2026-10-13).
 # 수집 시간(평일 UTC 8~23시 + 다음날 0시대)과 알림 시각(미국 장중 :00/:30)은 코드가 고른다
 crons = ["*/15 * * * *"]
+
+# 결 PiP 방 (cloudflare-worker.js 15번). 무료 등급은 SQLite 방만 된다
+[[durable_objects.bindings]]
+name = "GYEOL"
+class_name = "GyeolRoom"
+
+[[migrations]]
+tag = "gyeol-room-1"
+new_sqlite_classes = ["GyeolRoom"]
