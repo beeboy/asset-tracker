@@ -98,6 +98,9 @@ final class SiteCalc {{
 }}
 struct XRow {{ let id: String; let sym: Symbol; let value: Double }}
 struct XM {{ var rows: [XRow] = []; var total: Double {{ rows.reduce(0) {{ $0 + $1.value }} }} }}
+enum TownLook {{   // 한눈에 요약 문구가 이/가를 고른다 (HoldingsView.swift 원본 그대로)
+{span("Views/HoldingsView.swift", "    static func batchim(_ s: String) -> Bool {", "    }")}
+}}
 
 struct ExternalView {{
     var m = XM()
