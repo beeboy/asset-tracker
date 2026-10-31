@@ -132,9 +132,11 @@ struct GoalCellsCard: View {
             if party { MiniParty().frame(maxWidth: .infinity) } else {
             HStack(alignment: .bottom, spacing: 10) {
                     CharPixel(id: m.homeFriendShown, width: 42, height: 60).charIdle().accessibilityHidden(true)
+                        .onTapGesture { say = Self.talk(m, pct: pct, n: Int(fV), unit: unit, fV: fV, lost: lost, dY: nV - nY) }
                     VStack(alignment: .leading, spacing: 2) {
                         Text(m.friendName(m.homeFriendShown)).appFont(12, .semibold).foregroundStyle(Theme.blue)
-                        Text(Self.boast(pct, Int(fV))).appFont(14).fixedSize(horizontal: false, vertical: true)
+                        Text(say ?? Self.boast(pct, Int(fV))).appFont(14).fixedSize(horizontal: false, vertical: true)
+                            .onAppear { say = Self.talk(m, pct: pct, n: Int(fV), unit: unit, fV: fV, lost: lost, dY: nV - nY) }
                     }
                     .padding(.horizontal, 12).padding(.vertical, 10)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -186,6 +188,7 @@ struct GoalCellsCard: View {
     @State private var playing = false
     @Environment(\.scenePhase) private var scenePhase
     @State private var party = false   // 안 죽고 다 깨면 친구들이 올라와 축하 (숨은 재미)
+    @State private var say: String? = nil   // 캐릭터 한마디 (열 때·캐릭터를 누를 때마다 새로)
 
     private func startMini(_ fV: Double, _ mine: Double) {
         let n = Int(ceil(fV))
@@ -195,6 +198,25 @@ struct GoalCellsCard: View {
     }
 
     /// 진행만큼 자랑하자는 한마디
+    /// 미션 탭 한마디: 자랑·칸·어제와 견주기·게임·다음 미션을 돌려 가며 (2026-10-29)
+    @MainActor static func talk(_ m: AppModel, pct: Int, n: Int, unit: Double, fV: Double, lost: Double, dY: Int) -> String {
+        let brag = boast(pct, n)
+        let en = AppModel.en, left = AppModel.man(max(0, (Double(n) + 1 - fV) * unit)), dc = String(format: "%.1f", Double(abs(dY)) / 10)
+        var cells = en ? ["\(n) of 100 cells filled.", "One cell is \(AppModel.man(unit)). One at a time."]
+                       : ["100칸 중 \(n)칸 찼어요.", "1칸은 \(AppModel.man(unit))이에요. 한 칸씩이면 돼요."]
+        if fV < 100 { cells.append(en ? "\(left) to the next cell." : "다음 칸까지 \(left) 남았어요.") }
+        if lost > 0 { cells.append(en ? "The red cells are what dropped. You can fill them again." : "빨간 칸은 줄어든 만큼이에요. 다시 채우면 돼요.") }
+        let day = dY > 0 ? [en ? "\(dc) cells more than yesterday." : "어제보다 \(dc)칸 늘었어요."]
+            : dY < 0 ? [en ? "\(dc) cells fewer than yesterday. That's okay." : "어제보다 \(dc)칸 줄었어요. 괜찮아요."]
+            : [en ? "Same cells as yesterday. Holding steady counts too." : "어제랑 칸 수가 같아요. 그것도 버틴 거예요."]
+        let rec = GameRecord.load(), best = rec.best.values.max() ?? 0
+        var play = en ? ["Want to smash your filled cells as bricks?", "Ride a wave with today's flow?"] : ["채운 칸을 벽돌로 부숴 볼래요?", "오늘 흐름으로 파도 한 번 타 볼까요?"]
+        if best > 0 { play.append(en ? "Your best Brick Breaker score is \(best). Beat it?" : "벽돌깨기 최고 점수는 \(best)점이에요. 넘어 볼까요?") }
+        let next = m.boardSteps.first { !$0.ok && $0.avail }.map { en ? ["Next mission: ‘\($0.title)’. Let's do it.", "‘\($0.title)’ is open. Start it up top."] : ["다음 미션은 ‘\($0.title)’, 같이 해요.", "‘\($0.title)’ 미션이 열려 있어요. 위에서 시작할 수 있어요."] } ?? []
+        let brags = en ? [brag, "Who should see these cells?", "Share it and show off."] : [brag, "이 칸, 누구한테 보여 줄까요?", "공유하기로 자랑해도 돼요."]
+        return SayDeck.next("board", [("brag", brags), ("cells", cells), ("day", day), ("play", play), ("next", next)]) ?? brag
+    }
+
     static func boast(_ pct: Int, _ n: Int) -> String {
         switch pct {
         case 100...: return String(localized: "100칸 완성! 이건 무조건 자랑이야.")
