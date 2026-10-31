@@ -31,6 +31,9 @@
 //       먼저 OAuth 사용량 주소를 묻고, 안 되면 가장 작은 메시지 한 번(1토큰)의 응답 머리글(unified 한도)에서 읽는다. 결과는 5분 기억.
 // 13) 동네 신문 (/heads): 구글 뉴스 한국판 전체 상위 기사 제목만 하루 한 번(한국 7시 뒤 첫 cron) 받아 5일 둔다.
 //       모두가 같은 값을 받는다 (KV 키 heads, 하루 쓰기 1번). 앱 동네 주민이 그 제목을 말한다. 비밀값 없음.
+// 14) 결 섬 열쇠 (/gyeol): 개발자 기기끼리만 (/sync 와 같은 GitHub 토큰 확인). 아이폰 naeilo 가 결 섬을 띄울 때마다 바뀌는 푸시 열쇠를 올리고,
+//       맥 Hammerspoon(gyeol-island.lua)이 받아 가 섬에 몸짓을 보낸다. KV 키 g:<GitHub 계정>, 값은 열쇠 둘과 시각뿐.
+// 15) 결 PiP (/gyeol/live·/gyeol/mcp·/mcp/<열쇠>): 클로드 커스텀 커넥터 도구 gesture → 방(GyeolRoom) → 아이폰 PiP 웹소켓. 자세한 것은 아래 15번.
 const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/(v8\/finance\/chart|v1\/finance\/search)/;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
 const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
@@ -69,7 +72,7 @@ export default {
       if (u.pathname === "/push/test") { const r = await sendPush(env, b.sub || { endpoint: ep }, k.slice(2), { title: "naeilo 알림 시험", body: "알림이 잘 옵니다." }); return out({ ok: r.ok, status: r.status }); }
       return out({ error: "모르는 주소" }, 404);
     }
-    if (u.pathname === "/heads") { if (!env.VIEWS) return noKv(); const v = JSON.parse((await env.VIEWS.get("heads")) || '{"at":"","h":[]}'), keep = new Date(Date.now() + 9 * 3600e3 - 4 * 86400e3).toISOString().slice(0, 10); v.h = (Array.isArray(v.h) ? v.h : []).filter((x) => x.d >= keep); const r = out(v); r.headers.set("Cache-Control", "public, max-age=1800"); return r; } // 받기만 (모으기는 cron)
+    if (u.pathname === "/heads") { if (!env.VIEWS) return noKv(); const v = JSON.parse((await env.VIEWS.get("heads")) || '{"at":"","h":[]}'), keep = new Date(Date.now() + 9 * 3600e3 - 4 * 86400e3).toISOString().slice(0, 10); for (const k of ["h", "e"]) v[k] = (Array.isArray(v[k]) ? v[k] : []).filter((x) => x.d >= keep); const r = out(v); r.headers.set("Cache-Control", "public, max-age=1800"); return r; } // 받기만 (모으기는 cron)
     if (u.pathname === "/mar") { const m = await mar(), r = out(m || { error: "매매기준율을 받지 못했습니다" }, 200); if (m) r.headers.set("Cache-Control", "public, max-age=600"); return r; } // 받은 값은 브라우저도 10분 기억
     if (u.pathname === "/collect") return out({ secret: !!env.GH_DISPATCH, last: env.VIEWS ? JSON.parse((await env.VIEWS.get("collect:last")) || "null") : "VIEWS 없음", crons: env.VIEWS ? JSON.parse((await env.VIEWS.get("cron:log")) || "[]") : null }); // 시세 수집 깨우기 확인 (10번)
     if (u.pathname === "/cu") return claudeUsage(env, out).catch((e) => out({ error: "사용량 오류: " + (e?.message || e) }, 502));
@@ -87,6 +90,37 @@ export default {
       if (cur && cur.at > at) return out({ stale: true, at: cur.at });
       await env.VIEWS.put(key, body);
       return out({ ok: true, at });
+    }
+    if (u.pathname === "/gyeol") {
+      // GET /gyeol → { push, start, at },  POST /gyeol {"push","start"} → { ok, at } (16진 열쇠만 받는다)
+      if (!env.VIEWS) return noKv();
+      const who = await ghWho(env, (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim());
+      if (!who) return out({ error: "저장소 쓰기 권한이 있는 GitHub 토큰이 아닙니다" }, 403);
+      const key = "g:" + who, cur = JSON.parse((await env.VIEWS.get(key)) || "{}");
+      if (req.method === "GET") return out(cur);
+      if (req.method !== "POST") return out({ error: "GET 또는 POST" }, 400);
+      const b = await req.json().catch(() => ({})), hex = (s) => typeof s === "string" && /^[0-9a-f]{16,400}$/.test(s);
+      if (!hex(b.push) && !hex(b.start)) return out({ error: "열쇠가 없습니다" }, 400);
+      const v = { push: hex(b.push) ? b.push : cur.push || "", start: hex(b.start) ? b.start : cur.start || "", at: Date.now() };
+      await env.VIEWS.put(key, JSON.stringify(v));
+      return out({ ok: true, at: v.at });
+    }
+    // 15) 결 PiP (/gyeol/live·/gyeol/mcp·/mcp/<열쇠>): 아이폰 클로드 앱에서 답할 때도 결이 몸짓을 한다.
+    //     클로드 커스텀 커넥터(MCP) 도구 gesture 하나 → 개발자 계정 방(Durable Object GyeolRoom) → 아이폰 naeilo PiP 창이 웹소켓으로 받는다.
+    //     커넥터 주소 열쇠는 처음 물을 때 중계가 만들어 KV 에 둔다 (gm:<계정> 열쇠, gk:<열쇠> 계정). 몸짓은 KV 에 쓰지 않는다.
+    if (u.pathname === "/gyeol/live" || u.pathname === "/gyeol/mcp") {
+      if (!env.VIEWS || !env.GYEOL) return out({ error: "중계에 VIEWS KV 나 GYEOL Durable Object 가 없습니다" }, 400);
+      const who = await ghWho(env, (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim());
+      if (!who) return out({ error: "저장소 쓰기 권한이 있는 GitHub 토큰이 아닙니다" }, 403);
+      if (u.pathname === "/gyeol/live") return env.GYEOL.get(env.GYEOL.idFromName(who)).fetch(req);
+      let key = await env.VIEWS.get("gm:" + who);
+      if (!key) { key = [...crypto.getRandomValues(new Uint8Array(18))].map((b) => b.toString(16).padStart(2, "0")).join(""); await env.VIEWS.put("gm:" + who, key); await env.VIEWS.put("gk:" + key, who); }
+      return out({ url: `${u.origin}/mcp/${key}` });
+    }
+    if (u.pathname.startsWith("/mcp/")) {
+      const key = u.pathname.slice(5), who = /^[0-9a-f]{36}$/.test(key) && env.VIEWS ? await env.VIEWS.get("gk:" + key, { cacheTtl: 3600 }) : null;
+      if (!who || !env.GYEOL) return new Response("not found", { status: 404 });
+      return gyeolMcp(req, env.GYEOL.get(env.GYEOL.idFromName(who)));
     }
     if (u.pathname === "/esync") {
       // GET /esync?id= → { c, at },  POST /esync?id= {"c","at"} → { ok, at } (더 새 값이 이미 있으면 { stale: true })
@@ -280,7 +314,7 @@ export default {
   },
 };
 
-// 13) 동네 신문: 구글 뉴스 한국판 전체·분야별 상위 기사 제목. 하루 50개, 5일 둔다 (최대 250개)
+// 13) 동네 신문: 구글 뉴스 한국판(h)·미국판(e, 영어 앱) 전체·분야별 상위 기사 제목. 하루 50개씩, 5일 둔다 (최대 250개씩)
 async function heads(env) {
   const kst = new Date(Date.now() + 9 * 3600e3), today = kst.toISOString().slice(0, 10);
   const old = JSON.parse((await env.VIEWS.get("heads")) || "null") || { at: "", h: [] };
@@ -289,15 +323,20 @@ async function heads(env) {
   const dec = (t) => t.replace(/<!\[CDATA\[|\]\]>/g, "").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)).replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").trim();
   // 전체 상위 한 줄은 30개 남짓이라, 분야별 상위를 차례로 섞어 하루 50개를 채운다 (받기 9번, 하루 한 번)
   const feeds = ["", ...["NATION", "WORLD", "BUSINESS", "TECHNOLOGY", "SCIENCE", "HEALTH", "SPORTS", "ENTERTAINMENT"].map((t) => "/headlines/section/topic/" + t)];
-  const lists = await Promise.all(feeds.map(async (f) => {
-    const xml = await fetch(`https://news.google.com/rss${f}?hl=ko&gl=KR&ceid=KR:ko`, { headers: { "User-Agent": "Mozilla/5.0 naeilo-worker" }, signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.text() : "")).catch(() => "");
-    return [...xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>/g)].map((m) => dec(m[1]).replace(/\s+-\s+[^-]+$/, "").trim()).filter((t) => t.length >= 8 && t.length <= 70); // 제목만, " - 언론사" 꼬리는 뺀다
-  }));
-  const seen = new Set(), got = [];
-  for (let i = 0; got.length < 50 && lists.some((l) => i < l.length); i++) for (const l of lists) if (i < l.length && got.length < 50 && !seen.has(l[i])) { seen.add(l[i]); got.push(l[i]); }
-  if (!got.length) return old; // 못 받으면 쓰지 않고 다음 cron 에 다시
-  const past = Array.isArray(old.h) ? old.h : [];
-  const v = { at: today, h: [...got.map((t) => ({ d: today, t })), ...past.filter((x) => x.d >= keep && !seen.has(x.t))].slice(0, 250) };
+  // 한국판(h)과 영어 앱용 미국판(e)을 같은 방식으로 (받기 18번, 하루 한 번)
+  const pull = async (loc, max) => {
+    const lists = await Promise.all(feeds.map(async (f) => {
+      const xml = await fetch(`https://news.google.com/rss${f}?${loc}`, { headers: { "User-Agent": "Mozilla/5.0 naeilo-worker" }, signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.text() : "")).catch(() => "");
+      return [...xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>/g)].map((m) => dec(m[1]).replace(/\s+-\s+[^-]+$/, "").trim()).filter((t) => t.length >= 8 && t.length <= max); // 제목만, " - 언론사" 꼬리는 뺀다
+    }));
+    const seen = new Set(), got = [];
+    for (let i = 0; got.length < 50 && lists.some((l) => i < l.length); i++) for (const l of lists) if (i < l.length && got.length < 50 && !seen.has(l[i])) { seen.add(l[i]); got.push(l[i]); }
+    return got;
+  };
+  const [ko, en] = await Promise.all([pull("hl=ko&gl=KR&ceid=KR:ko", 70), pull("hl=en-US&gl=US&ceid=US:en", 110)]);
+  if (!ko.length && !en.length) return old; // 못 받으면 쓰지 않고 다음 cron 에 다시
+  const merge = (got, past) => { const seen = new Set(got); return [...got.map((t) => ({ d: today, t })), ...(Array.isArray(past) ? past : []).filter((x) => x.d >= keep && !seen.has(x.t))].slice(0, 250); };
+  const v = { at: today, h: merge(ko, old.h), e: merge(en, old.e) };
   await env.VIEWS.put("heads", JSON.stringify(v));
   return v;
 }
@@ -618,4 +657,51 @@ async function claudeUsage(env, out) {
   res.at = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
   await cache.put(key, new Response(JSON.stringify(res), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=300" } }));
   return out(res);
+}
+
+// ------------------------------------------------------------ 결 PiP (15번): MCP 입구와 방
+// 결의 자리(gyeol-line/page/bake/names.json)와 같은 이름. 몸짓(g)·동작(m)과 dance
+const GYEOL_NAMES = ["wave", "nod", "think", "back", "cheer", "thumb", "laugh", "shy", "surprise", "sad", "kick", "look", "lookR", "heart", "worry", "go", "rise", "fall", "land",
+  "tuck", "cheeks", "ponder", "scratch", "tap", "snap", "doze", "startle", "listen", "puzzle", "yawn", "stare", "hold", "dust", "upright", "follow", "poke", "facepalm", "smallfist",
+  "walkSide", "crab", "turn180", "spin", "diagonal", "sway", "hugKnees", "foldArms", "dance"];
+const GYEOL_TOOL = {
+  name: "gesture", title: "결 몸짓",
+  description: "답을 마칠 때 한 번 불러. 아이폰 작은 창의 결이 그 몸짓을 해. say는 속마음 한 줄(선택).",
+  inputSchema: { type: "object", properties: { name: { type: "string", enum: GYEOL_NAMES }, say: { type: "string", maxLength: 80 } }, required: ["name"] },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+};
+// MCP Streamable HTTP (상태 없이 JSON 한 번에 답한다). 열쇠는 주소에 있어 따로 로그인하지 않는다
+async function gyeolMcp(req, room) {
+  const h = { "Content-Type": "application/json" };
+  if (req.method !== "POST") return new Response(null, { status: 405, headers: { Allow: "POST" } });
+  const m = await req.json().catch(() => null);
+  if (!m || Array.isArray(m) || typeof m.method !== "string") return new Response(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "parse error" } }), { status: 400, headers: h });
+  if (m.id === undefined) return new Response(null, { status: 202 }); // 알림(notifications/*)
+  const ok = (result) => new Response(JSON.stringify({ jsonrpc: "2.0", id: m.id, result }), { headers: h });
+  if (m.method === "initialize") return ok({ protocolVersion: m.params?.protocolVersion || "2025-06-18", capabilities: { tools: {} }, serverInfo: { name: "gyeol", version: "1" } });
+  if (m.method === "ping") return ok({});
+  if (m.method === "tools/list") return ok({ tools: [GYEOL_TOOL] });
+  if (m.method === "tools/call" && m.params?.name === "gesture") {
+    const a = m.params.arguments || {}, g = String(a.name || ""), say = typeof a.say === "string" ? a.say.trim().slice(0, 80) : "";
+    if (!GYEOL_NAMES.includes(g)) return ok({ content: [{ type: "text", text: "모르는 몸짓" }], isError: true });
+    const r = await room.fetch("https://room/send", { method: "POST", body: JSON.stringify({ g, say, at: Date.now() }) }).then((x) => x.json()).catch(() => ({ n: 0 }));
+    return ok({ content: [{ type: "text", text: r.n ? "ok" : "off" }] });
+  }
+  return new Response(JSON.stringify({ jsonrpc: "2.0", id: m.id, error: { code: -32601, message: "method not found" } }), { headers: h });
+}
+// 계정 하나에 방 하나. 아이폰 PiP 가 웹소켓으로 붙어 있고, 몸짓이 오면 모두에게 넘긴다. 쉬는 동안은 잠든다(hibernation)
+export class GyeolRoom {
+  constructor(ctx) { this.ctx = ctx; ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong")); }
+  async fetch(req) {
+    if (req.headers.get("Upgrade") === "websocket") {
+      const [c, s] = Object.values(new WebSocketPair());
+      this.ctx.acceptWebSocket(s);
+      return new Response(null, { status: 101, webSocket: c });
+    }
+    const msg = await req.text(), ws = this.ctx.getWebSockets();
+    for (const w of ws) { try { w.send(msg); } catch (e) {} }
+    return new Response(JSON.stringify({ n: ws.length }));
+  }
+  webSocketMessage() {}
+  webSocketClose(ws, code) { try { ws.close(code === 1005 ? 1000 : code, "bye"); } catch (e) {} }
 }
