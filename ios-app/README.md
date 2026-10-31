@@ -7,10 +7,10 @@
 ## 실행
 
 ```
-brew install xcodegen
-cd ios-app && xcodegen
-open NaeiloApp.xcodeproj   # 시뮬레이터 고르고 ▶
+open ios-app/NaeiloApp.xcodeproj   # 시뮬레이터 고르고 ▶
 ```
+
+커밋된 `project.pbxproj`로 빌드한다. xcodegen은 돌리지 않는다(워치 Info.plist가 지워져 설치가 막힌다). 새 파일·타깃은 `project.yml`과 `project.pbxproj` 둘 다에 손으로 넣는다.
 
 ## 들어 있는 화면
 
