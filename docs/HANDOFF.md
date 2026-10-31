@@ -14,7 +14,6 @@
 
 - 홈·미션 말풍선 새 한마디 (2026-10-29): 파일 적힌 것 없음 (10-23 "브리핑 한 문장" 결정을 바꿈)
 - 영어 앱 대사 (2026-10-29): 파일 적힌 것 없음
-- 안드로이드 주민 옷 임시 그림 고침 (2026-10-29): android-app/app/src/main/res/raw/keep.xml
 - 동네 판 밖 오른쪽 아래 전체 평가액·오늘 등락 점수판 (2026-10-29): ios-app/Naeilo/Data/AppModel.swift, ios-app/Naeilo/Views/HoldingsView.swift, android-app/app/src/main/java/com/naeilo/app/AppModel.kt, android-app/app/src/main/java/com/naeilo/app/ui/hold/HoldingsView.kt, android-app/app/src/main/java/com/naeilo/app/ui/town/TownViews.kt
 - 모의투자 훑기 단추를 '+ 조건' 줄 오른쪽에, 다음 훑기 안내 (2026-10-29): ios-app/Naeilo/Mock/MockViews.swift, ios-app/Naeilo/Mock/MockDesk.swift, ios-app/Naeilo/Views/HomeView.swift
 - 아이폰 동네 말풍선 글자 11→14, 폭은 실제 글꼴로 재서 줄마다 (2026-10-29): ios-app/Naeilo/Views/HoldingsView.swift
@@ -28,13 +27,9 @@
 - 걸린 종목 뒤 흐름 안 산 종목 쌓기 (2026-10-30): ios-app/Naeilo/Mock/MockDesk.swift, ios-app/Naeilo/Mock/MockOrderViews.swift
 - 분석 탭 '어떻게 올릴까?' 목표일 금액 비교 카드 (2026-10-30): ios-app/Naeilo/Views/AnalysisView.swift, ios-app/Naeilo/Data/GoalRoute.swift, ios-app/Naeilo/Localizable.xcstrings, android-app/app/src/main/java/com/naeilo/app/ui/analysis/AnalysisView.kt, android-app/app/src/main/java/com/naeilo/app/core/calc/GoalRoute.kt, android-app/app/src/main/assets/l10n_en.json, tools/port_check/exceptions.txt, docs/android-map.md
 - 홈 말풍선에서 이어 온 날·쉼터 물건 줄 빼기 (2026-10-30): ios-app/Naeilo/Views/HomeView.swift, android-app/app/src/main/java/com/naeilo/app/ui/home/HomeView.kt, tools/port_check/exceptions.txt
-- 안드로이드 숫자 맞추기 시험 고침 (2026-10-30): android-app/app/src/test/java/com/naeilo/app/GParityTest.kt, android-app/app/src/test/java/com/naeilo/app/NumParityTest.kt, tools/num_parity/g/gsrc.py
-- 안드로이드 모의바구니 경로 계산 지연 분석 (2026-10-30): android-app/app/src/main/java/com/naeilo/app/core/calc/ForecastEngine.kt
 - 결 머리 손보기 (2026-10-30): 저장소 파일 없음 (결의 자리 45판)
 - 결 섬 (2026-10-31): ios-app/Gyeol/, ios-app/Naeilo/Gyeol/GyeolGlue.swift, ios-app/project.yml, ios-app/NaeiloApp.xcodeproj/project.pbxproj, ios-app/Naeilo/Info.plist, ios-app/Naeilo/App.entitlements, ios-app/Naeilo/App.swift, ios-app/Naeilo/Views/SettingsView.swift, ios-app/Naeilo/Data/WidgetBridge.swift
-- xcodegen 금지 적기 (2026-10-31): CLAUDE.md, ios-app/README.md, ios-app/.gitignore, ios-app/NaeiloApp.xcodeproj/xcshareddata/xcschemes/
 - 결 섬 열쇠 자동 넘기기 (2026-10-31): ios-app/Naeilo/Gyeol/GyeolGlue.swift
-- NaeiloApp 스킴 Debug executable 끔 (2026-10-31): ios-app/NaeiloApp.xcodeproj/xcshareddata/xcschemes/NaeiloApp.xcscheme
 - 결 섬 그림 크게 (2026-10-31): ios-app/Gyeol/Sources/GyeolKit/GyeolActivity.swift
 - 결 섬 그림 키우기 (2026-10-31): ios-app/Gyeol/Sources/GyeolKit/GyeolActivity.swift, ios-app/Gyeol/Sources/GyeolKit/GyeolPose.swift, ios-app/Gyeol/Sources/GyeolKit/Resources/Gyeol.xcassets/
 - 결 설정·말풍선 영어 (2026-10-31): ios-app/Naeilo/Gyeol/GyeolGlue.swift, ios-app/Naeilo/Localizable.xcstrings, ios-app/Gyeol/Sources/GyeolKit/GyeolActivity.swift, ios-app/Gyeol/Sources/GyeolKit/GyeolAttributes.swift
@@ -43,8 +38,3 @@
 - 결 작은 창 (2026-10-31): ios-app/Naeilo/Gyeol/GyeolPip.swift, ios-app/Naeilo/Gyeol/GyeolBake.swift, ios-app/Naeilo/Gyeol/GyeolDraw.swift, ios-app/Naeilo/Gyeol/gyeol-bake.json, ios-app/NaeiloApp.xcodeproj/project.pbxproj, ios-app/project.yml, ios-app/Naeilo/Info.plist, ios-app/Naeilo/Views/SettingsView.swift
 - 결 걸터앉기를 기획(sit2)대로 (2026-10-31): ios-app/Naeilo/Gyeol/gyeol-bake.json
 - 결 반바지를 사진 참고로 하이웨이스트 A라인 데님으로 다시 그림 (2026-10-31): ios-app/Naeilo/Gyeol/gyeol-bake.json
-- 코드 지도 만들기 (2026-11-01): docs/codemap/README.md, docs/codemap/gen.py, docs/codemap/ios.md, docs/codemap/android.md
-- docs 간결 정리 (2026-11-01): docs/HANDOFF.md, docs/decisions.md, CLAUDE.md, docs/handoff/
-- docs 나눠 담기 (guides 6개, CLAUDE.md 목차) (2026-11-01): CLAUDE.md, docs/guides/, docs/decisions.md, docs/HANDOFF.md
-- docs 남은 일·보류 나누기 (2026-11-01): docs/HANDOFF.md, docs/todo/, docs/decisions.md, CLAUDE.md
-- product·architecture 짧게 (2026-11-01): docs/product.md, docs/architecture.md
