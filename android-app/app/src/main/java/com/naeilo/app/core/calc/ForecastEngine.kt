@@ -38,6 +38,11 @@ private fun worker(name: String, prio: Int): ExecutorService =
 private val writer: ExecutorService by lazy { worker("naeilo-mc-write", Thread.MIN_PRIORITY) }
 /** 계산 횟수를 기기 로그로 센다: adb logcat -s naeilo.mc */
 private fun mcLog(s: String) { Log.i("naeilo.mc", s) }
+/** 로그용 키 이름: 지문(#)과 기간·입력 지문·구성. 키 앞 60자만으로는 다른 구성이 같아 보인다 */
+private fun keyTag(k: String): String {
+    val p = k.split("|"); val f = ForecastEngine.fnv(k)
+    return if (p.size >= 4) "#$f ${p[1]} sig#${ForecastEngine.fnv(p[2])} ${p.drop(3).joinToString("|").take(120)}" else "#$f ${k.take(60)}"
+}
 
 /** 무거운 계산은 앱이 화면에 떠 있을 때만 (MainActivity 가 onStart·onStop 에서 켜고 끈다). 뒤로 가면 돌던 계산도 멈추고 다시 켜질 때 이어 간다 */
 object Compute {   // ios: Data/ForecastEngine.swift:5
@@ -83,10 +88,10 @@ class ForecastEngine private constructor() {   // ios: Data/ForecastEngine.swift
             val t0 = System.nanoTime(); val s = j.settings; val mu = MC.scenarioMu(model, s.scenario)   // ios: Data/ForecastEngine.swift:94
             val sim = { ev: Boolean -> MC.simulate(model, holdings = j.holdings, mu = mu, nPaths = s.nPaths, seed = s.seedU32, goal = j.goal, monthly = j.monthly, withEvents = ev, dof = s.dof, stop = stop) }   // ios: Data/ForecastEngine.swift:95
             // 사건 없는 경로는 다 돈 뒤에 차례로 (Swift 와 같다. 같이 돌리면 경로 묶음 두 벌이 4줄 풀과 메모리를 함께 차지한다)
-            mcLog("전망 시작 ${j.key.take(60)} 경로 ${s.nPaths}")
+            mcLog("전망 시작 ${keyTag(j.key)} 경로 ${s.nPaths}")
             val ev = sim(true); val no = if (model.eventCount > 0 && stop?.invoke() != true) sim(false) else null   // ios: Data/ForecastEngine.swift:96
             return Run(key = j.key, factors = model.factors, events = model.eventCount, ev = ev, no = no, ms = (System.nanoTime() - t0) / 1000000.0)   // ios: Data/ForecastEngine.swift:97
-                .also { mcLog("전망 끝 ${j.key.take(60)} ${it.ms.toInt()}ms") }
+                .also { mcLog("전망 끝 ${keyTag(j.key)} ${it.ms.toInt()}ms") }
         }
 
         /** 짧은 지문 (FNV-1a). 앱을 다시 켜도 같은 값이어야 해서 hashCode 대신 */
@@ -159,7 +164,7 @@ class ForecastEngine private constructor() {   // ios: Data/ForecastEngine.swift
         exec.execute {   // ios: Data/ForecastEngine.swift:73
             // 읽기가 끝나기 전에 줄 선 계산: 읽은 것이 같은 키면 다시 계산하지 않는다. 그 뒤 ensure 는 화면 스레드에서 run 을 보고 거른다
             val saved = disk?.takeIf { it.key == job.key }; disk = null
-            if (saved != null) mcLog("전망 저장본 그대로 ${job.key.take(60)}")
+            if (saved != null) mcLog("전망 저장본 그대로 ${keyTag(job.key)}")
             val r = saved ?: runCatching { compute(job, stop = halt.check) }.getOrNull()   // ios: Data/ForecastEngine.swift:74
             val halted = saved == null && halt.hit   // ios: Data/ForecastEngine.swift:75
             mainH.post {   // ios: Data/ForecastEngine.swift:76
@@ -245,14 +250,15 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
         }
 
         fun compute(job: ForecastEngine.Job, stop: (() -> Boolean)? = null): Run? {   // ios: Data/ForecastEngine.swift:194
+            val tb = System.nanoTime()
             val model = MC.build(holdings = job.holdings, stats = job.stats, settings = job.settings, events = job.events, start = job.start, goal = job.horizon) ?: return null   // ios: Data/ForecastEngine.swift:195
             val s = job.settings; val t0 = System.nanoTime()   // ios: Data/ForecastEngine.swift:196
-            mcLog("구성 경로 시작 ${job.key.take(60)} 경로 ${s.nPaths}")
+            mcLog("구성 경로 시작 ${keyTag(job.key)} 경로 ${s.nPaths} 모형 ${(t0 - tb) / 1000000}ms 우선 ${Thread.currentThread().priority}")
             val sim = MC.simulate(model, holdings = job.holdings, mu = MC.scenarioMu(model, s.scenario), nPaths = s.nPaths, seed = s.seedU32,   // ios: Data/ForecastEngine.swift:197
                                   goal = Double.POSITIVE_INFINITY, monthly = 0.0, withEvents = true, dof = s.dof, stop = stop)   // ios: Data/ForecastEngine.swift:198
             return Run(key = job.key, factors = model.factors, sim = sim, group = job.group, w = job.w,   // ios: Data/ForecastEngine.swift:199
                        ms = (System.nanoTime() - t0) / 1000000.0, at = System.currentTimeMillis() / 1000.0)   // ios: Data/ForecastEngine.swift:200
-                .also { mcLog("구성 경로 끝 ${job.key.take(60)} ${it.ms?.toInt()}ms") }
+                .also { mcLog("구성 경로 끝 ${keyTag(job.key)} ${it.ms?.toInt()}ms") }
         }
     }
     @Serializable data class Run(   // ios: Data/ForecastEngine.swift:151
@@ -284,6 +290,7 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
             val fresh = Store.url(file).let { f -> f.exists() && Day.str(java.time.Instant.ofEpochMilli(f.lastModified())) >= Day.today }
             val r = if (fresh) readJson(file, runsSer) else null   // ios: Data/ForecastEngine.swift:169
             disk = r?.filter { it.key.startsWith(Day.today) } ?: emptyMap()
+            mcLog("구성 경로 파일 ${if (fresh) "오늘" else "지난"} 읽음 ${r?.size ?: -1} 오늘 ${disk.size} ${disk.keys.joinToString(",") { "#${ForecastEngine.fnv(it)}" }}")
             if (r != null) mainH.post {
                 val today = Day.today   // ios: Data/ForecastEngine.swift:170
                 runs = r.filter { it.key.startsWith(today) } + runs   // ios: Data/ForecastEngine.swift:171
@@ -298,8 +305,10 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
         if (failed.contains(job.key)) return null   // ios: Data/ForecastEngine.swift:184
         val i = queue.indexOfFirst { it.key == job.key || (job.group.isNotEmpty() && it.group == job.group) }   // ios: Data/ForecastEngine.swift:185
         if (i >= 0) {
-            if (!close(queue[i].w, job.w)) queue[i] = job   // ios: Data/ForecastEngine.swift:186 같은 묶음은 줄에 하나만 (최신 비중으로)
+            if (!close(queue[i].w, job.w)) { mcLog("구성 경로 줄 바꿈 ${keyTag(job.key)}"); queue[i] = job }   // ios: Data/ForecastEngine.swift:186 같은 묶음은 줄에 하나만 (최신 비중으로)
         } else {   // ios: Data/ForecastEngine.swift:187
+            val same = runs.values.filter { it.group == job.group }.joinToString(",") { r -> "#${ForecastEngine.fnv(r.key)}" }
+            mcLog("구성 경로 줄 섬 ${keyTag(job.key)} 있는 경로 ${runs.size} 줄 ${queue.size} 같은 묶음 [$same]")
             queue.add(job)   // ios: Data/ForecastEngine.swift:188
         }
         next()   // ios: Data/ForecastEngine.swift:190
@@ -320,7 +329,7 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
             // 읽어 둔 파일에 같은 키·같은 묶음(비중이 가까운)이 있으면 그대로 (get 과 같은 규칙)
             val saved = disk[job.key] ?: if (job.group.isNotEmpty()) disk.values.firstOrNull { it.group == job.group && close(it.w, job.w) } else null
             disk = emptyMap()
-            if (saved != null) mcLog("구성 경로 저장본 그대로 ${job.key.take(60)}")
+            if (saved != null) mcLog("구성 경로 저장본 그대로 ${keyTag(job.key)}")
             val r = saved ?: runCatching { compute(job, stop = halt.check) }.getOrNull()   // ios: Data/ForecastEngine.swift:211
             val halted = saved == null && halt.hit   // ios: Data/ForecastEngine.swift:212
             mainH.post {   // ios: Data/ForecastEngine.swift:213
@@ -335,7 +344,7 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
                     val today = Day.today   // ios: Data/ForecastEngine.swift:220
                     val all = LinkedHashMap(runs.filter { it.key.startsWith(today) })   // ios: Data/ForecastEngine.swift:221
                     // 하루에 쌓이는 경로는 16개까지: 가장 오래된 것부터 뺀다 (화면이 쓰는 구성은 8개 안팎)
-                    while (all.size >= 16) { val k = all.entries.minWithOrNull(Comparator { x, y -> (x.value.at ?: 0.0).compareTo(y.value.at ?: 0.0) })?.key ?: break; all.remove(k) }   // ios: Data/ForecastEngine.swift:223
+                    while (all.size >= 16) { val k = all.entries.minWithOrNull(Comparator { x, y -> (x.value.at ?: 0.0).compareTo(y.value.at ?: 0.0) })?.key ?: break; mcLog("구성 경로 뺌 ${keyTag(k)}"); all.remove(k) }   // ios: Data/ForecastEngine.swift:223
                     all[r.key] = r   // ios: Data/ForecastEngine.swift:224
                     runs = all   // ios: Data/ForecastEngine.swift:225
                     dirty = true   // ios: Data/ForecastEngine.swift:226 (쓰기는 flush 에서)
