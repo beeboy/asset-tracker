@@ -33,6 +33,7 @@
 //       모두가 같은 값을 받는다 (KV 키 heads, 하루 쓰기 1번). 앱 동네 주민이 그 제목을 말한다. 비밀값 없음.
 // 14) 결 섬 열쇠 (/gyeol): 개발자 기기끼리만 (/sync 와 같은 GitHub 토큰 확인). 아이폰 naeilo 가 결 섬을 띄울 때마다 바뀌는 푸시 열쇠를 올리고,
 //       맥 Hammerspoon(gyeol-island.lua)이 받아 가 섬에 몸짓을 보낸다. KV 키 g:<GitHub 계정>, 값은 열쇠 둘과 시각뿐.
+// 15) 결 PiP (/gyeol/live·/gyeol/mcp·/mcp/<열쇠>): 클로드 커스텀 커넥터 도구 gesture → 방(GyeolRoom) → 아이폰 PiP 웹소켓. 자세한 것은 아래 15번.
 const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/(v8\/finance\/chart|v1\/finance\/search)/;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
 const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
@@ -103,6 +104,23 @@ export default {
       const v = { push: hex(b.push) ? b.push : cur.push || "", start: hex(b.start) ? b.start : cur.start || "", at: Date.now() };
       await env.VIEWS.put(key, JSON.stringify(v));
       return out({ ok: true, at: v.at });
+    }
+    // 15) 결 PiP (/gyeol/live·/gyeol/mcp·/mcp/<열쇠>): 아이폰 클로드 앱에서 답할 때도 결이 몸짓을 한다.
+    //     클로드 커스텀 커넥터(MCP) 도구 gesture 하나 → 개발자 계정 방(Durable Object GyeolRoom) → 아이폰 naeilo PiP 창이 웹소켓으로 받는다.
+    //     커넥터 주소 열쇠는 처음 물을 때 중계가 만들어 KV 에 둔다 (gm:<계정> 열쇠, gk:<열쇠> 계정). 몸짓은 KV 에 쓰지 않는다.
+    if (u.pathname === "/gyeol/live" || u.pathname === "/gyeol/mcp") {
+      if (!env.VIEWS || !env.GYEOL) return out({ error: "중계에 VIEWS KV 나 GYEOL Durable Object 가 없습니다" }, 400);
+      const who = await ghWho(env, (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim());
+      if (!who) return out({ error: "저장소 쓰기 권한이 있는 GitHub 토큰이 아닙니다" }, 403);
+      if (u.pathname === "/gyeol/live") return env.GYEOL.get(env.GYEOL.idFromName(who)).fetch(req);
+      let key = await env.VIEWS.get("gm:" + who);
+      if (!key) { key = [...crypto.getRandomValues(new Uint8Array(18))].map((b) => b.toString(16).padStart(2, "0")).join(""); await env.VIEWS.put("gm:" + who, key); await env.VIEWS.put("gk:" + key, who); }
+      return out({ url: `${u.origin}/mcp/${key}` });
+    }
+    if (u.pathname.startsWith("/mcp/")) {
+      const key = u.pathname.slice(5), who = /^[0-9a-f]{36}$/.test(key) && env.VIEWS ? await env.VIEWS.get("gk:" + key, { cacheTtl: 3600 }) : null;
+      if (!who || !env.GYEOL) return new Response("not found", { status: 404 });
+      return gyeolMcp(req, env.GYEOL.get(env.GYEOL.idFromName(who)));
     }
     if (u.pathname === "/esync") {
       // GET /esync?id= → { c, at },  POST /esync?id= {"c","at"} → { ok, at } (더 새 값이 이미 있으면 { stale: true })
@@ -639,4 +657,51 @@ async function claudeUsage(env, out) {
   res.at = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
   await cache.put(key, new Response(JSON.stringify(res), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=300" } }));
   return out(res);
+}
+
+// ------------------------------------------------------------ 결 PiP (15번): MCP 입구와 방
+// 결의 자리(gyeol-line/page/bake/names.json)와 같은 이름. 몸짓(g)·동작(m)과 dance
+const GYEOL_NAMES = ["wave", "nod", "think", "back", "cheer", "thumb", "laugh", "shy", "surprise", "sad", "kick", "look", "lookR", "heart", "worry", "go", "rise", "fall", "land",
+  "tuck", "cheeks", "ponder", "scratch", "tap", "snap", "doze", "startle", "listen", "puzzle", "yawn", "stare", "hold", "dust", "upright", "follow", "poke", "facepalm", "smallfist",
+  "walkSide", "crab", "turn180", "spin", "diagonal", "sway", "hugKnees", "foldArms", "dance"];
+const GYEOL_TOOL = {
+  name: "gesture", title: "결 몸짓",
+  description: "답을 마칠 때 한 번 불러. 아이폰 작은 창의 결이 그 몸짓을 해. say는 속마음 한 줄(선택).",
+  inputSchema: { type: "object", properties: { name: { type: "string", enum: GYEOL_NAMES }, say: { type: "string", maxLength: 80 } }, required: ["name"] },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+};
+// MCP Streamable HTTP (상태 없이 JSON 한 번에 답한다). 열쇠는 주소에 있어 따로 로그인하지 않는다
+async function gyeolMcp(req, room) {
+  const h = { "Content-Type": "application/json" };
+  if (req.method !== "POST") return new Response(null, { status: 405, headers: { Allow: "POST" } });
+  const m = await req.json().catch(() => null);
+  if (!m || Array.isArray(m) || typeof m.method !== "string") return new Response(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "parse error" } }), { status: 400, headers: h });
+  if (m.id === undefined) return new Response(null, { status: 202 }); // 알림(notifications/*)
+  const ok = (result) => new Response(JSON.stringify({ jsonrpc: "2.0", id: m.id, result }), { headers: h });
+  if (m.method === "initialize") return ok({ protocolVersion: m.params?.protocolVersion || "2025-06-18", capabilities: { tools: {} }, serverInfo: { name: "gyeol", version: "1" } });
+  if (m.method === "ping") return ok({});
+  if (m.method === "tools/list") return ok({ tools: [GYEOL_TOOL] });
+  if (m.method === "tools/call" && m.params?.name === "gesture") {
+    const a = m.params.arguments || {}, g = String(a.name || ""), say = typeof a.say === "string" ? a.say.trim().slice(0, 80) : "";
+    if (!GYEOL_NAMES.includes(g)) return ok({ content: [{ type: "text", text: "모르는 몸짓" }], isError: true });
+    const r = await room.fetch("https://room/send", { method: "POST", body: JSON.stringify({ g, say, at: Date.now() }) }).then((x) => x.json()).catch(() => ({ n: 0 }));
+    return ok({ content: [{ type: "text", text: r.n ? "ok" : "off" }] });
+  }
+  return new Response(JSON.stringify({ jsonrpc: "2.0", id: m.id, error: { code: -32601, message: "method not found" } }), { headers: h });
+}
+// 계정 하나에 방 하나. 아이폰 PiP 가 웹소켓으로 붙어 있고, 몸짓이 오면 모두에게 넘긴다. 쉬는 동안은 잠든다(hibernation)
+export class GyeolRoom {
+  constructor(ctx) { this.ctx = ctx; ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong")); }
+  async fetch(req) {
+    if (req.headers.get("Upgrade") === "websocket") {
+      const [c, s] = Object.values(new WebSocketPair());
+      this.ctx.acceptWebSocket(s);
+      return new Response(null, { status: 101, webSocket: c });
+    }
+    const msg = await req.text(), ws = this.ctx.getWebSockets();
+    for (const w of ws) { try { w.send(msg); } catch (e) {} }
+    return new Response(JSON.stringify({ n: ws.length }));
+  }
+  webSocketMessage() {}
+  webSocketClose(ws, code) { try { ws.close(code === 1005 ? 1000 : code, "bye"); } catch (e) {} }
 }
