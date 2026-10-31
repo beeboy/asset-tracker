@@ -1,0 +1,229 @@
+# iOS 코드 지도
+
+`python3 docs/codemap/gen.py`로 다시 만든다. 손으로 고치지 않는다.
+
+소스 104개 · 47308줄 · 뿌리: `ios-app/Naeilo`, `ios-app/WidgetShared`, `ios-app/Widgets`, `ios-app/Watch`
+
+## 폴더 (파일 줄수)
+
+- `./` (2): App 329, Theme 308
+- `Data/` (35): AppModel 885, Backup 85, BrickGame 943, Calm 552, Earnings 175, FlowData 601, ForecastEngine 236, GoalRoute 464, Industries 86, Invest 129, InvestEvents 82, Lines 106, Lots 91, Market 1000, Me 302, MonteCarlo 729, MyRecord 81, Notifier 232, Parallel 725, Progress 116, Recovery 349, Remind 653, SampleData 318, Services 126, SiteCalc 184, SiteStats 281, StockCatalog 134, StockSearch 542, StoreAPI 51, Story 196, Support 198, Sync 595, TossSum 158, WaveEngine 386, WidgetBridge 163
+- `Gyeol/` (4): GyeolBake 338, GyeolDraw 318, GyeolGlue 114, GyeolPip 531
+- `Mock/` (7): MockAI 280, MockDesk 2027, MockEngine 839, MockFeed 367, MockModels 686, MockOrderViews 1211, MockViews 2287
+- `Views/` (28): AnalysisDetail 2460, AnalysisView 972, BoardView 464, BrickGameView 816, CalmView 277, CharMotion 643, Charts 187, EarningsRiver 534, FlowView 870, ForecastParts 140, GoalViews 957, Guide 172, HoldingsView 2779, HomeView 938, InvestViews 222, MeViews 731, MissionViews 769, MyRecordCard 82, ParallelView 462, RemindViews 258, SettingsDetail 716, SettingsView 886, ShareCard 240, ShelterView 933, StartView 170, SupportView 131, ThemeScenes 1179, TownPanel 1037
+- `Views/Wave/` (5): SurfCloset 265, WaveFeedback 154, WaveHomeView 368, WavePlayView 460, WaveResultPopup 109
+- `WidgetShared/` (7): Config 175, Engine 236, Flip 33, Format 147, Models 850, Reward 165, StoryWidgetData 22
+- `Widgets/` (6): CharWidgets 984, HomeWidgets 85, Intent 66, LockWidgets 87, Provider 34, StoryWidget 119
+- `Widgets/Views/` (6): Catalog 68, Charts 199, HomeViews 304, LockViews 244, Locked 61, Theme 157
+- `Watch/App/` (1): NaeiloWatchApp 28
+- `Watch/Shared/` (2): WatchPayload 40, WatchSync 59
+- `Watch/Widgets/` (1): WatchWidgets 175
+
+## 최상위 선언 (private 뺌)
+
+- App.swift: struct NaeiloApp, RootView, AppHeader, PopupX, PopupStack, HomeLink, PathSheet, KoreaSumHooks; enum Tab; ext EnvironmentValues
+- Theme.swift: ext Color, View; enum Theme; struct Card, DashedCard, ChipRow, PrimaryButton, Pixel, CharIdle, ProgressBar, ScreenTitle, AppFont, PinnedLayout, SheetTitleBar
+- Data/AppModel.swift: enum WeekPick, HoldSort, Lens; struct DayLog; class AppModel; ext Double
+- Data/Backup.swift: struct Backup, BackupFile
+- Data/BrickGame.swift: enum GameLevel, GamePlayer, GameLines; struct GameStage, GameRecord; class BrickGame, GameSound
+- Data/Calm.swift: struct CalmEvent, CalmStats, Calm, Ladder, CalmNote, StepProgress; ext Calm, AppModel
+- Data/Earnings.swift: enum Earnings
+- Data/FlowData.swift: enum FlowTab, FlowCalc, DrnkSample, FlowAlpaca, FlowLongbridge; struct Candle, FlowPivot, FlowTrend, FlowLevel, FlowPattern, FlowSeries, FlowBars; class FlowStore
+- Data/ForecastEngine.swift: enum Compute; class ForecastEngine, PathRuns; ext MC.Sim
+- Data/GoalRoute.swift: enum Route, GoalWeek; struct GoalMix, GoalSim, GoalAmt; ext AppModel
+- Data/Industries.swift: enum Industries
+- Data/Invest.swift: enum Invest
+- Data/InvestEvents.swift: ext Invest
+- Data/Lines.swift: enum Lines, SayDeck; class LineClock
+- Data/Lots.swift: struct Lot; enum Lots; ext YahooSample.Hist, AppModel
+- Data/Market.swift: struct Quote, CalcSnap; class Market; ext Symbol, Market; enum YahooSample, SitePrices, TossHistory, MarFeed, AlpacaHistory, TossMinutes, AlpacaMinutes, LongbridgeMinutes
+- Data/Me.swift: struct MeChar, ShelterBG, MeSample; enum MeGroup, MeColor, WeekGate; ext Shelter, AppModel; class TrustedClock
+- Data/MonteCarlo.swift: enum MC; class PathSet; ext KeyedDecodingContainer
+- Data/MyRecord.swift: struct DayRec; enum MyRecord; ext AppModel
+- Data/Notifier.swift: enum Notifier, EventRetro; class NotificationDelegate
+- Data/Parallel.swift: struct PBasketSeg, PDay, PWorld, PLog, PRace, PVerdict; enum Parallel; ext AppModel, Parallel, Market
+- Data/Progress.swift: struct Progress; ext AppModel
+- Data/Recovery.swift: enum MissionRoute, Basket; struct Plan, PathChart; ext AppModel
+- Data/Remind.swift: enum RemindCat, RemindGo, MarketEvents; struct RemindItem, RemindLog, BlogFile, RemindNews; class Remind; ext AppModel
+- Data/SampleData.swift: enum Currency, EnData, Sample, Shelter; struct Symbol, Profile, Holding, Friend, ShelterItem; ext Symbol
+- Data/Services.swift: proto PriceProvider; enum Period; struct StubPriceProvider
+- Data/SiteCalc.swift: class SiteCalc
+- Data/SiteStats.swift: enum SiteStats; class ExtraStats
+- Data/StockCatalog.swift: enum StockCatalog
+- Data/StockSearch.swift: struct StockHit; enum KoreaEstimate, StockSearch, KrxList, KrDaily, PriceHistory; ext KrDaily.File; class CustomSymbols
+- Data/StoreAPI.swift: enum StoreAPI
+- Data/Story.swift: struct StoryBlock, StoryChapter; enum StoryLang, StoryBook; class Story
+- Data/Support.swift: enum SubPlan; class Support
+- Data/Sync.swift: class Sync, BGTaskBox; struct AnyCodable; enum Keychain
+- Data/TossSum.swift: enum TossSum, MarDaily; ext AppModel
+- Data/WaveEngine.swift: struct WaveEngine; ext AppModel
+- Data/WidgetBridge.swift: enum WidgetBridge
+- Gyeol/GyeolBake.swift: enum GyeolJV; class GyeolPart, GyeolFrame, GyeolBake, GyeolStage; struct GyeolFx, GyeolSeg, GyeolPlan
+- Gyeol/GyeolDraw.swift: struct GPath; enum GyeolOp, GyeolDraw
+- Gyeol/GyeolGlue.swift: enum GyeolFeed; struct GyeolHooks, GyeolSettings
+- Gyeol/GyeolPip.swift: class GyeolPip, GyeolPipDelegate, GyeolPipHost, GyeolLink, GyeolEngine; struct GyeolPipSettings, GyeolPipPreview
+- Mock/MockAI.swift: struct MockAISettings, MockAIWallet, MockAIView; enum MockAI
+- Mock/MockDesk.swift: struct MockState; class MockDesk, MockPaperBroker, MockTossBroker; ext MockDesk; proto MockBroker
+- Mock/MockEngine.swift: enum MockClock, MockCalc
+- Mock/MockFeed.swift: enum MockFeed, TossOrderAPI; actor MockGate
+- Mock/MockModels.swift: enum MockMarket, MockWho, MockBook, MockSide, MockOrderState, MockOrderType, MockFmt, MockLive; struct MockBar, MockPiece, MockBundle, MockStock, MockHit, MockSeen, MockCurve, MockScan, MockCond, MockRuleCond, MockSellCond, MockMark, MockExceptions, MockSelectRule, MockSellRule, MockGuards, MockFees, MockPosition, MockOrder, MockSettle, MockLedger, MockEvent, MockBuyNote, MockFollow, MockAfter, MockFlowRead, MockAIUse, MockRun
+- Mock/MockOrderViews.swift: struct MockStockPnl, MockDay, MockJournalView, MockAccountView, MockSettingsView, MockTabs, MockEntry, MockTabsHooks; ext MockDesk
+- Mock/MockViews.swift: func mt; enum MockTab, MockNum, MockCutTone; ext MockFmt, MockDesk, MockStockRow, View; struct MockBox, MockShareBar, MockTabBox, MockSegPill, MockAIPill, MockStatePill, MockGoPill, MockCondPill, MockAddPill, MockKindChip, MockNumField, MockFormButtons, MockPieceDraft, MockPieceForm, MockRuleDraft, MockRuleForm, MockSellDraft, MockSellForm, MockRunLine, MockTag, MockListCard, MockMove, MockSortToggle, MockEmptyRow, MockStockRow, MockQtyPill, MockSheetBar, MockScreen, MockLiveSheet, MockObserveView, MockCurveCard, MockPickRow, MockSelectView, MockCycleLine, MockRowEdit, MockConfirmCard, MockStockFinder, MockStockRef, MockStockSheet, MockStockChart, MockChainSheet, MockBookCard, MockSeenLog, MockSwipe, MockFlow, MockTradeLog, MockFillLog, MockFlipBoard, MockFlipCell, MockSeenPill
+- Views/AnalysisDetail.swift: ext AppModel; struct DetailHead, EtaRow, EtaTicks, CompareAddSheet, MyPathCompareView, ExternalView, FactorDetailView, RateScen, RateScenarioView, DividendView, FxImpactView, GlanceView, GlanceTip; class MacroData
+- Views/AnalysisView.swift: enum AnalysisRoute; ext EnvironmentValues; struct DetailTitle, AnalysisPage, AnalysisPager, AnalysisSheet, AnalysisView, ChanceBox, ProgressTrack, OpenOnTap, ForecastView
+- Views/BoardView.swift: struct BoardView, WeekForecastCard; ext BoardView, AppModel
+- Views/BrickGameView.swift: struct BrickGameButton, BrickGameHub, BrickPlayView, BrickBoardSheet; class PaddleStride; enum GamePause; ext View
+- Views/CalmView.swift: struct CalmCard, CalmView
+- Views/CharMotion.swift: enum CharDir, CharPose, PixBuf, MeMotion, FriendMotion, DayMood, MoodAct, MoodScript, MoodArt; struct CharScene, SceneSprite, CharClock, CharShadow, TownWalker, CharFigure, MeTurntable, MoodStep, MoodFigure
+- Views/Charts.swift: struct Sparkline, Scrub, LogoTile, PulseRing, PulseDot; enum Pulse; ext View
+- Views/EarningsRiver.swift: class EarningsFeed; enum EarnColor, EarnText; ext Earnings.Summary, EarningsRiverSheet; struct EarnBars, EarnTip, EarnTarget, EarningsRiverSheet, EarningsRiver
+- Views/FlowView.swift: struct FlowView, FlowChart, FlowTail, FlowGuide, FlowMini; enum FlowLayer, FlowTerm; ext FlowPattern.Kind
+- Views/ForecastParts.swift: struct ScenarioChart, ScheduleRow
+- Views/GoalViews.swift: struct GoalPathChart, GoalCellsCard, BrickBox, MiniParty, SplitRow, GoalCellGrid, GoalHoldResultView, GoalSetView, GoalSetResultView, GoalMixView, GoalMixResultView, GoalTaxView, GoalIntermissionView; func inputField, commaDigits, commaValue; class MiniBreakout
+- Views/Guide.swift: enum Pose, Voice; ext AppModel; struct MotionSprite, GuideBubble, GuidePickRow
+- Views/HoldingsView.swift: struct HoldingsView, HoldColW, HoldSeg, TodayBox, MoodBand, MoodBackdrop, TagChart, HoldingDetailSheet, DetailLink, HoldingDetailView, AvgCalc, KoreaSumCard, KRPriceCard, AddHoldingView, HoldingEditView, HoldPagePicker, HoldingsNews, TownView, TownTotal, TownTalk, TownPast, TownWeather, TownFace, TownDress, TownUs, TownGround; enum HoldFmt, HoldingEdit, TownLook, TownStar; ext View, EnvironmentValues; class TownBook, TownSky, TownLog
+- Views/HomeView.swift: struct HomeView, EarnHomeCard, RoutineCard, FlowRow, SampleNote, BoxScene, FreshLabel, SceneBox, TileWall, Loop, Duck, Car, HomeRoute; enum HomeSay, BoxLook, Sk
+- Views/InvestViews.swift: struct InvestBranch, CaseCard
+- Views/MeViews.swift: struct CharPixel, MeEmpty, MeAvatar, MeEditView, RoomImage, ShelterBGBox, CharHead; enum MeArt, MePlaceholder, MePose
+- Views/MissionViews.swift: struct MissionScreen, MissionPage, BoardButtons, Mission1View, Mission1ResultView, DepositLeverCard, Mission2View, Mission2ResultView, Mission3View, BasketList, Mission3ResultView, TaxInputView, TaxResultView, AppStartView
+- Views/MyRecordCard.swift: struct MyRecordCard
+- Views/ParallelView.swift: enum ParallelUI; struct ParallelView, RaceLine, ParallelBasketView, ParallelHomeCard
+- Views/RemindViews.swift: struct RemindSheet, RemindOptions; enum RemindGoLater
+- Views/SettingsDetail.swift: struct FriendSay, AlertsView, SyncView, AmountHideCard, WidgetPickView, TaxRulesView, HowToView, RouteView, ResidenceView; ext AppModel
+- Views/SettingsView.swift: struct NotifyListView, SettingsView, SettingsGroupView, SettingsRows, PriceBasisView, TossKeyView, AlpacaKeyView, LongbridgeKeyView, TossLinkMap, AppIconPicker, IconFollow, AppIconScreen; enum AdminKey, SettingsRoute
+- Views/ShareCard.swift: struct ShareCardButton, ShareCardSheet, BubbleTail, BubbleShape, ActivitySheet; ext URL
+- Views/ShelterView.swift: struct ShelterView, ChapterCover, ReaderView, CharacterDetailView; ext Story, Shelter
+- Views/StartView.swift: struct StartView, StartForecastCard
+- Views/SupportView.swift: struct SupportView, SubLocked
+- Views/ThemeScenes.swift: enum ThemeMood, MarketClock, BoxScheme, BoxInk, ThemeArt, MugArt, ThemeBand; struct Every, DoryScene, PinoScene, MugScene, BandBuddy, TrackBuddy, ThemeBackdrop, ThemeTrack, SphereScene; ext View, Color; func bx
+- Views/TownPanel.swift: struct TownPanel; enum TownNews, TownSay, TownBond
+- Views/Wave/SurfCloset.swift: enum SurfOpen, SurfCloset; struct SurfItem, SurfRider, SurfClosetSheet
+- Views/Wave/WaveFeedback.swift: class WaveFeedback; struct WaveFeedbackToggles
+- Views/Wave/WaveHomeView.swift: enum WaveMap; struct WaveHomeView, WaveGameButton, WaveHub, GameHeader, TownButton, TightLabel; ext WaveEngine.Course
+- Views/Wave/WavePlayView.swift: struct WavePlayView, WaveResult, WaveFX; enum WaveDraw
+- Views/Wave/WaveResultPopup.swift: struct WaveResultPopup, WaveRideChart
+- WidgetShared/Config.swift: enum Config, Channel, Store, WidgetUnlock
+- WidgetShared/Engine.swift: struct Snapshot; enum Day, Engine; ext Snapshot
+- WidgetShared/Flip.swift: ext View
+- WidgetShared/Format.swift: enum WL, Fmt, MarketHours, WidgetRefresh, Fresh
+- WidgetShared/Models.swift: struct WSummary, WFeed, WLive; func num; enum Relay, KrQuoteFeed, TossFeed, TossKeys, AlpacaFeed, AlpacaKeys, TossDaily, USSession, LongbridgeFeed, LongbridgeKeys, GoodQuotes, QuoteFeed; ext TossDaily
+- WidgetShared/Reward.swift: struct WReward, WChar, WMe, WSmall; enum WItem, WidgetLine
+- WidgetShared/StoryWidgetData.swift: struct WStory
+- Widgets/CharWidgets.swift: enum WhoEnum; struct WhoOptions, WhoIntent, CharEntry, CharProvider, CharHill, CharLadder, CharTower, CharBoard, CharHeight, CharPuzzle, CharGarden, CharTug, CharStyle, CharFrame, CharBG, CharSprite, CharItem, CharAgo, CharTop, HillCharView, LadderCharView, TowerCharView, BoardCharView, HeightCharView, PuzzleCharView, GardenCharView, TugCharView, StyleReader, CharReload, CharMoney; ext EnvironmentValues, View
+- Widgets/HomeWidgets.swift: struct AssetSmall, PathSmall, FutureSmall, BlockSmall, PaceSmall, TargetSmall, MovesSmall, LockSpeak; func homeWidget, lockWidget; enum Speech
+- Widgets/Intent.swift: struct ReloadIntent, StoryReloadIntent, ToggleAmountIntent; func withTimeout
+- Widgets/LockWidgets.swift: struct LockAsset, LockGoal, LockHill, LockSay, LockLadder, LockCharSpeak, NaeiloWidgets, ReloadControl, LockWidgets
+- Widgets/Provider.swift: struct Entry, Provider
+- Widgets/StoryWidget.swift: struct StoryEntry, StoryProvider, StoryWidget, StoryWidgetView
+- Widgets/Views/Catalog.swift: enum Catalog; ext WidgetConfiguration; struct Gate
+- Widgets/Views/Charts.swift: struct Spark, TrendLine, GoalFan, PathChart, TargetBoard; ext Path
+- Widgets/Views/HomeViews.swift: struct AssetSmallView, PathSmallView, FutureSmallView, BlockSmallView, PaceSmallView, TargetSmallView, MovesSmallView
+- Widgets/Views/LockViews.swift: struct LockAssetView, LockGoalView, LockChar, LockHillView, LockSayView, LockBubble, LockLadderView, LockReload, LockAgo; enum LockMono
+- Widgets/Views/Locked.swift: ext Gate; struct LockedWidget
+- Widgets/Views/Theme.swift: enum Palette; struct WidgetBG, Tint, Label2, Foot, Stamp, ReloadButton, SampleBadge, Money; ext View, EnvironmentValues
+- Watch/App/NaeiloWatchApp.swift: struct NaeiloWatchApp, WatchHome
+- Watch/Shared/WatchPayload.swift: struct WWatch
+- Watch/Shared/WatchSync.swift: class WatchSync
+- Watch/Widgets/WatchWidgets.swift: struct NaeiloWatchWidgets, WEntry, WProvider, WatchHill, WatchSay, WatchLadder, WFrame, WSprite, HillView, SayView, Bubble, LadderView
+
+## 파일 관계 (A -> A가 쓰는 타입을 선언한 파일, 확장자 뺌)
+
+- App -> AppModel, FlowData, ForecastEngine, Lines, Market, Me, Notifier, Remind, StockSearch, Support, Sync, WidgetBridge, GyeolGlue, MockDesk, MockFeed, MockOrderViews, Theme, AnalysisView, BoardView, BrickGameView, FlowView, HoldingsView, HomeView, MissionViews, SettingsDetail, SettingsView, StartView, Models
+- AppModel -> App, Calm, ForecastEngine, GoalRoute, Lines, Lots, Market, Me, MonteCarlo, MyRecord, Parallel, Progress, Recovery, Remind, SampleData, Services, SiteStats, StockSearch, Story, Support, Sync, Theme, AnalysisView, HoldingsView, SettingsView, Config, Engine
+- Backup -> AppModel, Calm, Lots, Market, MonteCarlo, MyRecord, Parallel, Progress, SampleData, StockSearch, Sync, HoldingsView, SurfCloset
+- BrickGame -> Lines, Me, SampleData, HomeViews
+- Calm -> AppModel, Lines, SampleData, StockSearch, Sync, HoldingsView, Engine
+- Earnings -> Config
+- FlowData -> Market, SampleData, Services, SiteStats, StockSearch, Config, Engine, Models
+- ForecastEngine -> MonteCarlo, SampleData, Config, Engine
+- GoalRoute -> AppModel, ForecastEngine, MonteCarlo, Recovery, SiteStats, Sync, Theme, MissionViews, Engine
+- InvestEvents -> Invest
+- Lines -> AppModel
+- Lots -> AppModel, Market, SampleData, Sync, Engine
+- Market -> AppModel, FlowData, ForecastEngine, Lines, MonteCarlo, Parallel, SampleData, SiteStats, StockSearch, WidgetBridge, EarningsRiver, Config, Engine, Models
+- Me -> AppModel, SampleData, Support, Config
+- MonteCarlo -> SampleData
+- MyRecord -> AppModel, SampleData, Sync, Engine
+- Notifier -> AppModel, Remind, SettingsView, Engine
+- Parallel -> AppModel, Lots, Market, Recovery, SampleData, StockSearch, Sync, Engine
+- Progress -> AppModel, GoalRoute, Me, Engine
+- Recovery -> AppModel, ForecastEngine, Industries, Market, MonteCarlo, SampleData, SiteStats, Sync, Theme, Engine
+- Remind -> AppModel, Calm, Earnings, SampleData, Story, Support, Sync, Theme, AnalysisDetail, AnalysisView, EarningsRiver, HoldingsView, Config, Engine
+- SampleData -> AppModel, Market, StockSearch, Config
+- Services -> AppModel, Market, MonteCarlo, SampleData, StockSearch, Engine
+- SiteCalc -> Market, MonteCarlo, SampleData, SiteStats, StockSearch, Config, Engine, Models
+- SiteStats -> Market, MonteCarlo, SampleData, StockSearch, Config, Engine
+- StockCatalog -> StockSearch
+- StockSearch -> Market, MonteCarlo, SampleData, SiteStats, StockCatalog, Config, Engine, Models
+- StoreAPI -> Story, Support, Sync, Config
+- Story -> AppModel, SampleData, StoreAPI, Support, Config, Format, StoryWidgetData
+- Support -> Me, Story, Sync, Config
+- Sync -> AppModel, Calm, Lots, Market, MonteCarlo, MyRecord, Parallel, Progress, SampleData, StockCatalog, StockSearch, HoldingsView, Engine
+- TossSum -> AppModel, Lots, Market, MonteCarlo, SampleData, Services, StockSearch, Sync, Config
+- WaveEngine -> AppModel, Market, StockSearch, Engine
+- WidgetBridge -> AppModel, Lines, Market, Remind, SampleData, StockSearch, Story, GyeolGlue, MeViews, WatchPayload, WatchSync, Config, Engine, Format, Models, Reward
+- GyeolBake -> SampleData, HomeViews
+- GyeolDraw -> SampleData, GyeolBake
+- GyeolGlue -> Support, Sync, Theme, Config, Engine, Format
+- GyeolPip -> Support, Sync, GyeolBake, GyeolDraw, Theme
+- MockAI -> Recovery, MockEngine, MockFeed, MockModels
+- MockDesk -> Notifier, StockSearch, Support, MockAI, MockEngine, MockFeed, MockModels
+- MockEngine -> MockModels
+- MockFeed -> MockEngine, MockModels, Config, Models
+- MockModels -> App, MockEngine
+- MockOrderViews -> App, Support, MockDesk, MockEngine, MockFeed, MockModels, MockViews, Theme, Views/Charts, HoldingsView, HomeView, ThemeScenes
+- MockViews -> App, StockSearch, MockDesk, MockEngine, MockFeed, MockModels, Theme, Views/Charts, HoldingsView, HomeView, ThemeScenes
+- AnalysisDetail -> AppModel, GoalRoute, Lots, Market, MonteCarlo, Notifier, Parallel, Remind, SampleData, Services, SiteCalc, SiteStats, StockSearch, Sync, Theme, AnalysisView, HoldingsView, HomeView, SettingsDetail, Config, Engine, Models
+- AnalysisView -> App, AppModel, Calm, GoalRoute, Market, Remind, SiteCalc, SiteStats, Support, Theme, AnalysisDetail, CalmView, ForecastParts, GoalViews, HoldingsView, HomeView, SupportView, ThemeScenes, Engine
+- BoardView -> App, AppModel, BrickGame, GoalRoute, Recovery, Remind, SampleData, Theme, AnalysisView, GoalViews, Guide, HoldingsView, HomeView, MissionViews, ThemeScenes, WaveHomeView
+- BrickGameView -> AppModel, BrickGame, Me, SampleData, Theme, CharMotion, Guide, MeViews, WaveHomeView
+- CalmView -> AppModel, Calm, SampleData, Theme, AnalysisView, MeViews, MyRecordCard, ShelterView, Engine
+- CharMotion -> Me, Theme, HoldingsView, MeViews
+- Views/Charts -> AppModel, SampleData, Services, StockCatalog, Theme
+- EarningsRiver -> AppModel, Earnings, Market, SampleData, SiteStats, Theme, Config
+- FlowView -> App, AppModel, FlowData, Market, SampleData, StockSearch, Theme, HoldingsView, HomeView, ThemeScenes, Models
+- ForecastParts -> AppModel, Remind, Theme, AnalysisView
+- GoalViews -> AppModel, BrickGame, GoalRoute, Lines, Recovery, SampleData, Theme, BrickGameView, Guide, HomeView, MeViews, MissionViews, ShareCard, WaveHomeView
+- Guide -> AppModel, Me, SampleData, Theme, MeViews
+- HoldingsView -> App, AppModel, Market, Me, Remind, SampleData, Services, StockSearch, Sync, TossSum, Theme, AnalysisDetail, CharMotion, Views/Charts, EarningsRiver, HomeView, MeViews, ThemeScenes, TownPanel, WaveHomeView, Engine, Provider
+- HomeView -> App, AppModel, Earnings, Lines, Market, Remind, SampleData, MockOrderViews, Theme, CharMotion, EarningsRiver, GoalViews, HoldingsView, MeViews, ParallelView, RemindViews, ShelterView, ThemeScenes, WaveHomeView
+- InvestViews -> AppModel, Invest, Me, SampleData, Theme, MeViews, ParallelView, Engine
+- MeViews -> AppModel, Calm, Me, SampleData, WidgetBridge, Theme, CharMotion, Config, Reward
+- MissionViews -> AppModel, Notifier, Recovery, SampleData, StockSearch, Theme, Views/Charts, GoalViews, Guide, HoldingsView, HomeView, MeViews, Models
+- MyRecordCard -> AppModel, MyRecord, Theme
+- ParallelView -> App, AppModel, Market, Parallel, SampleData, Theme, Engine
+- RemindViews -> App, AppModel, Remind, SampleData, Theme, WaveHomeView, Engine
+- SettingsDetail -> AppModel, Backup, GoalRoute, Lines, Market, Notifier, SampleData, Sync, Theme, MeViews, RemindViews, SettingsView, StartView, WaveHomeView, Config, Models, Reward, CharWidgets, Catalog
+- SettingsView -> App, AppModel, FlowData, Market, Sync, GyeolGlue, GyeolPip, Theme, GoalViews, Guide, HomeView, SettingsDetail, SupportView, ThemeScenes, WaveFeedback, WaveHomeView, Config, Models
+- ShareCard -> AppModel, SampleData, Theme, MeViews, Config, Reward, CharWidgets
+- ShelterView -> App, AppModel, Calm, Lines, SampleData, Story, Support, Theme, CharMotion, InvestViews, MeViews, SupportView, Reward
+- StartView -> AppModel, GoalRoute, Lines, Theme, SettingsDetail
+- SupportView -> AppModel, Support, Theme, SettingsDetail
+- ThemeScenes -> Me, CharMotion, HomeView, MeViews
+- TownPanel -> AppModel, Lines, Me, StockSearch, Story, Theme, HoldingsView, Provider
+- SurfCloset -> Me, CharMotion, MeViews, WaveHomeView
+- WaveFeedback -> WaveEngine, Theme
+- WaveHomeView -> AppModel, WaveEngine, Theme, SurfCloset, WavePlayView
+- WavePlayView -> AppModel, Me, WaveEngine, Theme, CharMotion, MeViews, ThemeScenes, SurfCloset, WaveFeedback, WaveResultPopup
+- WaveResultPopup -> Theme, WavePlayView
+- Config -> Format, Models
+- Engine -> Config, Format, Models
+- Flip -> Config
+- Format -> Config, Models
+- Models -> Config
+- Reward -> Config, Engine, Format
+- CharWidgets -> Config, Engine, Format, Reward, Intent, Catalog
+- HomeWidgets -> Config, Engine, Format, Reward, Provider, Catalog, HomeViews
+- Intent -> Config, Models, Reward
+- LockWidgets -> Config, Format, CharWidgets, HomeWidgets, Intent, StoryWidget, Catalog, LockViews
+- Provider -> Config, Engine, Format
+- StoryWidget -> Config, Format, StoryWidgetData, CharWidgets, Catalog
+- Catalog -> Config, Format
+- Widgets/Views/Charts -> Engine, Format, Reward, Widgets/Views/Theme
+- HomeViews -> Config, Engine, Format, Reward, Widgets/Views/Charts, Widgets/Views/Theme
+- LockViews -> Config, Engine, Format, Reward, CharWidgets, Intent, Widgets/Views/Charts, Widgets/Views/Theme
+- Locked -> Config, Format, Catalog, Widgets/Views/Theme
+- Widgets/Views/Theme -> Config, Engine, Format, Intent
+- NaeiloWatchApp -> WatchPayload, WatchSync
+- WatchSync -> WatchPayload
+- WatchWidgets -> WatchPayload
