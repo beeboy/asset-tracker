@@ -2,4 +2,5 @@ NaeiloApp.xcodeproj/xcuserdata/
 NaeiloApp.xcodeproj/project.xcworkspace/xcuserdata/
 build/
 screens/
+.swiftpm/
 .DS_Store

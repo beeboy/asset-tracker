@@ -1,0 +1,253 @@
+# 안드로이드 코드 지도
+
+`python3 docs/codemap/gen.py`로 다시 만든다. 손으로 고치지 않는다.
+
+소스 111개 · 50958줄 · 뿌리: `android-app/app/src/main`, `android-app/widget/src/main`
+
+## 폴더 (파일 줄수)
+
+- `./` (4): App 460, AppModel 1028, MainActivity 66, RestartActivity 20
+- `core/` (2): Flip 75, L10n 201
+- `core/calc/` (11): Calm 622, ForecastEngine 358, GoalRoute 618, Industries 93, Invest 154, InvestEvents 124, MonteCarlo 894, Parallel 850, Recovery 404, SiteCalc 288, WaveEngine 672
+- `core/game/` (1): BrickGame 1211
+- `data/` (14): Earnings 263, FlowData 674, Lines 151, Lots 96, Me 413, MyRecord 102, Notifier 461, Progress 149, Remind 829, SampleData 362, Services 175, Story 284, Support 338, WidgetBridge 271
+- `net/` (8): Backup 137, Market 1072, SiteStats 324, StockCatalog 136, StockSearch 601, StoreAPI 57, Sync 686, TossSum 188
+- `pending/` (1): Pending 25
+- `ui/` (9): AppHeader 27, CharMotion 869, Charts 380, Controls 833, Guide 202, MyRecordCard 125, ShareCard 356, Theme 501, WaveFeedbackToggles 45
+- `ui/analysis/` (10): AnalysisCommon 277, AnalysisView 1124, DividendViews 506, ExternalViews 724, ForecastParts 192, FxGlanceViews 696, InvestViews 299, MyPathViews 486, ParallelViews 600, RateViews 646
+- `ui/board/` (2): BoardView 749, MissionViews 1178
+- `ui/calm/` (1): CalmView 366
+- `ui/flow/` (1): FlowView 1018
+- `ui/game/` (1): BrickGameView 1278
+- `ui/goal/` (1): GoalViews 1239
+- `ui/hold/` (3): EarningsRiver 563, HoldingDetail 712, HoldingsView 1142
+- `ui/home/` (2): HomeView 1215, ThemeScenes 996
+- `ui/me/` (1): MeViews 1014
+- `ui/remind/` (1): RemindViews 367
+- `ui/settings/` (2): SettingsDetail 893, SettingsView 1063
+- `ui/shelter/` (1): ShelterView 1253
+- `ui/start/` (1): StartView 269
+- `ui/support/` (1): SupportView 207
+- `ui/town/` (2): TownPanel 1189, TownViews 1766
+- `ui/wave/` (5): SurfCloset 371, WaveFeedback 246, WaveHomeView 556, WavePlayView 696, WaveResultPopup 162
+- `w/app/core/` (9): Config 245, Engine 340, Feeds 640, Format 209, Json 34, Models 352, Reward 266, StoryWidgetData 39, SwFmt 74
+- `w/widget/` (17): Catalog 106, CharViews 1005, CharWidgets 220, Charts 270, Draw 281, Glance 156, HomeViews 377, HomeWidgets 144, Host 130, Intent 135, LockWidgets 38, Locked 54, Previews 45, Provider 96, StoryWidget 52, StoryWidgetView 130, Theme 192
+
+## 최상위 선언 (private 뺌)
+
+- App.kt: class Tab; fun NaeiloApp, RootView, PopupX, PathSheet, openIntent, openNotification, openUrl
+- AppModel.kt: class WeekPick, DayLog, HoldSort, Lens, AppModel
+- MainActivity.kt: class MainActivity
+- RestartActivity.kt: class RestartActivity
+- core/Flip.kt: fun Modifier.flip, Modifier.flipFade, Modifier.charShake, Modifier.charFlip
+- core/L10n.kt: fun tr; object L10n
+- core/calc/Calm.kt: class CalmEvent, CalmStats, Calm, Ladder, CalmNote, StepProgress; fun AppModel.calmDrift, AppModel.calmTrade, AppModel.calmBackfill, AppModel.calmOpen, Calm.Companion.merge
+- core/calc/ForecastEngine.kt: object Compute, SimSerializer; class ForecastEngine, PathRuns
+- core/calc/GoalRoute.kt: class Route, GoalWeek, GoalMix, GoalSim, GoalAmt, GoalPace, GoalPreset, PresetRaw, GoalStep, StepRaw, Shift, MonthStep; fun AppModel.Companion.wonK, AppModel.Companion.eta, AppModel.takeSiteGoal, AppModel.siteGoal, AppModel.Companion.verdict, AppModel.Companion.yearAt, AppModel.Companion.whenText, AppModel.mixParts, AppModel.longHorizon, AppModel.simulate, AppModel.amountAtGoal, AppModel.neededMonthly, AppModel.monthsTo, AppModel.goalPace, AppModel.Companion.paceText, AppModel.Companion.round2, AppModel.autoGoal, AppModel.autoGoalX, AppModel.setAutoGoal, AppModel.refreshAutoGoal, AppModel.goalNo, AppModel.goalAvailable, AppModel.shift, AppModel.confirmGoalMonth, AppModel.editLastMonth, AppModel.switchRoute, AppModel.graduateToGoal, AppModel.suggestNextGoal, AppModel.totalAt; object GoalLater, AmtLater
+- core/calc/Industries.kt: object Industries
+- core/calc/Invest.kt: object Invest
+- core/calc/MonteCarlo.kt: object MC, McSettingsSerializer, McEventSerializer; class PathSet
+- core/calc/Parallel.kt: class PBasketSeg, PDay, PWorld, PLog, PRace, PVerdict; object Parallel; fun AppModel.parallelBaseAt, AppModel.newParallel, AppModel.planBasket, AppModel.openParallelIfNeeded, AppModel.parallelRun, AppModel.parallelTick, AppModel.parallelSeries, AppModel.saveBasket, AppModel.pickWho, AppModel.parallelDistance, AppModel.parallelTitle, Parallel.verdict, Market.fetchParallelUniverse
+- core/calc/Recovery.kt: class MissionRoute, Basket, Plan, Part, McInputs, MuSigma, ClosedX, Deposit, ChartPlan; fun AppModel.proxy, AppModel.Companion.merged, AppModel.mcInputs, AppModel.mcPathCap, AppModel.lensMu, AppModel.paths, AppModel.closedParams, AppModel.planParts, AppModel.deposit, PathChart
+- core/calc/SiteCalc.kt: class SiteCalc, AlpacaDivDisk
+- core/calc/WaveEngine.kt: iface RandomNumberGenerator; class SystemRandomNumberGenerator, WaveEngine; fun RandomNumberGenerator.intIn, RandomNumberGenerator.intBelow, List, AppModel.waveCourse
+- core/game/BrickGame.kt: fun interface, GameRng.nextBounded, GameRng.intIn, GameRng.intInClosed, GameRng.doubleIn, GameRng.doubleInClosed, GameRng.bool, List; class GameRect, Impact, Notice, ViewFx, Orientation, Gravity, SensorMotion, GameLevel, GameStage, GameRecord, BrickGame, GameSound; iface GameFx, GameMotion; object GamePlayer, GameLines
+- data/Earnings.kt: object Earnings; class EarningsFeed
+- data/FlowData.kt: object FlowTab, FlowCalc, DrnkSample, FlowAlpaca, FlowLongbridge, FlowStore; class Candle, FlowPivot, FlowTrend, FlowLevel, FlowPattern, FlowSeries, FlowBars
+- data/Lines.kt: object Lines, SayDeck; class LineClock
+- data/Lots.kt: class Lot; object Lots; fun AppModel.recordLot, AppModel.todayPL
+- data/Me.kt: class MeChar, MeGroup, ShelterBG, MeSample, TrustedClock, WeekGate; object MeColor; fun Shelter.background, AppModel.fixStarts, AppModel.voice, AppModel.friendName, AppModel.bgOn, AppModel.bgDay
+- data/MyRecord.kt: class DayRec; object MyRecord; fun AppModel.recordDay
+- data/Notifier.kt: object Notifier, EventRetro, NotificationDelegate; class NotifyReceiver
+- data/Progress.kt: object Defaults; class Progress; fun AppModel.apply, AppModel.catchUpDay, AppModel.saveProgress
+- data/Remind.kt: class RemindCat, RemindGo, RemindItem, RemindLog, BlogFile, RemindNews, Remind; object MarketEvents; fun AppModel.go
+- data/SampleData.kt: class Currency, Symbol, Profile, Holding, Friend, ShelterItem, WeekStep, Chapter; object EnData, Sample, Shelter
+- data/Services.kt: iface PriceProvider; class Period, StubPriceProvider
+- data/Story.kt: class StoryBlock, StoryChapter, StoryFile, StoryLang, StoryBook, Story
+- data/Support.kt: class SubPlan, Support
+- data/WidgetBridge.kt: object WidgetBridge
+- net/Backup.kt: object B64, BackupFile; class Backup
+- net/Market.kt: fun posix, zoneOr; class Quote, MarUse, Market, CalcSnap; object YahooSample, SitePrices, TossHistory, MarFeed, AlpacaHistory, TossMinutes, AlpacaMinutes, LongbridgeMinutes
+- net/SiteStats.kt: object SiteStats; class ExtraStats
+- net/StockCatalog.kt: object StockCatalog
+- net/StockSearch.kt: class StockHit, CustomSymbols; object KoreaEstimate, StockSearch, KrxList, KrDaily, PriceHistory
+- net/StoreAPI.kt: object StoreAPI
+- net/Sync.kt: fun plainToJson, jsonToPlain; class Sync, SiteForecast, AnyCodable; object Keychain
+- net/TossSum.kt: object TossSum, MarDaily; fun AppModel.tossSumItems
+- ui/AppHeader.kt: fun AppHeader
+- ui/CharMotion.kt: class CharDir, CharScene, CharPose, DayMood, MoodAct, MoodStep; object PixBuf, MeMotion, FriendMotion, MoodScript, MoodArt; fun SceneSprite, CharClock, CharShadow, TownWalker, CharFigure, MeTurntable, MoodFigure
+- ui/Charts.kt: fun Sparkline, thin, LogoTile, PulseRing, PulseDot, Modifier.pulse, RollText; class Scrub; object LogoTile, Pulse
+- ui/Controls.kt: fun drawableId, PixelN, SmoothImage, Sym, HDivider, IosSwitch, ToggleRow, Segmented, InputField, ConfirmSheet, Sheet, PopupCover, SheetBar, SheetTitleBar, DropMenu, NavBar, rememberBackSwipe, NavStack, Modifier.hideKeyboardOnDrag, Refreshable, hexD, TextStyle.ls, Fg, TA, FitText, Modifier.outset, Modifier.outsetEnd, rememberPrefBool, IosAlert, Modifier.plainCombinedClickable, rememberPrefString, FitRow, FitsOr, ContextMenu, Spinner, IosSlider; class DialogAction, MenuItem, NavPage, NavBack, BackSwipe
+- ui/Guide.kt: class Pose; fun MotionSprite, GuideBubble, GuidePickRow; object Voice
+- ui/MyRecordCard.kt: fun MyRecordCard
+- ui/ShareCard.kt: fun ShareCardButton, ShareCardSheet; object ShareCard, ActivitySheet
+- ui/Theme.kt: fun hex, Card, DarkBox, DashedCard, ChipRow, PrimaryButton, Pixel, Modifier.charIdle, stiffness, ProgressBar, ScreenTitle, Screen, appFont, serifDigits, T, PinnedLayout, Modifier.plainClickable; class Palette, TextScale
+- ui/WaveFeedbackToggles.kt: object WaveFeedbackKeys; fun WaveFeedbackToggles
+- ui/analysis/AnalysisCommon.kt: class MyPath, Kpi; fun yrs, AppModel.pathSeries, myPathOf, AppModel.Companion.manS, AppModel.Companion.won1, AppModel.Companion.wonRead, AppModel.weight, DetailHead, SignedBar, KpiBox, KpiGrid, Footnote, PinnedBox, linePath, Modifier.detailTitle
+- ui/analysis/AnalysisView.kt: class AnalysisRoute; fun AnalysisRoute.title, AnalysisPage, AnalysisPager, AnalysisSheet, AnalysisView, ChanceBox, ProgressTrack, Modifier.openOnTap, ForecastView, GoalSetPage; object AnalysisPager, AnalysisView, ChanceBox, GoalRoute0, ForecastView
+- ui/analysis/DividendViews.kt: object DividendView, TaxRulesRoute; fun DividendView, monthInfo; class MonthInfo
+- ui/analysis/ExternalViews.kt: object ExternalView, FactorDetailView; fun ExternalView, factorPresets, factorRange, factorText, factorHuge, factorRows, factorLabel, FactorDetailView; class FactorDetailRoute, FRow
+- ui/analysis/ForecastParts.kt: object ScenarioChart; fun ScenarioChart, ScheduleRow
+- ui/analysis/FxGlanceViews.kt: fun FxImpactView, fxTicks, volWord, GlanceView; object GlanceView; class GlanceTip
+- ui/analysis/InvestViews.kt: fun InvestBranch, CaseCard; object InvestBranch0
+- ui/analysis/MyPathViews.kt: fun EtaRow, EtaTicks, CompareAddSheet, MyPathCompareView; object EtaRow
+- ui/analysis/ParallelViews.kt: object ParallelUI, ParallelTitles, ParallelView0, RaceLine; fun ParallelView, RuleStep, mdBold, ParallelBasketView, ParallelHomeCard
+- ui/analysis/RateViews.kt: class MacroData, RateScen, RateWhyRoute; object RateScenarioView; fun RateScenarioView, RateWhyView, ymDot, lv, RateBandChart
+- ui/board/BoardView.kt: fun BoardView, boardPage, WeekForecastCard; class BoardStep; object WeekForecastCard
+- ui/board/MissionViews.kt: fun missionPage, MissionScreen, MissionPage, BoardButtons, Mission1View, Mission1ResultView, DepositLeverCard, Mission2View, Mission2ResultView, Mission3View, BasketList, Mission3ResultView, TaxInputView, TaxResultView, AppStartView; object Mission3Nav, Mission3ResultView
+- ui/calm/CalmView.kt: class CalmFriendRoute; fun CalmCard, CalmView; object CalmView
+- ui/flow/FlowView.kt: fun FlowView, FlowChart, FlowGuide, FlowMini, placeTags; class Mood, FlowLayer, FlowTerm, TagWant; object FlowTail, FlowMini
+- ui/game/BrickGameView.kt: fun BrickGameButton, BrickGameHub, BrickPlayView, animateEachFrame, BrickBoardSheet, RefreshPause, Modifier.pausesRefresh; class Hud, BrickFx, BrickTilt; object GamePause
+- ui/goal/GoalViews.kt: fun GoalPathChart, inputField, GoalCellsCard, BrickBox, MiniParty, SplitRow, GoalCellGrid, GoalHoldResultView, GoalSetView, GoalSetResultView, GoalMixView, GoalMixResultView, GoalTaxView, GoalIntermissionView; class GameThumbKind, BrickColors, MiniBreakout, TaxRow; object GoalCellsCard
+- ui/hold/EarningsRiver.kt: class EarnPal, EarnTarget; fun EarnBars, EarnTip, EarningsRiverSheet, EarningsRiver; object EarnText, EarningsRiver
+- ui/hold/HoldingDetail.kt: class EditRoute; fun HoldingDetailView, needText, AvgCalc, KoreaSumCard, KRPriceCard, AddHoldingView, HoldingEditView; object AvgCalc
+- ui/hold/HoldingsView.kt: fun HoldingsView, HoldSeg, TodayBox, MoodBand, Modifier.moodBackdrop, FitAnnotated, TagChart, HoldPagePicker, HoldingsNews, openDetail, DetailSheet; object HoldingsView, HoldFmt, TodayBox, TagChart, HoldingEdit; class HoldColW
+- ui/home/HomeView.kt: fun HomeView, homePage, RoutineCard, FlowRow, SampleNote, FreshLabel, SceneBox, DrawScope.tileWall, Plate, Loop, DrawScope.duck, DrawScope.car; object EarnHomeCard, Sk, TubScene, HomeSay; class BoxLook, BoxScene, Anchor
+- ui/home/ThemeScenes.kt: fun moodDown, stillNow, every, pw, blinkY, BoxSchemeScope, boxDark, bx, boxInk, DoryScene, PinoScene, MugScene, BandBuddy, TrackBuddy, DrawScope.themeBackdrop, ThemeBandFrame, ThemeTrack, SphereScene; object MarketClock, ThemeArt, MugArt, ThemeBand; class BoxScheme, BoxInk
+- ui/me/MeViews.kt: fun CharPixel, MeEmpty, MeAvatar, meEditPage, MeEditView, RoomImage, ShelterBGBox, CharHead, meBitmap, mePixels; object MeArt, MePlaceholder, MePose
+- ui/remind/RemindViews.kt: class Tab; fun RemindSheet, RemindOptions; object RemindSheet
+- ui/settings/SettingsDetail.kt: fun FriendSay, AlertsView, SyncView, AmountHideCard, WidgetPickView, TaxRulesView, HowToView, RouteView, ResidenceView; class WidgetInfo; object TaxCalc
+- ui/settings/SettingsView.kt: fun NotifyListView, SettingsView, settingsPage, SettingsGroupView, SettingsRows, Modifier.drawDashedRound, PriceBasisView, okAtText, TossKeyView, AlpacaKeyView, LongbridgeKeyView, TossLinkMap, AppIconPicker, IconFollow, AppIconScreen; object NotifyList, AdminKey, SettingsGroupView, AppIconPicker; class SettingsRoute, SRow
+- ui/shelter/ShelterView.kt: fun shelterPage, readerPage, characterPage, ShelterView, Story.cover, ChapterCover, LazyListState.scrollTo, ReaderView, readerMd, CharacterDetailView, sceneOpen, lockedText, Shelter.spriteBacking
+- ui/start/StartView.kt: fun StartView, StartForecastCard; object StartForecast
+- ui/support/SupportView.kt: fun Context.activity, SupportView, SubLocked
+- ui/town/TownPanel.kt: object TownPanel, TownNews, TownSay, TownBond; fun TownPanel, townPrefInt; class TownItem
+- ui/town/TownViews.kt: class Meet, Duet, TownBook, TownSky, TownLog, Px; object TownView, TownLook, TownFace, TownStar, TownGround; fun TownView, TownTalk, TownPast, TownWeather, TownFace, TownDress, TownUs, TownGround
+- ui/wave/SurfCloset.kt: class SurfOpen, SurfItem; object SurfCloset; fun SurfRider, SurfClosetSheet
+- ui/wave/WaveFeedback.kt: class WaveFeedback
+- ui/wave/WaveHomeView.kt: alias Island; object WaveMap, TightLabel; fun WaveHomeView, WaveGameButton, WaveHub, GameHeader, TownButton, WaveCover, SymOr
+- ui/wave/WavePlayView.kt: fun WavePlayView; class WaveRun, Hud, WaveResult, WaveFX; object WavePlayRules, WaveDraw
+- ui/wave/WaveResultPopup.kt: fun WaveResultPopup, WaveRideChart
+- w/app/core/Config.kt: object Config, Store, WidgetUnlock; class Channel; fun SharedPreferences.getDouble, SharedPreferences.Editor.putDouble, Double.toInstant
+- w/app/core/Engine.kt: class Snapshot; object Day, Engine
+- w/app/core/Feeds.kt: object TossFeed, TossKeys, AlpacaFeed, AlpacaKeys, LongbridgeFeed, LongbridgeKeys, KeyVault
+- w/app/core/Format.kt: object WL, Fmt, MarketHours, WidgetRefresh, Fresh
+- w/app/core/Json.kt: object SwiftDate, IsoDate
+- w/app/core/Models.kt: class WSummary, WFeed, WLive, FeedReq; fun num, String.fastDouble, feedJson, jObj, jArr, jObjs, jDbls, pctEncode, uriOrNull, isoSec; object Relay, KrQuoteFeed, TossDaily, USSession, GoodQuotes, QuoteFeed
+- w/app/core/Reward.kt: class WReward, WChar, WMe, WSmall; object WItem, WidgetLine
+- w/app/core/StoryWidgetData.kt: class WStory
+- w/app/core/SwFmt.kt: fun Double.swFmt, Double.swFmtNoGroup, Double.swFmtFrac, cfmt, cfix, cg, cformat, Double.usdText
+- w/widget/Catalog.kt: object Catalog; fun catalog; class Gate
+- w/widget/CharViews.kt: class CharStyle, Al, CharSpeak; fun Pen.charFrame, charURL, charLockedSpeech, Pen.charBG, Pen.scaled, Pen.rotated, Pen.moved, Pen.clipped, Pen.charSprite, Pen.charShake, Pen.charBleed, charSpeech, charActions, HillCharView, Pen.hillChar, LadderCharView, Pen.ladderChar, TowerCharView, Pen.towerChar, BoardCharView, Pen.boardChar, HeightCharView, Pen.heightChar, PuzzleCharView, Pen.puzzleChar, GardenCharView, Pen.gardenChar, TugCharView, Pen.tugChar, Pen.styleReader, Pen.charReload, charSpeak, Pen.charMoney
+- w/widget/CharWidgets.kt: class WhoEnum, WhoIntent, CharEntry, CharWidget, CharHill, CharLadder, CharTower, CharBoard, CharHeight, CharPuzzle, CharGarden, CharTug, CharHillReceiver, CharLadderReceiver, CharTowerReceiver, CharBoardReceiver, CharHeightReceiver, CharPuzzleReceiver, CharGardenReceiver, CharTugReceiver; object WhoOptions, CharProvider
+- w/widget/Charts.kt: fun Pen.spark, Path.smooth, Pen.trendLine, Pen.goalFan, Pen.pathChart, Pen.targetBoard; object GoalFan
+- w/widget/Draw.kt: class WidgetRenderingMode, Act, Hit, Seg, Pen, Icon; object W, Sprites, Small
+- w/widget/Glance.kt: class Face, FaceWidget; object Widgets, WidgetCenter
+- w/widget/HomeViews.kt: fun Pen.assetSmall, Pen.pathSmall, Pen.futureSmall, Pen.blockSmall, Pen.paceSmall, Pen.targetSmall, Pen.movesSmall, HomeWidgetPreview
+- w/widget/HomeWidgets.kt: class AssetSmall, PathSmall, FutureSmall, BlockSmall, PaceSmall, TargetSmall, MovesSmall, AssetSmallReceiver, PathSmallReceiver, FutureSmallReceiver, BlockSmallReceiver, PaceSmallReceiver, TargetSmallReceiver, MovesSmallReceiver, HomeWidget; object Speech
+- w/widget/Host.kt: fun guideW, isDark, cornerDp, textMeasurer, render, FaceCanvas, CharBG; class Rendered
+- w/widget/Intent.kt: class ReloadIntent, ReloadWork, StoryReloadIntent, ToggleAmountIntent; fun withTimeout
+- w/widget/LockWidgets.kt: class ReloadControl
+- w/widget/Locked.kt: fun Gate, gateLocked, Pen.lockedWidget, lockedSpeech
+- w/widget/Previews.kt: object Previews
+- w/widget/Provider.kt: class Entry, RefreshWork; object Provider, Refresh; fun trialEndInstant
+- w/widget/StoryWidget.kt: class StoryEntry, StoryWidget, StoryWidgetReceiver; object StoryProvider
+- w/widget/StoryWidgetView.kt: fun Pen.storyWidget, storyURL, storySpeech, StoryWidgetPreview; object StoryWidgetView
+- w/widget/Theme.kt: class Palette, Tint; object WidgetBG, KindKey, EntryDateKey, SampleKey; fun Pen.schemeFix, Pen.widgetBG, Pen.label2, Pen.foot, Pen.stamp, Pen.reloadButton, Pen.sampleBadge, Pen.money, Pen.kind
+
+## 파일 관계 (A -> A가 쓰는 타입을 선언한 파일, 확장자 뺌)
+
+- App -> AppModel, ForecastEngine, Recovery, FlowData, Lines, Me, Notifier, Remind, SampleData, Services, Support, WidgetBridge, Market, StockSearch, Sync, Controls, ui/Theme, AnalysisView, ExternalViews, RateViews, BrickGameView, HoldingsView, SettingsView, Engine, Feeds
+- AppModel -> Calm, ForecastEngine, GoalRoute, MonteCarlo, Parallel, Recovery, Lines, Lots, Me, MyRecord, Progress, Remind, SampleData, Services, Story, Support, Market, SiteStats, StockSearch, Sync, AnalysisView, SettingsView, TownViews, Config, Engine, Reward
+- MainActivity -> AppModel, RestartActivity, Notifier, Progress, SampleData, Support, Market, StockSearch, Sync, Config, Previews
+- RestartActivity -> MainActivity
+- Flip -> Config
+- L10n -> AppModel, Config
+- Calm -> AppModel, Lines, Progress, SampleData, StockSearch, Sync, TownViews, Engine, Draw
+- ForecastEngine -> MainActivity, MonteCarlo, SampleData, Config, Engine
+- GoalRoute -> AppModel, ForecastEngine, MonteCarlo, Recovery, Me, SampleData, SiteStats, Sync, MissionViews, Engine
+- InvestEvents -> Invest
+- MonteCarlo -> ForecastEngine, Progress, SampleData
+- Parallel -> AppModel, Recovery, Lots, Progress, SampleData, Market, StockSearch, Sync, Engine, Reward
+- Recovery -> AppModel, ForecastEngine, Industries, MonteCarlo, Progress, SampleData, Market, SiteStats, Sync, Engine
+- SiteCalc -> MonteCarlo, Progress, SampleData, Market, SiteStats, StockSearch, Config, Engine, Feeds, Models
+- WaveEngine -> AppModel, SampleData, Market, StockSearch, WaveHomeView, Engine
+- BrickGame -> WaveEngine, Lines, Me, Progress, SampleData, Backup, Json
+- Earnings -> Progress, SampleData, Market, SiteStats, Config, Engine, Models
+- FlowData -> SampleData, Services, Market, SiteStats, StockSearch, DividendViews, Config, Engine, Feeds, Models
+- Lines -> AppModel, Progress, TownPanel
+- Lots -> AppModel, Progress, SampleData, Sync, Engine
+- Me -> AppModel, GoalRoute, Progress, SampleData, Support, MeViews, Config
+- MyRecord -> AppModel, Progress, SampleData, Sync, Engine
+- Notifier -> AppModel, MainActivity, Progress, Remind, SettingsView, Config, Engine
+- Progress -> AppModel, GoalRoute, Me, Engine
+- Remind -> AppModel, Calm, GoalRoute, Earnings, Me, Progress, SampleData, Story, Support, Sync, AnalysisView, RateViews, SettingsView, TownViews, Config, Engine, Draw
+- SampleData -> AppModel, Progress, Market, StockSearch, Config
+- Services -> AppModel, MonteCarlo, Progress, SampleData, Market, StockSearch, Engine
+- Story -> AppModel, Progress, SampleData, Support, StoreAPI, Config, Format, StoryWidgetData, Glance
+- Support -> Me, Progress, Story, Sync, Config, Glance
+- WidgetBridge -> AppModel, Lines, Remind, SampleData, Story, Market, StockSearch, AnalysisCommon, MeViews, Config, Engine, Format, Models, Reward, StoryWidgetData, Draw, Glance
+- Backup -> AppModel, Calm, MonteCarlo, Parallel, Lots, MyRecord, Progress, SampleData, Market, StockSearch, Sync, TownViews, SurfCloset, Json
+- Market -> AppModel, ForecastEngine, MonteCarlo, Parallel, Earnings, FlowData, Lines, Progress, SampleData, WidgetBridge, SiteStats, StockSearch, Config, Engine, Feeds, Models
+- SiteStats -> MonteCarlo, Progress, SampleData, Market, StockSearch, Config, Engine, Json, Models
+- StockCatalog -> SampleData, StockSearch
+- StockSearch -> MonteCarlo, Progress, SampleData, Backup, Market, SiteStats, StockCatalog, Config, Engine, Feeds, Json, Models
+- StoreAPI -> Story, Support, Sync, Config, Models
+- Sync -> AppModel, MainActivity, Calm, ForecastEngine, GoalRoute, MonteCarlo, Parallel, Lots, MyRecord, Progress, SampleData, Market, StockCatalog, StockSearch, TownViews, Config, Engine, Feeds, Models
+- TossSum -> AppModel, MonteCarlo, Lots, SampleData, Services, Market, StockSearch, Sync, Config, Models
+- Pending -> AppModel, Me, SampleData, Reward
+- CharMotion -> Me, MeViews, TownViews, Config
+- ui/Charts -> AppModel, SampleData, Services, StockCatalog
+- Controls -> Progress, SampleData
+- Guide -> AppModel, Me, Progress, SampleData, Controls, BrickGameView
+- MyRecordCard -> AppModel, MyRecord, Engine
+- ShareCard -> AppModel, SampleData, Config, Reward, CharWidgets
+- AnalysisCommon -> AppModel, GoalRoute, MonteCarlo, Lots, SampleData, Market, StockSearch, Sync, Engine
+- AnalysisView -> AppModel, Calm, GoalRoute, Recovery, SiteCalc, Remind, SampleData, Services, Support, Market, SiteStats, Controls, AnalysisCommon, DividendViews, ExternalViews, ForecastParts, FxGlanceViews, RateViews, CalmView, HomeView, Engine, Draw
+- DividendViews -> AppModel, SiteCalc, SampleData, Market, SettingsView, Config, Feeds
+- ExternalViews -> AppModel, SiteCalc, Notifier, Remind, SampleData, Market, StockSearch, AnalysisView, RateViews, TownViews, Engine, Draw
+- ForecastParts -> AppModel, Remind, AnalysisView, Draw
+- FxGlanceViews -> AppModel, SiteCalc, SampleData, Services, Market, SiteStats, StockSearch, HoldingsView, Draw
+- InvestViews -> AppModel, Invest, Parallel, Me, SampleData, ParallelViews, MeViews, Engine
+- MyPathViews -> AppModel, GoalRoute, Parallel, Recovery, SampleData, Market, SiteStats, StockSearch, Engine
+- ParallelViews -> AppModel, Parallel, SampleData, Market, Controls, Engine, Reward
+- RateViews -> AppModel, SiteCalc, Notifier, Remind, Market, ExternalViews, Config, Models
+- BoardView -> AppModel, GoalRoute, Recovery, BrickGame, Remind, SampleData, Controls, Guide, GoalViews, HomeView, WaveHomeView
+- MissionViews -> AppModel, GoalRoute, Recovery, Notifier, SampleData, Services, StockSearch, ui/Charts, Controls, Guide, SettingsView, Feeds
+- CalmView -> AppModel, Calm, SampleData, AnalysisView, Engine, Draw
+- FlowView -> AppModel, FlowData, SampleData, Market, StockSearch, HoldingsView, HomeView, SettingsView, Feeds
+- BrickGameView -> AppModel, BrickGame, Me, Progress, SampleData, CharMotion, Controls, Guide, WaveFeedbackToggles, MeViews, Config
+- GoalViews -> AppModel, GoalRoute, Recovery, BrickGame, Lines, SampleData, Controls, Guide
+- EarningsRiver -> AppModel, Earnings, SampleData, Market, TownViews, Config
+- HoldingDetail -> AppModel, Progress, SampleData, Services, Market, StockSearch, ui/Charts, Controls, HoldingsView, Engine
+- HoldingsView -> AppModel, Calm, Earnings, SampleData, Services, Market, StockSearch, Sync, TossSum, ui/Charts, Controls, FxGlanceViews, EarningsRiver, HoldingDetail, HomeView, ThemeScenes, TownViews
+- HomeView -> AppModel, GoalRoute, Earnings, Lines, Progress, Remind, SampleData, Story, Market, CharMotion, Controls, AnalysisView, ParallelViews, EarningsRiver, ThemeScenes, RemindViews, TownViews, Engine, Reward
+- ThemeScenes -> AppModel, Me, Progress, CharMotion, HomeView, MeViews
+- MeViews -> AppModel, Calm, Me, SampleData, WidgetBridge, CharMotion, Controls, Config, Reward
+- RemindViews -> AppModel, Remind, SampleData, Engine
+- SettingsDetail -> AppModel, GoalRoute, Lines, Notifier, Progress, SampleData, Backup, Market, Sync, Controls, SettingsView, Config, Feeds, Reward, Catalog, CharWidgets, Glance
+- SettingsView -> AppModel, ForecastEngine, GoalRoute, FlowData, Progress, SampleData, Support, Market, Sync, Controls, HomeView, ThemeScenes, Config, Feeds, Models, Draw
+- ShelterView -> AppModel, Calm, Recovery, Lines, SampleData, Story, Support, CharMotion, Controls, Reward, Catalog
+- StartView -> AppModel, GoalRoute, Lines
+- SupportView -> AppModel, Support, Controls, SettingsView
+- TownPanel -> AppModel, Lines, Me, Progress, Story, StockSearch, HoldingsView, TownViews, Provider
+- TownViews -> AppModel, Me, Progress, Remind, SampleData, Market, CharMotion, ShareCard, HoldingsView, MeViews, TownPanel, Engine, Provider
+- SurfCloset -> Me, Progress, Backup, CharMotion, MeViews, WaveHomeView
+- WaveFeedback -> WaveEngine, BrickGame, Progress, WaveFeedbackToggles
+- WaveHomeView -> AppModel, WaveEngine, Progress, Controls, SurfCloset, WavePlayView
+- WavePlayView -> AppModel, WaveEngine, Me, CharMotion, BrickGameView, MeViews, SurfCloset, WaveFeedback
+- WaveResultPopup -> WavePlayView
+- Config -> Support, Feeds, Format, Models
+- Engine -> Config, Feeds, Format, Models, Draw
+- Feeds -> FlowData, Market, Config, Models
+- Format -> AppModel, Config, Engine, Feeds, Models
+- Models -> Config, Feeds, Draw
+- Reward -> MeViews, Config, Engine, Format
+- SwFmt -> AppModel
+- Catalog -> Config, Format, Draw
+- CharViews -> Config, Format, Reward, Catalog, CharWidgets, Draw
+- CharWidgets -> Config, Engine, Format, Reward, Catalog, Draw, Glance, Previews, Provider
+- w/widget/Charts -> Engine, Format, Reward, Draw, w/widget/Theme
+- Draw -> Config, Reward
+- Glance -> Config, CharWidgets, Draw, HomeWidgets, Intent, Provider, StoryWidget
+- HomeViews -> Config, Engine, Format, Reward, Draw, w/widget/Theme
+- HomeWidgets -> Config, Engine, Format, Reward, Catalog, Draw, Glance, Previews, Provider
+- Host -> Config, Reward, Draw
+- Intent -> Config, Feeds, Models, Reward, Glance
+- LockWidgets -> Config, Format, Reward, Glance, Intent
+- Locked -> Config, Format, Catalog, Draw
+- Previews -> Glance
+- Provider -> Config, Engine, Format, Reward, Glance
+- StoryWidget -> Config, StoryWidgetData, Catalog, Glance, Previews
+- StoryWidgetView -> Config, Format, StoryWidgetData, Draw
+- w/widget/Theme -> Config, Engine, Format, Draw

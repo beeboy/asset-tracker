@@ -1,6 +1,8 @@
 package com.naeilo.app
 
 import com.naeilo.app.core.NJson
+import com.naeilo.app.core.Store
+import com.naeilo.app.data.Defaults
 import com.naeilo.app.core.calc.MC
 import com.naeilo.app.core.calc.PathSet
 import com.naeilo.app.core.calc.SiteCalc
@@ -42,6 +44,8 @@ import kotlin.test.Test
 // 비교는 parity.py check (차이 0). 입력이 없으면(gen 전) 아무것도 하지 않는다
 class NumParityTest {
     private val work = File(System.getProperty("user.home"), "Library/Caches/naeilo-android/num_parity")
+    // Market·Config 가 저장소를 연다: 안드로이드 몸통 없이 GParityTest 의 시험용 Context 로 띄운다
+    init { FakeCtx.make().let { Store.init(it); Defaults.init(it) } }
 
     private fun nums(a: DoubleArray) = buildJsonArray { a.forEach { add(JsonPrimitive(it)) } }
     private fun nums(a: List<Double>) = buildJsonArray { a.forEach { add(JsonPrimitive(it)) } }

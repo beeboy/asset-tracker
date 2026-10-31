@@ -98,10 +98,15 @@ class GParityTest {
     private fun ON(x: Any?): Double? = (x as String?)?.toDouble()
 
     /** 외부 요인·요인 상세: 시세(Market)·사이트 통계는 대역 Context 로 띄운 앱 싱글턴에 넣는다 (Swift 는 같은 이름 대역) */
-    @Suppress("UNCHECKED_CAST")
     private fun runX(X: Map<String, Any?>): Map<String, Any?> {
         val ctx = FakeCtx.make(); Store.init(ctx); Defaults.init(ctx)
         val mk = Market.shared
+        // 앱 싱글턴에 넣은 값은 끝나면 되돌린다 (같은 JVM 에서 뒤에 도는 NumParityTest d 단계가 이 시세를 이어 받지 않게)
+        val oldPrices = mk.prices; val oldStats = mk.ownStats; val oldMacro = MacroData.shared.file
+        try { return runX(X, mk) } finally { mk.prices = oldPrices; mk.ownStats = oldStats; MacroData.shared.file = oldMacro }
+    }
+    @Suppress("UNCHECKED_CAST")
+    private fun runX(X: Map<String, Any?>, mk: Market): Map<String, Any?> {
         val hist = X["hist"] as Map<String, Map<String, Any?>>
         mk.prices = SitePrices.File(got = 0.0, updated = "", asked = emptyList(),
             h = hist.entries.associate { (id, h) -> SiteStats.key(id) to YahooSample.Hist(h["dates"] as List<String>, DS(h["closes"])) })
@@ -110,7 +115,7 @@ class GParityTest {
         val facs = listOf("mkt", "fx", "rate", "oil", "gold", "cmdty")
         val o = LinkedHashMap<String, Any?>()
         o["cases"] = (X["cases"] as List<Map<String, Any?>>).map { c ->
-            mk.stats = MC.Stats(date = "", defaults = MC.Stats.Defaults(0.0, 0.0, 0.0), tickers = emptyMap(), corr = MC.Stats.Corr(emptyList(), emptyList()),
+            mk.ownStats = MC.Stats(date = "", defaults = MC.Stats.Defaults(0.0, 0.0, 0.0), tickers = emptyMap(), corr = MC.Stats.Corr(emptyList(), emptyList()),
                 betas = (c["betas"] as Map<String, Map<String, String>>).mapValues { e -> e.value.entries.associate { (id, b) -> SiteStats.mcKey(id) to b.toDouble() } },
                 betaStat = (c["stat"] as Map<String, Map<String, String>>).mapValues { e -> e.value.entries.associate { (id, a) -> SiteStats.mcKey(id) to MC.BetaStat(agree = a.toDouble()) } },
                 factors = (c["factors"] as Map<String, List<String>>).mapValues { MC.FactorMove(sd = it.value[0].toDouble(), max = it.value[1].toDouble()) })
@@ -221,7 +226,7 @@ private val memPrefs = MemPrefs()
 private val fakeDir: java.io.File = kotlin.io.path.createTempDirectory("naeilo-g").toFile().apply { deleteOnExit() }
 
 /** 시험용 Context: 안드로이드 몸통 없이 Store·Defaults 만 띄운다 (생성자는 건너뛰고 만든다. 파일은 임시 폴더, 앱 자산은 없음) */
-private class FakeCtx : ContextWrapper(null) {
+internal class FakeCtx : ContextWrapper(null) {
     override fun getApplicationContext(): Context = this
     override fun getFilesDir(): java.io.File = fakeDir
     override fun getSharedPreferences(name: String?, mode: Int): SharedPreferences = memPrefs

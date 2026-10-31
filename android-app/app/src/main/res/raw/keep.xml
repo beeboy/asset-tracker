@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 이름으로 찾는 그림(인물·동작·아이콘 미리보기)은 줄이기(shrinkResources)에서 지우지 않는다 -->
+<!-- 이름으로 찾는 그림(인물·동작·아이콘 미리보기·캐릭터 부품·쉼터 방·방 그림)은 줄이기(shrinkResources)에서 지우지 않는다 -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@drawable/spr_*,@drawable/sil_*,@drawable/mo_*,@drawable/iconprev_*,@drawable/drnk_*" />
+    tools:keep="@drawable/spr_*,@drawable/sil_*,@drawable/mo_*,@drawable/iconprev_*,@drawable/drnk_*,@drawable/me_*,@drawable/bg_*,@drawable/art_*" />
