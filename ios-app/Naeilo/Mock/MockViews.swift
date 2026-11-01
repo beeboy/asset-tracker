@@ -130,6 +130,7 @@ struct MockBox<Fig: View>: View {
     let tailL: Text
     let tailR: String
     var seg = false            // 오른쪽에 하루 구간 알약 (고르고 주문 구간이 아닐 때만)
+    var ai = false             // 라벨 옆 AI 이번 달 남은 돈 알약
     @ViewBuilder var shape: Fig
 
     var body: some View {
@@ -137,6 +138,7 @@ struct MockBox<Fig: View>: View {
             HStack(spacing: 8) {
                 mt(label).appFont(13).foregroundStyle(BoxInk.dim).lineLimit(1)
                 Spacer(minLength: 4)
+                if ai { MockAIPill() }
                 if MockDesk.shared.shown == .real {
                     mt("실전").appFont(11, .bold).foregroundStyle(.white).padding(.horizontal, 8).padding(.vertical, 3).background(BoxInk.up, in: Capsule())
                 }
@@ -245,7 +247,7 @@ struct MockTabBox: View {
                        big: mt(d.shownEquity.map(MockFmt.man) ?? "계좌 못 읽음").foregroundColor(BoxInk.ink),
                        side: pl.map { ($0 < 0 ? "−" : $0 > 0 ? "+" : "") + Self.man(abs($0)) + (real ? " 비용 뒤" : " 오늘") } ?? "—", sideColor: c,
                        tailL: mt("주문가능 " + (d.shownCash.map(Self.man) ?? "—")).foregroundColor(BoxInk.sub),
-                       tailR: room > 0 ? "손실 한도까지 " + Self.man(room) : "손실 한도 넘음") {
+                       tailR: room > 0 ? "손실 한도까지 " + Self.man(room) : "손실 한도 넘음", ai: true) {
             MockShareBar(value: cap > 0 ? 1 - room / cap : 0, color: room > 0 ? BoxInk.gold : BoxInk.up)
         }
     }
@@ -281,6 +283,19 @@ struct MockSegPill: View {
                     .padding(.horizontal, 8).padding(.vertical, 3)
                     .overlay(Capsule().stroke(c.opacity(0.6)))
             }
+        }
+    }
+}
+
+/// AI 이번 달 남은 돈: 앱 한도 − 서버가 적은 쓴 돈 (Anthropic 계정 잔액은 API 로 못 읽는다, 2026-10-29). 아직 못 받았으면 숨긴다
+struct MockAIPill: View {
+    var body: some View {
+        let d = MockDesk.shared
+        if let w = d.s.aiWallet {
+            mt("AI $" + String(format: "%.2f", max(0, d.s.ai.month - w.month))).appFont(11, .semibold).monospacedDigit()
+                .foregroundStyle(BoxInk.gold).lineLimit(1)
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .overlay(Capsule().stroke(BoxInk.gold.opacity(0.6)))
         }
     }
 }
@@ -1051,31 +1066,33 @@ struct MockObserveView: View {
 
     private func condCard(_ d: MockDesk) -> some View {
         Card {
-            FlowRow(spacing: 6) {
+            // 훑기 단추는 '+ 조건'과 같은 줄 오른쪽 끝 (자리가 모자라면 다음 줄 오른쪽)
+            FlowRow(spacing: 6, tail: d.nearOnly ? 2 : 1) {
                 ForEach(d.conds) { c in
                     MockCondPill(text: c.piece.text, on: c.on,
                                  tap: { toggle(d, c) },
                                  edit: { draft = MockPieceDraft(c.piece); adding = true },
                                  delete: { remove(d, c) })
                 }
-                // 새 배수: 곡선이 다 쌓이기 전엔 못 누르고 쌓인 날 수만, 다 쌓이면 저절로 켜진다
-                if d.curveDays < MockClock.newVolDays {
-                    MockCondPill(text: "새 배수 · 곡선 \(d.curveDays)/\(MockClock.newVolDays)일", on: false)
+                // 새 배수: 곡선이 하루라도 있으면 손으로 켠다 (모의라 미리 본다, 2026-10-30). 다 쌓이기 전엔 쌓인 날 수를 붙이고, 다 쌓이면 저절로 켜진다
+                if d.curveDays < 1 {
+                    MockCondPill(text: "새 배수 · 곡선 0/\(MockClock.newVolDays)일", on: false)
                         .opacity(0.6)
                 } else {
-                    MockCondPill(text: "새 배수", on: d.s.newVol == true, tap: { d.setNewVol(d.s.newVol != true) })
+                    MockCondPill(text: "새 배수" + (d.curveDays < MockClock.newVolDays ? " · 곡선 \(d.curveDays)/\(MockClock.newVolDays)일" : ""),
+                                 on: d.s.newVol == true, tap: { d.setNewVol(d.s.newVol != true) })
                 }
                 MockAddPill { draft = MockPieceDraft(); adding = true }
+                if d.nearOnly { MockGoPill(title: "전체 훑기") { await d.runObserve(full: true) } }
+                MockGoPill(title: "지금 훑기") { await d.runObserve() }
             }
             if adding {
                 MockPieceForm(draft: $draft, close: { adding = false }) { commit(d, $0) }
             }
             if let r = d.s.runs["observe"], !r.ok { MockRunLine(run: r) }
-            if let plan = d.scanPlan { mt(plan).appFont(12).foregroundStyle(Theme.muted).lineLimit(2) }
-            HStack {
-                Spacer()
-                if d.nearOnly { MockGoPill(title: "전체 훑기") { await d.runObserve(full: true) } }
-                MockGoPill(title: "지금 훑기") { await d.runObserve() }
+            // 현황판이 없을 때만 안내를 카드 안에 둔다
+            if d.progress == nil, d.s.scan == nil, let plan = d.scanPlan {
+                mt("다음 훑기 · " + plan).appFont(12).foregroundStyle(Theme.muted).lineLimit(1)
             }
         }
     }
@@ -1108,10 +1125,10 @@ struct MockObserveView: View {
     @ViewBuilder private func board(_ d: MockDesk) -> some View {
         if let p = d.progress {
             let l = d.scanLive ?? (0, 0)
-            MockFlipBoard(slots: [("받음", "\(p.done.formatted())/\(p.total.formatted())"), ("걸린", l.hits.formatted()), ("못 받은", l.fails.formatted())])
+            MockFlipBoard(slots: [("받음", "\(p.done.formatted())/\(p.total.formatted())"), ("걸린", l.hits.formatted()), ("못 받은", l.fails.formatted())], note: d.scanPlan)
         } else if let sc = d.s.scan {
             let sk = sc.skipped ?? []
-            MockFlipBoard(slots: [("걸린", (sc.hits.count + sk.count).formatted()), ("거른", sk.count.formatted()), ("못 받은", (sc.fails ?? [:]).values.reduce(0, +).formatted())])
+            MockFlipBoard(slots: [("걸린", (sc.hits.count + sk.count).formatted()), ("거른", sk.count.formatted()), ("못 받은", (sc.fails ?? [:]).values.reduce(0, +).formatted())], note: d.scanPlan)
         }
     }
 
@@ -2161,7 +2178,8 @@ struct MockFillLog: View {
 
     private func line(_ e: MockEvent) -> some View {
         let sell = e.side == .sell
-        return HStack(alignment: .firstTextBaseline, spacing: 6) {
+        return VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             mt(MockFmt.time(e.at)).appFont(11).foregroundStyle(Theme.muted).monospacedDigit().fixedSize()
             mt(sell ? "매도" : "매수").appFont(12, .bold).foregroundStyle(sell ? Theme.down : Theme.up).fixedSize()
             if e.test { MockTag(text: "시험", color: Theme.orange).fixedSize() }
@@ -2171,6 +2189,11 @@ struct MockFillLog: View {
             Spacer(minLength: 0)
             if let p = e.pnl { mt(MockFmt.signedWon(p)).appFont(12, .bold).monospacedDigit().foregroundStyle(Theme.change(p)).fixedSize() }
         }
+        // 판 이유는 자르지 않고 다 보인다 (이유 모르는 매도가 없게)
+        if let w = MockDesk.shared.sellWhy(e) {
+            mt("판 이유 · " + w).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+        }
+        }
     }
 }
 #endif
@@ -2178,6 +2201,8 @@ struct MockFillLog: View {
 /// 훑기 전광판: 청록 띠 한 줄 (라이트·다크 모두 테마 색). 값이 바뀐 글자 칸만 위에서 아래로 넘어간다 (묶음마다 몇 초에 한 번)
 struct MockFlipBoard: View {
     let slots: [(label: String, value: String)]
+    /// 오른쪽 끝 짧은 안내 (다음 훑기). 자리가 모자라면 줄여서 말줄임
+    var note: String? = nil
     var body: some View {
         HStack(spacing: 14) {
             ForEach(Array(slots.enumerated()), id: \.offset) { _, s in
@@ -2193,11 +2218,21 @@ struct MockFlipBoard: View {
                 }
             }
             Spacer(minLength: 0)
+            if let note {
+                mt(note).appFont(11).foregroundStyle(Theme.muted)
+                    .lineLimit(1).minimumScaleFactor(0.8).layoutPriority(-1)
+            }
         }
         .padding(.horizontal, 12).frame(height: 40)
         .background(Theme.tealBg, in: RoundedRectangle(cornerRadius: 10))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(slots.map { "\($0.label) \($0.value)" }.joined(separator: ", "))
+        .accessibilityLabel(a11y)
+    }
+
+    private var a11y: String {
+        var parts = slots.map { "\($0.label) \($0.value)" }
+        if let note { parts.append("다음 훑기 " + note) }
+        return parts.joined(separator: ", ")
     }
 }
 

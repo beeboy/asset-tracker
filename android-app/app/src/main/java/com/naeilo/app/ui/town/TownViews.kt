@@ -91,6 +91,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -140,6 +142,8 @@ import com.naeilo.app.ui.hex
 import com.naeilo.app.ui.me.MeArt
 import com.naeilo.app.ui.me.MeAvatar
 import com.naeilo.app.ui.plainClickable
+import com.naeilo.app.ui.hold.HoldFmt
+import com.naeilo.app.ui.rememberPrefBool
 import com.naeilo.app.ui.rememberPrefString
 import com.naeilo.app.ui.stiffness
 import kotlinx.coroutines.Dispatchers
@@ -214,6 +218,36 @@ private fun Modifier.floatTop(y: Dp): Modifier = this.layout { m, _ ->
 private fun Modifier.floatAbove(gap: Dp): Modifier = this.layout { m, _ ->
     val p = m.measure(Constraints())
     layout(0, 0) { p.place(-p.width / 2, -p.height - gap.roundToPx()) }
+}
+
+/** 동네 판 밖 오른쪽 아래 점수판: 전체 내 평가액 + ▲▼(글자의 70%) 오늘 등락 금액·%. 종목 탭 '오늘' 박스와 같은 값 */
+@Composable
+private fun TownTotal(m: AppModel) {   // ios: Views/HoldingsView.swift:1790
+    val hideAmt by rememberPrefBool("hideAmt", false)   // 홈에서 켠 금액 가리기를 따른다
+    if (m.total <= 0) return
+    val mv = m.todayWon
+    val c = if (mv > 0) Theme.up else if (mv < 0) Theme.down else Theme.sub
+    val num = appFont(10f, FontWeight.SemiBold).copy(fontFeatureSettings = "tnum")   // 안드로이드는 iOS(11)보다 한 단계 작게 (드링커님 확인)
+    // 넓은 기기는 한 줄(글자 밑선 맞춤), 모자라면 두 줄. iOS ViewThatFits 자리
+    Layout({
+        T(if (hideAmt) "••••••" else HoldFmt.won(m.total), style = appFont(15f, FontWeight.Bold), color = Theme.ink, maxLines = 1)
+        Row {
+            if (mv != 0.0) T(if (mv > 0) "▲ " else "▼ ", Modifier.alignByBaseline(), style = TextStyle(fontSize = 7.sp, fontWeight = FontWeight.Bold), color = c)
+            T((if (hideAmt) "" else HoldFmt.won(abs(mv)) + " ") + cformat("%.2f%%", abs(m.todayMove) * 100), Modifier.alignByBaseline(), style = num, color = c, maxLines = 1)
+        }
+    }) { ms, cs ->
+        val a = ms[0].measure(Constraints()); val b = ms[1].measure(Constraints()); val gap = 6.dp.roundToPx()
+        if (!cs.hasBoundedWidth || a.width + gap + b.width <= cs.maxWidth) {
+            val dy = max(0, a[FirstBaseline] - b[FirstBaseline])
+            layout(a.width + gap + b.width, max(a.height, b.height + dy)) { a.place(0, 0); b.place(a.width + gap, dy) }
+        } else { val w = max(a.width, b.width); layout(w, a.height + b.height) { a.place(w - a.width, 0); b.place(w - b.width, a.height) } }
+    }
+}
+
+/** 말풍선이 판 양옆 4dp 안에 들도록 옆으로 미는 만큼 (cx: 말하는 이 가운데, w: 판 폭) */
+private fun bubbleShift(t: String, cx: Float, w: Float): Float {
+    val half = (min(180f, t.length * 11f + 4f) + 23f) / 2   // 말풍선 폭 + 안쪽 여백 20 + 테두리
+    return max(4 + half - cx, min(0f, w - 4 - half - cx))
 }
 
 // ios: Views/HoldingsView.swift:1331
@@ -411,14 +445,15 @@ fun TownView(m: AppModel, scroll: ScrollState? = null) {
                                 else if (TownLook.mood(r) < 0) T("…", style = appFont(13f, FontWeight.Bold), color = Color.White)   // ios: Views/HoldingsView.swift:1415
                             }
                         }
-                        Box(Modifier.align(Alignment.TopCenter).floatAbove(4.dp)) {   // ios: Views/HoldingsView.swift:1601
+                        Box(Modifier.align(Alignment.TopCenter).floatAbove(4.dp)
+                            .offset { IntOffset(bubbleShift(bub ?: "", p.x * gw + walkAnimatable(r.id).value.x, gw).dp.roundToPx(), 0) }) {   // ios: Views/HoldingsView.swift:1610 판 밖으로 나가지 않게
                             androidx.compose.animation.AnimatedVisibility(visible = bub != null, enter = fadeIn(tween(400)), exit = fadeOut(tween(400))) {
                                 val t = bub ?: ""
                                 T(t, style = appFont(11f).copy(textAlign = TextAlign.Center), color = Color.Black, maxLines = 3, modifier = Modifier   // ios: Views/HoldingsView.swift:1596
-                                    .width(min(180f, t.length * 11f + 4f).dp + 12.dp)   // ios: Views/HoldingsView.swift:1597
-                                    .background(Color.White, RoundedCornerShape(6.dp))   // ios: Views/HoldingsView.swift:1424
-                                    .border(1.5.dp, Color.Black.copy(alpha = 0.6f), RoundedCornerShape(6.dp))   // ios: Views/HoldingsView.swift:1425
-                                    .padding(horizontal = 6.dp, vertical = 3.dp))   // ios: Views/HoldingsView.swift:1423
+                                    .width(min(180f, t.length * 11f + 4f).dp + 20.dp)   // ios: Views/HoldingsView.swift:1604
+                                    .background(Color.White, RoundedCornerShape(10.dp))   // ios: Views/HoldingsView.swift:1607
+                                    .border(1.5.dp, Color.Black.copy(alpha = 0.6f), RoundedCornerShape(10.dp))   // ios: Views/HoldingsView.swift:1608
+                                    .padding(horizontal = 10.dp, vertical = 6.dp))   // ios: Views/HoldingsView.swift:1606 글이 테두리에 붙지 않게 넉넉히
                             }
                         }
                     }
@@ -464,6 +499,7 @@ fun TownView(m: AppModel, scroll: ScrollState? = null) {
                 }
             }
         }
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) { TownTotal(m) }   // ios: Views/HoldingsView.swift:1649 점수판: 전체 내 평가액·오늘 등락 (판 밖 오른쪽 아래)
         // 대사창 아래 칸: 우리 사이 / 꾸미기. 이장·워시는 아래 칸 없음 (지난 대화는 우리 사이 → 전체 보기)
         val r = talk
         if (r != null && r.id != TownLook.mayorID && r.id != TownLook.warshID) {   // ios: Views/HoldingsView.swift:1651
@@ -715,6 +751,7 @@ object TownLook {
     const val warshID = "warsh"   // ios: Views/HoldingsView.swift:1673
     /** 나: 캐릭터 만들기에서 만든 내 캐릭터가 동네에 같이 산다 (만들었을 때만) */
     const val meID = "me"   // ios: Views/HoldingsView.swift:1675
+    val extras: Set<String> = setOf(mayorID, warshID, meID)   // 주민이 아닌 이들 (옛 이웃이 될 수 없다)
     /** FOMC 까지 남은 날(음수면 지난 날), 앞뒤 기간이 아니면 null */
     // ios: Views/HoldingsView.swift:1676
     fun fomc(now: Instant = Instant.now()): Int? {
@@ -831,7 +868,7 @@ object TownLook {
     /** 기분: 맡은 종목 오르내림을 평가액으로 묶은 값. 0 아래면 시무룩 */
     // ios: Views/HoldingsView.swift:1788
     fun mood(res: Resident): Double {
-        val v = res.value   // ios: Views/HoldingsView.swift:1789
+        val v = res.value   // ios: Views/HoldingsView.swift:1790
         return if (v > 0) res.rows.fold(0.0) { a, r -> a + move(r) * r.value } / v else 0.0   // ios: Views/HoldingsView.swift:1790
     }
     /** 예측을 매길 값: 대표 종목의 지금 가격 */
@@ -885,7 +922,7 @@ fun TownTalk(
     fun send() {   // ios: Views/HoldingsView.swift:2076
         val first = !(log.log(res.id).lastOrNull()?.let { it.day == TownLog.day && it.me != null } ?: false)   // ios: Views/HoldingsView.swift:2077
         log.answer(res.id, me, price = TownLook.price(res), say = more ?: line)   // ios: Views/HoldingsView.swift:2080
-        if (first && me.isNotEmpty()) more = TownSay.praise   // ios: Views/HoldingsView.swift:2079
+        if (first && me.isNotEmpty()) more = TownSay.praise(res)   // ios: Views/HoldingsView.swift:2079
     }
     // 스크린샷처럼: 왼쪽에 큰 초상화가 박스 위로 솟고, 이름표는 초상화 아래, 대사는 오른쪽
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.BottomStart) {   // ios: Views/HoldingsView.swift:1830
@@ -1081,14 +1118,16 @@ class TownBook private constructor() {
             val n = notes[r.id]?.copy() ?: continue   // ios: Views/HoldingsView.swift:2002
             if (n.co != r.name || n.left != null) { n.co = r.name; n.left = null; set(r.id, n) }   // ios: Views/HoldingsView.swift:2003
         }
-        for ((id, x) in notes) if (!now.contains(id) && x.left == null && id != TownLook.mayorID) {   // ios: Views/HoldingsView.swift:2005
+        // 이장·워시·나는 주민이 아니라 떠날 수 없다 (예전에 떠난 걸로 적혔으면 지운다: 옛 이웃으로 또 와서 둘이 서던 결함)
+        for ((id, x) in notes) if (TownLook.extras.contains(id) && x.left != null) { val n = x.copy(); n.left = null; set(id, n) }
+        for ((id, x) in notes) if (!now.contains(id) && x.left == null && !TownLook.extras.contains(id)) {   // ios: Views/HoldingsView.swift:2005
             val n = x.copy(); n.left = TownLog.day; set(id, n)   // ios: Views/HoldingsView.swift:2006
         }
     }
     /** 오늘 놀러 온 옛 이웃 (사흘에 한 번쯤, 날마다 한 명). 지금 주민은 빼고 */
     // ios: Views/HoldingsView.swift:2010
     fun visitor(except: Set<String>): String? {
-        val olds = notes.filter { it.value.left != null && !except.contains(it.key) }.keys.sorted()   // ios: Views/HoldingsView.swift:2011
+        val olds = notes.filter { it.value.left != null && !except.contains(it.key) && !TownLook.extras.contains(it.key) }.keys.sorted()   // ios: Views/HoldingsView.swift:2011
         val s = TownLook.seed("visit" + TownLog.day)   // ios: Views/HoldingsView.swift:2012
         if (olds.isEmpty() || s % 3.toULong() != 0.toULong()) return null   // ios: Views/HoldingsView.swift:2013
         return olds[((s / 3.toULong()) % olds.size.toULong()).toInt()]   // ios: Views/HoldingsView.swift:2014

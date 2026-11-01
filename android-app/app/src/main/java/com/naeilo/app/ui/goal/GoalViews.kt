@@ -180,6 +180,9 @@ import com.naeilo.app.ui.TA
 import com.naeilo.app.ui.Theme
 import com.naeilo.app.ui.appFont
 import com.naeilo.app.ui.board.BasketList
+import com.naeilo.app.ui.board.boardSteps
+import com.naeilo.app.core.game.GameRecord
+import com.naeilo.app.data.SayDeck
 import com.naeilo.app.ui.board.MissionScreen
 import com.naeilo.app.ui.board.MissionPage
 import com.naeilo.app.ui.board.BoardButtons
@@ -359,6 +362,7 @@ fun GoalCellsCard(m: AppModel, minHeight: Dp = 0.dp) {   // minHeight: 미션 �
     var playing by remember { mutableStateOf(false) }   // ios: Views/GoalViews.swift:154
     val scenePhase = m.active   // ios: Views/GoalViews.swift:155 (앱이 앞에 있는지)
     var party by remember { mutableStateOf(false) }   // ios: Views/GoalViews.swift:156 안 죽고 다 깨면 친구들이 올라와 축하 (숨은 재미)
+    var say by remember { mutableStateOf<String?>(null) }   // ios: Views/GoalViews.swift:191 캐릭터 한마디 (열 때·캐릭터를 누를 때마다 새로)
     val reduce = LocalReduceMotion.current
 
     // ios: Views/GoalViews.swift:158
@@ -431,12 +435,14 @@ fun GoalCellsCard(m: AppModel, minHeight: Dp = 0.dp) {   // minHeight: 미션 �
         // 캐릭터가 자랑하자고 권한다 (누르는 곳 아님, 공유는 오른쪽 버튼). 다 깨면 친구들이 이 자리를 채운다
         if (party) MiniParty(Modifier.fillMaxWidth()) else {   // ios: Views/GoalViews.swift:129
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/GoalViews.swift:130
-                CharPixel(id = m.homeFriendShown, width = 42.dp, height = 60.dp, modifier = Modifier.charIdle().clearAndSetSemantics {}, model = m)   // ios: Views/GoalViews.swift:131
+                val talk = { GoalCellsCard.talk(m, pct, fV.toInt(), unit, fV, lost, nV - nY) }
+                LaunchedEffect(Unit) { say = talk() }   // ios: Views/GoalViews.swift:139
+                CharPixel(id = m.homeFriendShown, width = 42.dp, height = 60.dp, modifier = Modifier.charIdle().clearAndSetSemantics {}.plainClickable { say = talk() }, model = m)   // ios: Views/GoalViews.swift:131,135
                 val bubble = RoundedCornerShape(topStart = 14.dp, bottomStart = 4.dp, bottomEnd = 14.dp, topEnd = 14.dp)   // ios: Views/GoalViews.swift:138
                 // ios: Views/GoalViews.swift:132,136,137
                 Column(Modifier.weight(1f).background(Theme.mintBg, bubble).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     T(m.friendName(m.homeFriendShown), style = appFont(12f, FontWeight.SemiBold), color = Theme.blue)   // ios: Views/GoalViews.swift:133
-                    T(GoalCellsCard.boast(pct, fV.toInt()), style = appFont(14f))   // ios: Views/GoalViews.swift:134
+                    T(say ?: GoalCellsCard.boast(pct, fV.toInt()), style = appFont(14f))   // ios: Views/GoalViews.swift:138
                 }
             }
         }
@@ -518,6 +524,25 @@ private fun GameThumb(kind: GameThumbKind, modifier: Modifier) {
 
 /** GoalCellsCard 의 static 값·함수 */
 object GoalCellsCard {
+    /** 미션 탭 한마디: 자랑·칸·어제와 견주기·게임·다음 미션을 돌려 가며 (2026-10-29) */
+    fun talk(m: AppModel, pct: Int, n: Int, unit: Double, fV: Double, lost: Double, dY: Int): String {   // ios: Views/GoalViews.swift:202
+        val brag = boast(pct, n)   // ios: Views/GoalViews.swift:203
+        val en = AppModel.en; val left = AppModel.man(max(0.0, (n + 1 - fV) * unit)); val dc = cformat("%.1f", abs(dY) / 10.0)   // ios: Views/GoalViews.swift:204
+        val cells = if (en) mutableListOf("$n of 100 cells filled.", "One cell is ${AppModel.man(unit)}. One at a time.")
+            else mutableListOf("100칸 중 ${n}칸 찼어요.", "1칸은 ${AppModel.man(unit)}이에요. 한 칸씩이면 돼요.")   // ios: Views/GoalViews.swift:205
+        if (fV < 100) cells.add(if (en) "$left to the next cell." else "다음 칸까지 $left 남았어요.")   // ios: Views/GoalViews.swift:207
+        if (lost > 0) cells.add(if (en) "The red cells are what dropped. You can fill them again." else "빨간 칸은 줄어든 만큼이에요. 다시 채우면 돼요.")   // ios: Views/GoalViews.swift:208
+        val day = listOf(if (dY > 0) (if (en) "$dc cells more than yesterday." else "어제보다 ${dc}칸 늘었어요.")
+            else if (dY < 0) (if (en) "$dc cells fewer than yesterday. That's okay." else "어제보다 ${dc}칸 줄었어요. 괜찮아요.")
+            else (if (en) "Same cells as yesterday. Holding steady counts too." else "어제랑 칸 수가 같아요. 그것도 버틴 거예요."))   // ios: Views/GoalViews.swift:209
+        val best = GameRecord.load().best.values.maxOrNull() ?: 0   // ios: Views/GoalViews.swift:212
+        val play = if (en) mutableListOf("Want to smash your filled cells as bricks?", "Ride a wave with today's flow?") else mutableListOf("채운 칸을 벽돌로 부숴 볼래요?", "오늘 흐름으로 파도 한 번 타 볼까요?")   // ios: Views/GoalViews.swift:213
+        if (best > 0) play.add(if (en) "Your best Brick Breaker score is $best. Beat it?" else "벽돌깨기 최고 점수는 ${best}점이에요. 넘어 볼까요?")   // ios: Views/GoalViews.swift:214
+        val next = m.boardSteps.firstOrNull { !it.ok && it.avail }?.let { val t = tr(it.title); if (en) listOf("Next mission: ‘$t’. Let's do it.", "‘$t’ is open. Start it up top.") else listOf("다음 미션은 ‘$t’, 같이 해요.", "‘$t’ 미션이 열려 있어요. 위에서 시작할 수 있어요.") } ?: emptyList()   // ios: Views/GoalViews.swift:215
+        val brags = if (en) listOf(tr(brag), "Who should see these cells?", "Share it and show off.") else listOf(brag, "이 칸, 누구한테 보여 줄까요?", "공유하기로 자랑해도 돼요.")   // ios: Views/GoalViews.swift:216
+        return SayDeck.next("board", listOf("brag" to brags, "cells" to cells, "day" to day, "play" to play, "next" to next)) ?: brag   // ios: Views/GoalViews.swift:217
+    }
+
     /** 진행만큼 자랑하자는 한마디 */
     // ios: Views/GoalViews.swift:166,167
     fun boast(pct: Int, n: Int): String = when {

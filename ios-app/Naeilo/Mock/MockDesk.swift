@@ -71,8 +71,11 @@ struct MockState: Codable {
     var realBaseDay: String? = nil            // [실전] 하루 손실 한도 기준을 잡은 날
     var realBase: Double? = nil               // [실전] 그날 처음 읽은 토스 계좌 평가액
     var dayTrade: Bool? = nil                 // 단타 기준으로 한 번 옮겼는지 (2026-10-29)
+    var sellCheck: Bool? = nil                // 팔기 규칙이 바뀌고 실전 확인을 아직 안 받음. 그동안 실전 자동 팔기는 손절만
     var gone: [String: String]? = nil         // 산 이유가 꺼진 보유 종목 → 꺼진 조각 글 (마지막 훑기 기준)
     var follows: [MockFollow]? = nil          // 걸린 종목 뒤 흐름 (최근 10일 · 하루 100종목까지)
+    var afters: [MockAfter]? = nil            // 판 종목 뒤 흐름 (최근 60일 · 300건까지)
+    var flowReads: [MockFlowRead]? = nil      // 뒤 흐름 AI 읽기 기록 (흐름·장부마다 60개까지)
     var weather: [String: Double]? = nil      // 시장 날씨: kospi · kosdaq ETF 오늘 등락 (비율, 마지막 훑기 기준)
     var weatherAt: Date? = nil
     var armTouched: [String]? = nil           // 손으로 만졌거나 이미 저절로 켠 조건 (vol · streak · wall · newVol). 다시 저절로 켜지 않는다
@@ -255,6 +258,8 @@ final class MockDesk {
             changed = true
         }
         if s.dayTrade != true { toDayTrade(); changed = true }
+        // 단타 기준은 2026-10-29에 섰다. 그 전에 산 몫이 새 규칙에 팔리지 않게 한 번 적는다
+        if s.sell.since == nil { s.sell.since = "2026-10-29"; changed = true }
         if changed { save() }
     }
 
@@ -354,6 +359,10 @@ final class MockDesk {
 
     static let universe: [MockStock] = KrxList.all.map { MockStock(code: $0.hit.id, name: $0.hit.name, kospi: $0.hit.market == "코스피") }
     static func name(_ code: String) -> String { KrxList.name(code) ?? code }
+    /// 팔기 칸 한 줄: "대원제약 마감 정리, 삼성전자 손절"
+    static func sigNames(_ sigs: [MockCalc.SellSig]) -> String {
+        sigs.map { name($0.code) + " " + (MockCalc.exitName($0.why) ?? "") }.joined(separator: ", ")
+    }
 
     // MARK: 장 상태
 
@@ -396,12 +405,10 @@ final class MockDesk {
     /// 관찰 탭 한 줄: 다음 훑기가 전체인지 가까운 종목만인지, 몇 종목인지, 다음 전체 시각
     var scanPlan: String? {
         guard let b = bundle, !b.pieces.isEmpty else { return nil }
-        if fullDue(b) {
-            let first = s.fullAt.map { MockFmt.day($0) != MockFmt.day(Date()) } ?? true
-            return "다음 훑기 · 전체 \(Self.universe.count.formatted())종목" + (first ? " · 오늘 첫 바퀴" : "")
-        }
+        // 현황판 오른쪽 짧은 안내: 국내 전체 · 또는 N종목만 · 다음 전체 시각
+        if fullDue(b) { return "국내 전체" }
         let next = (s.fullAt ?? Date()).addingTimeInterval(MockClock.fullEvery)
-        return "다음 훑기 · 가까운 \((s.near ?? []).count.formatted())종목만 · 전체 \(MockFmt.time(next))"
+        return "\((s.near ?? []).count.formatted())종목만 · \(MockFmt.time(next))"
     }
 
     /// '전체 훑기' 단추로 건 다음 전체 바퀴. 전체 바퀴가 끝날 때까지 남는다 (멈췄다 이어 받아도 전체로)
@@ -504,9 +511,10 @@ final class MockDesk {
             s.gone = gone
             await refreshWeather()
             // 종목 판단은 여기 한 곳 (2026-10-29): 거래대금 바닥 · 15분 재확인 · 유의사항 · 시장 날씨. 선정은 돈만 본다
+            // 뒤 흐름은 거르기 전 걸린 종목 전부를 적는다 (2026-10-30, 거른 종목이 빠져 '안 산' 쪽이 0으로 남던 것)
+            addFollows(scan)
             scan = await judge(scan)
             s.scan = scan
-            addFollows(scan)
             if let sk = scan.skipped, !sk.isEmpty {
                 let why = Dictionary(grouping: sk, by: { $0.why.components(separatedBy: " · ").first ?? "" }).map { "\($0.key) \($0.value.count)" }.sorted().joined(separator: " · ")
                 log(.exclude, book: .rule, text: "고르기 전에 거름 \(sk.count) · " + why, bundle: b.name, ref: ev.id)
@@ -579,7 +587,7 @@ final class MockDesk {
         s.weatherAt = w.isEmpty ? nil : Date()
     }
 
-    /// 걸린 종목 뒤 흐름: 장중에 오늘 처음 걸린 종목을 적어 둔다 (하루 100종목까지, 14일 지난 것은 버림). 값은 1분 주기가 채운다
+    /// 걸린 종목 뒤 흐름: 장중에 오늘 처음 걸린 종목을 거르기 전에 적어 둔다 (하루 100종목까지, 14일 지난 것은 버림). 값은 1분 주기가 채운다
     private func addFollows(_ sc: MockScan) {
         guard phase == .open else { return }
         let day = MockFmt.day(sc.at), cut = MockFmt.day(sc.at.addingTimeInterval(-14 * 86_400))
@@ -624,6 +632,42 @@ final class MockDesk {
         return (s.follows ?? []).filter { f in
             let t = now.timeIntervalSince(f.at)
             return f.day == day && ((f.p30 == nil && t < 2100) || (f.p60 == nil && t < 3900) || (f.pEnd == nil && m >= MockClock.closeAt))
+        }.map(\.code) + afterCodes(now)
+    }
+
+    /// 판 종목 뒤 흐름: 판 체결마다 적어 둔다. 값은 1분 주기가 채운다
+    private func addAfter(_ b: MockBook, _ e: MockEvent) {
+        guard let code = e.code, let p = e.price, p > 0 else { return }
+        let cut = MockFmt.day(Date().addingTimeInterval(-60 * 86_400))
+        var xs = (s.afters ?? []).filter { $0.day >= cut }
+        xs.append(MockAfter(day: MockFmt.day(e.at), book: b, code: code, name: e.name ?? Self.name(code), at: e.at, p0: p,
+                            qty: e.qty ?? 0, exit: e.exit ?? "판"))
+        s.afters = Array(xs.suffix(300))
+    }
+
+    /// 1분 주기: 판 뒤 30분 · 1시간 · 마감 · 다음 날 시가. 앱이 꺼져 그때를 놓쳤으면 비워 둔다
+    private func fillAfters(_ now: Date, open: Bool) {
+        guard var xs = s.afters, !xs.isEmpty else { return }
+        let day = MockFmt.day(now), m = MockClock.minute(now)
+        for i in xs.indices {
+            guard let px = s.prices[xs[i].code], px > 0 else { continue }
+            if xs[i].day == day {
+                let t = now.timeIntervalSince(xs[i].at)
+                if xs[i].p30 == nil && t >= 1800 && t < 2100 { xs[i].p30 = px }
+                if xs[i].p60 == nil && t >= 3600 && t < 3900 { xs[i].p60 = px }
+                if xs[i].pEnd == nil && m >= MockClock.closeAt { xs[i].pEnd = px }
+            } else if xs[i].pOpen == nil, open, m >= 9 * 60, m < 9 * 60 + 5, MockCalc.weekdays(from: xs[i].day, to: day) == 1 {
+                xs[i].pOpen = px
+            }
+        }
+        s.afters = xs
+    }
+    private func afterCodes(_ now: Date) -> [String] {
+        let day = MockFmt.day(now), m = MockClock.minute(now)
+        return (s.afters ?? []).filter { x in
+            let t = now.timeIntervalSince(x.at)
+            if x.day == day { return (x.p30 == nil && t < 2100) || (x.p60 == nil && t < 3900) || (x.pEnd == nil && m >= MockClock.closeAt) }
+            return x.pOpen == nil && m < 9 * 60 + 5 && MockCalc.weekdays(from: x.day, to: day) == 1
         }.map(\.code)
     }
 
@@ -735,15 +779,15 @@ final class MockDesk {
         guard s.sell.on else { s.runs["sell"] = MockRun(at: Date(), ok: false, text: "켠 팔기 조건이 없어요"); return }
         guard !l.positions.isEmpty else { s.runs["sell"] = MockRun(at: Date(), ok: true, text: "팔 종목이 없어요"); return }
         if let p = try? await MockFeed.last(Array(l.positions.keys).sorted()) { s.prices.merge(p) { _, b in b }; s.pricesAt = Date() }
-        let n = await sellSigs(b)
+        let n = await sellSigs(b, hold: false)
         let sigs = n.sigs
-        s.runs["sell"] = MockRun(at: Date(), ok: n.placed == sigs.count, text: MockFmt.stamp(Date()) + (sigs.isEmpty ? " · 조건에 맞는 종목 없음" : " · \(n.placed)종목 팔기 주문"))
+        s.runs["sell"] = MockRun(at: Date(), ok: n.placed == sigs.count, text: MockFmt.stamp(Date()) + (sigs.isEmpty ? " · 조건에 맞는 종목 없음" : " · \(n.placed)종목 팔기 주문 · " + Self.sigNames(sigs)))
     }
 
     /// 팔기 신호를 보고 판다. 익절 첫 번은 반만 팔고 '반 팜'으로 적는다 (남은 몫은 되밀림·이유 꺼짐·마감에)
-    private func sellSigs(_ b: MockBook) async -> (sigs: [MockCalc.SellSig], placed: Int) {
-        let sigs = MockCalc.sellSignals(ledger(b), rule: s.sell, prices: s.prices, excluded: excluded(), today: MockFmt.day(Date()),
-                                        seg: seg(), gone: s.gone ?? [:])
+    private func sellSigs(_ b: MockBook, hold: Bool = true) async -> (sigs: [MockCalc.SellSig], placed: Int) {
+        var sigs = sellPreview(b)
+        if hold && b == .real && s.sellCheck == true { sigs = sigs.filter { $0.why.hasPrefix("손절") } }
         var n = 0
         for sig in sigs {
             let ref = log(.sell, book: b, who: .rule, code: sig.code, name: Self.name(sig.code), text: sig.why, ref: ledger(b).positions[sig.code]?.buyRef).id
@@ -755,6 +799,17 @@ final class MockDesk {
             }
         }
         return (sigs, n)
+    }
+
+    /// 지금 가격이면 팔기 규칙이 낼 신호 (주문은 내지 않는다)
+    func sellPreview(_ b: MockBook) -> [MockCalc.SellSig] {
+        MockCalc.sellSignals(ledger(b), rule: s.sell, prices: s.prices, excluded: excluded(), today: MockFmt.day(Date()),
+                             seg: seg(), gone: s.gone ?? [:])
+    }
+
+    /// 바뀐 팔기 규칙을 실전에 적용한다 (확인 카드)
+    func confirmSellRule() {
+        edit("팔기 규칙 확인 · 실전에 적용") { $0.sellCheck = nil }
     }
 
     /// 고른다. buy = 참이면 확인 없이 바로 주문 (한 바퀴·돌리기의 주문 알약). 지금 고르기는 고르기까지만, 주문은 '주문' 단추
@@ -1080,7 +1135,7 @@ final class MockDesk {
     /// 거부: 장부는 그대로, 이유만 기록 (실전 주문 API 의 거부와 같은 자리)
     private func reject(_ b: MockBook, _ o: MockOrder, _ why: String, test: Bool) {
         log(.reject, book: b, who: o.who, code: o.code, name: o.name, text: why, test: test, side: o.side, qty: o.qty, ref: o.ref)
-        notify("거부 · " + o.name, o.side.name + " \(o.qty)주 · " + why)
+        notify("거부 · " + o.name, o.side.name + " \(o.qty)주 · " + why + (o.reason.isEmpty ? "" : "\n" + o.reason))
     }
 
     /// 접수 뒤 체결: 브로커가 주는 호가로 채운다 (모의는 1~2초 지연 뒤 새 호가, 장 밖 시험은 받은 호가 그대로)
@@ -1117,9 +1172,11 @@ final class MockDesk {
             if var e {
                 e.expect = o.expect; e.tossId = o.tossId
                 append(e)
+                if o.side == .sell && !test { addAfter(b, e) }
                 let left = l.pending.first { $0.id == orderId }?.qty
                 notify((left == nil ? "체결 · " : "부분 체결 · ") + o.name,
-                       o.side.name + " \(e.qty ?? f.qty)주 · 평균 " + MockFmt.won(f.avg) + (left.map { " · 남은 \($0)주" } ?? "") + (test ? " · 장 밖 시험" : ""))
+                       o.side.name + " \(e.qty ?? f.qty)주 · 평균 " + MockFmt.won(f.avg) + (left.map { " · 남은 \($0)주" } ?? "") + (test ? " · 장 밖 시험" : "")
+                       + (o.reason.isEmpty ? "" : "\n" + o.reason))
             }
         }
         // 다 채우지 못했으면 대기 이유
@@ -1199,6 +1256,7 @@ final class MockDesk {
             s.prices.merge(p) { _, b in b }; s.pricesAt = Date()
             if ph == .open { markPeaks() }
             fillFollows(Date())
+            fillAfters(Date(), open: ph == .open)
         }
         // 대기 주문: 지금 가격이 지정가를 넘었거나 시장가 남은 몫일 때만 호가를 묻는다
         for l in s.ledgers {
@@ -1229,7 +1287,7 @@ final class MockDesk {
             for b in autoBooks {
                 let (sigs, n) = await sellSigs(b)
                 // 1분 주기가 판 것도 팔기 칸 상태에 남긴다 ('지금 팔기'만 적어 자동으로 판 뒤에도 '없음'으로 보이던 일)
-                if !sigs.isEmpty { s.runs["sell"] = MockRun(at: Date(), ok: n == sigs.count, text: MockFmt.stamp(Date()) + " · 자동 · " + b.tab + " · \(n)종목 팔기 주문") }
+                if !sigs.isEmpty { s.runs["sell"] = MockRun(at: Date(), ok: n == sigs.count, text: MockFmt.stamp(Date()) + " · 자동 · " + b.tab + " · \(n)종목 팔기 주문 · " + Self.sigNames(sigs)) }
             }
         }
         // 한 바퀴 자동 (장중만)
@@ -1405,6 +1463,7 @@ final class MockDesk {
         edit("팔기 조건 · " + what) { Self.applySell(&$0, new) }
     }
     static func applySell(_ st: inout MockState, _ new: [MockSellCond]) {
+        let before = st.sell
         st.sconds = new
         let on = new.filter(\.on)
         st.sell.stopLoss = on.filter { $0.kind == .loss }.map(\.pct).min()
@@ -1416,6 +1475,10 @@ final class MockDesk {
         st.sell.closeOut = on.contains { $0.kind == .close } ? true : nil
         st.sell.trail = on.filter { $0.kind == .trail }.map(\.pct).min()
         st.sell.volK = on.filter { $0.kind == .vol }.map(\.pct).min()
+        // 규칙이 바뀐 날을 적는다. 그 전에 산 몫은 손절·익절만 본다
+        var a = before, b = st.sell
+        a.since = nil; b.since = nil
+        if a != b { st.sell.since = MockFmt.day(Date()); st.sellCheck = true }
     }
 
     func touchArm(_ key: String) {
@@ -1437,7 +1500,7 @@ final class MockDesk {
         notify("조건 켬 · 새 배수", why)
     }
 
-    /// 새 배수 알약을 손으로 켜고 끈다 (곡선이 다 쌓인 뒤에만). 만지면 저절로 켜기에서 뺀다
+    /// 새 배수 알약을 손으로 켜고 끈다 (곡선이 하루라도 있으면). 만지면 저절로 켜기에서 뺀다
     func setNewVol(_ on: Bool) {
         touchArm("newVol")
         edit(on ? "새 배수 켬" : "새 배수 끔") { $0.newVol = on ? true : false }
@@ -1501,6 +1564,14 @@ final class MockDesk {
     // MARK: 기록 줄 지우기·숨기기 (줄을 왼쪽으로 밀어서)
 
     var hiddenIds: Set<UUID> { Set(s.hidden ?? []) }
+
+    /// 판 이유 전문. 전문을 적기 전 체결은 그날 앞선 매도 신호 기록에서 찾는다
+    func sellWhy(_ e: MockEvent) -> String? {
+        guard e.side == .sell else { return nil }
+        if let w = e.exitWhy { return w }
+        let day = MockFmt.day(e.at)
+        return events.last { $0.kind == .sell && $0.code == e.code && $0.book == e.book && $0.at <= e.at && MockFmt.day($0.at) == day }?.text ?? e.exit
+    }
 
     /// 체결·주문 등 계산에 쓰는 기록은 화면에서만 숨긴다
     func hide(_ ids: [UUID]) {
@@ -1587,6 +1658,8 @@ extension MockDesk {
         case "review": return "선정 의견"
         case "daily": return "하루 정리"
         case "words": return "말로 조건"
+        case "follow": return "걸린 종목 흐름 읽기"
+        case "after": return "판 뒤 흐름 읽기"
         default: return kind
         }
     }
@@ -1687,16 +1760,55 @@ extension MockDesk {
         return r
     }
 
+    /// 뒤 흐름 AI 읽기: 단추로만 부른다. 지금 보이는 장부(모의·실전)의 그 흐름만 보낸다. 사라·팔아라는 하지 않는다
+    func aiFlow(_ kind: MockFlowRead.Kind) async {
+        guard MockAI.flowOn, aiBusy == nil, active else { return }
+        let b = s.shown, day = MockFmt.day(Date())
+        aiBusy = kind.rawValue
+        defer { aiBusy = nil; save() }
+        let fills = ledgerEvents(b).filter { $0.kind == .fill && !$0.test }
+        let made: (prompt: String, range: String)?
+        switch kind {
+        case .follow:
+            let bought = Set(fills.filter { $0.side == .buy }.compactMap { e in e.code.map { MockFmt.day(e.at) + "|" + $0 } })
+            made = MockAI.followPrompt(book: b, follows: (s.follows ?? []).map { (f: $0, bought: bought.contains($0.day + "|" + $0.code)) }, day: day)
+        case .after:
+            let xs = (s.afters ?? []).filter { $0.book == b }
+            let recent = Array(xs.suffix(MockAI.afterMax))
+            let sells = recent.map { x in (x: x, e: fills.first { $0.side == .sell && $0.code == x.code && abs($0.at.timeIntervalSince(x.at)) < 1 }) }
+            made = MockAI.afterPrompt(book: b, sells: sells, older: Array(xs.dropLast(recent.count)), day: day)
+        }
+        let name = Self.aiName(kind.rawValue)
+        guard let m = made else {
+            s.runs["ai"] = MockRun(at: Date(), ok: true, text: "\(MockFmt.time(Date())) \(name) · 쌓인 흐름 없음 · 안 부름")
+            return
+        }
+        guard let o = await ask(kind.rawValue, m.prompt, book: b, as: "daily") else { return }
+        let r = MockAI.flowRead(o["answer"] as? [String: Any] ?? [:], kind: kind, book: b, range: m.range)
+        // 같은 데이터라 지난 답을 다시 받았으면 기록을 늘리지 않는다
+        if o["cached"] as? Bool == true, let last = (s.flowReads ?? []).last(where: { $0.kind == kind && $0.book == b }), last.text == r.text {
+            s.runs["ai"] = MockRun(at: Date(), ok: true, text: "\(MockFmt.time(Date())) \(name) · 지난 답")
+            return
+        }
+        var xs = (s.flowReads ?? []) + [r]
+        let mine = xs.filter { $0.kind == kind && $0.book == b }
+        if mine.count > 60 { let old = Set(mine.prefix(mine.count - 60).map(\.id)); xs.removeAll { old.contains($0.id) } }
+        s.flowReads = xs
+        log(.ai, book: b, who: .ai, text: name + " · " + m.range, ai: MockAI.use(o, kind: kind.rawValue, summary: m.range))
+        s.runs["ai"] = MockRun(at: Date(), ok: true, text: "\(MockFmt.time(Date())) \(name)" + ((o["cached"] as? Bool ?? false) ? " · 지난 답" : ""))
+    }
+
     func refreshWallet() async {
-        guard MockAI.on else { return }
+        guard MockAI.on || MockAI.flowOn else { return }
         if let o = try? await MockFeed.wallet(limits: s.ai.limits), let w = MockAI.wallet(o, at: Date()) { s.aiWallet = w }
     }
 
     /// 서버에 묻는다. 실패면 이유를 기록하고 nil (AI 장부는 그 차례만 건너뛴다). 실패해도 쓴 돈이 있으면 남긴다
-    private func ask(_ kind: String, _ prompt: String, book: MockBook) async -> [String: Any]? {
+    /// server: 서버에 보낼 꼴 이름 (없으면 kind)
+    private func ask(_ kind: String, _ prompt: String, book: MockBook, as server: String? = nil) async -> [String: Any]? {
         let name = Self.aiName(kind)
         let o: [String: Any]
-        do { o = try await MockFeed.ai(kind: kind, prompt: prompt, limits: s.ai.limits) }
+        do { o = try await MockFeed.ai(kind: server ?? kind, prompt: prompt, limits: s.ai.limits) }
         catch {
             let why = (error as? MockFeed.Fail)?.why ?? error.localizedDescription
             log(.error, book: book, who: .ai, text: "AI \(name) 실패 · " + why)

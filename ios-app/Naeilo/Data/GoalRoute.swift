@@ -34,6 +34,11 @@ struct GoalSim {
     var etaText: String { AppModel.eta(etaMonths, cap: capYears) }
 }
 
+/// 목표일에 가질 금액 (원): 보통 · 10번 중 8번(10%·90%). 주식 경로 끝 + 현금
+struct GoalAmt {
+    let med: Double, lo: Double, hi: Double
+}
+
 extension AppModel {
     static func wonK(_ m: Double) -> String {
         if en { return krwC(m < 0.5 ? 0 : m * 1e4) }
@@ -170,6 +175,21 @@ extension AppModel {
             if simCache.count > 64 { simCache.removeAll() }
             simCache[ck] = r
         }
+        return r
+    }
+
+    private static var amtCache: [String: GoalAmt] = [:]
+    /// 목표일에 가질 금액 (분석 탭 '어떻게 올릴까?', 2026-10-30). 기간이 목표일까지라 내 구성은 전망 경로를 그대로 쓴다 ('안개'와 같은 셈: 주식 경로 + 현금).
+    /// parts 를 주면 그 종목·비중으로 (모의바구니). 경로가 아직 없으면 nil
+    func amountAtGoal(_ mx: GoalMix, parts over: [Part]? = nil) -> GoalAmt? {
+        guard let ps = paths(over ?? mixParts(mx), horizon: goalHorizon), ps.M > 0 else { return nil }
+        let V = goalStart * 1e4, Mo = gM * 1e4, cash = bare ? 0 : cashKrw, k = ps.M - 1
+        let ck = "a|\(ps.key)|\(V)|\(Mo)|\(cash)"
+        if let c = Self.amtCache[ck] { return c }
+        let v = ps.values(V, monthly: Mo)
+        let r = GoalAmt(med: ps.quantile(v, k: k, 0.5) + cash, lo: ps.quantile(v, k: k, 0.1) + cash, hi: ps.quantile(v, k: k, 0.9) + cash)
+        if Self.amtCache.count > 16 { Self.amtCache.removeAll() }
+        Self.amtCache[ck] = r
         return r
     }
 

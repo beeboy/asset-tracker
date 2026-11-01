@@ -63,8 +63,28 @@ enum Lines {
     }
     private static var everyCache: [String: [String]] = [:]
 
+    /// 한 상황의 줄 전부 (빈칸 그대로). 홈 말풍선이 차례표로 돌린다
+    static func list(_ key: String) -> [String] { all[key] ?? [] }
+
     /// 전체 줄 수 (설정 등에서 보여 줄 때)
     static var count: Int { all.values.reduce(0) { $0 + $1.count } }
+}
+
+/// 화면 말풍선 고르기 (홈·미션): 갈래마다 차례로 돌고, 바로 앞에 나온 갈래는 건너뛴다.
+/// 화면을 열 때와 캐릭터를 누를 때마다 다음 줄 (동네 주민 TownSay 와 같은 방식)
+enum SayDeck {
+    private static var pos: [String: Int] = (UserDefaults.standard.dictionary(forKey: "sayDeck.pos") as? [String: Int]) ?? [:]
+    private static var last: [String: String] = [:]
+    static func next(_ deck: String, _ kinds: [(String, [String])]) -> String? {
+        let open = kinds.filter { !$0.1.isEmpty }
+        let fresh = open.filter { $0.0 != last[deck] }
+        guard let k = (fresh.isEmpty ? open : fresh).randomElement() else { return nil }
+        last[deck] = k.0
+        let id = deck + "." + k.0, p = pos[id] ?? 0
+        pos[id] = p + 1
+        UserDefaults.standard.set(pos, forKey: "sayDeck.pos")
+        return k.1[p % k.1.count]
+    }
 }
 
 /// 대사 차례: 화면을 열거나, 앱을 앞으로 가져오거나, 당겨서 갱신할 때 하나씩 오른다.

@@ -405,12 +405,17 @@ struct MockAccountView: View {
     @State private var note: String?
     @State private var editRow: MockPickRow?
     @State private var sel: UUID?
+    @State private var pastReads: Set<String> = []   // 지난 AI 조언을 편 흐름
 
     var body: some View {
         let d = MockDesk.shared
         MockScreen(tab: .account, gear: { settings = true }) {
+            if d.shown == .real && d.s.sellCheck == true { sellCheckCard(d) }
             winCard(d)
             followCard(d)
+            readCard(.follow, d)
+            afterCard(d)
+            readCard(.after, d)
             ordersCard(d)
             gapCard(d)
             lights(d)
@@ -420,6 +425,27 @@ struct MockAccountView: View {
         .sheet(isPresented: $settings) { MockSettingsView() }
         .confirmationDialog(Text(verbatim: "실전을 켤까요?"), isPresented: $liveAsk, titleVisibility: .visible) {
             Button(role: .destructive) { note = d.setLive(true) } label: { mt("실전 켜기 (실제 주문)") }
+        }
+    }
+
+    /// 팔기 규칙이 바뀌면 실전에 쓰기 전에 지금 팔릴 종목을 먼저 보인다. 확인 전엔 손절만 판다
+    private func sellCheckCard(_ d: MockDesk) -> some View {
+        let sigs = d.sellPreview(.real)
+        return Card {
+            head("팔기 규칙이 바뀌었어요", "확인 전엔 손절만")
+            if sigs.isEmpty {
+                mt("지금 가격이면 팔릴 종목이 없어요").appFont(13).foregroundStyle(Theme.sub)
+            }
+            ForEach(sigs, id: \.code) { g in
+                mt(MockDesk.name(g.code) + " · " + g.why).appFont(13)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Button { d.confirmSellRule() } label: {
+                mt("확인하고 실전에 적용").appFont(15, .bold).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -611,7 +637,7 @@ struct MockAccountView: View {
         return by.map { (name: $0.key, st: $0.value) }.sorted { $0.st.trades != $1.st.trades ? $0.st.trades > $1.st.trades : $0.name < $1.name }
     }
 
-    // MARK: 걸린 종목 뒤 흐름 — 고르기 전 거름을 지난 종목의 30분·1시간·마감 평균. 산 것과 안 산 것을 나란히
+    // MARK: 걸린 종목 뒤 흐름 — 장중 처음 걸린 종목(거른 것 포함)의 30분·1시간·마감 평균. 산 것과 안 산 것을 나란히
 
     private func followCard(_ d: MockDesk) -> some View {
         let fs = d.s.follows ?? []
@@ -634,7 +660,7 @@ struct MockAccountView: View {
             }
         }
         return Card {
-            head("걸린 종목 뒤 흐름", fs.isEmpty ? "쌓는 중" : "\(fs.count)종목 · \(dayN)일")
+            flowHead("걸린 종목 뒤 흐름", fs.isEmpty ? "쌓는 중" : "\(fs.count)종목 · \(dayN)일", .follow, d, empty: fs.isEmpty)
             if fs.isEmpty {
                 mt("장중 훑기에서 걸린 종목부터 쌓여요").appFont(13).foregroundStyle(Theme.muted)
             } else {
@@ -647,6 +673,132 @@ struct MockAccountView: View {
                 mt("처음 걸린 값 대비 평균. 안 산 쪽이 더 오르면 선정이 좋은 종목을 놓친 거예요").appFont(11).foregroundStyle(Theme.muted)
             }
         }
+    }
+
+    // MARK: 판 뒤 흐름 — 판 값보다 뒤에 내리면 잘 판 것, 오르면 판 자리가 반환점
+
+    /// 판 뒤 오르내림이 이 안이면 '비슷' (수수료·세금 0.23% 남짓이라 그보다 작은 차이는 가리지 않는다)
+    private static let afterEven = 0.003
+
+    private func afterCard(_ d: MockDesk) -> some View {
+        let xs = (d.s.afters ?? []).filter { $0.book == d.shown }
+        let done = xs.filter { $0.ret != nil }
+        func verdict(_ r: Double) -> Int { r > Self.afterEven ? 1 : r < -Self.afterEven ? -1 : 0 }
+        let reasons = Dictionary(grouping: done, by: \.exit).sorted { $0.value.count > $1.value.count }
+        return Card {
+            flowHead("판 뒤 흐름", xs.isEmpty ? "쌓는 중" : "\(xs.count)건", .after, d, empty: xs.isEmpty)
+            if xs.isEmpty {
+                mt("판 종목이 판 뒤 어떻게 갔는지 쌓여요").appFont(13).foregroundStyle(Theme.muted)
+            } else {
+                // 이유별: 판 게 나았나, 기다렸으면 나았나
+                ForEach(reasons, id: \.key) { e in
+                    let k = e.key, v = e.value
+                    let good = v.filter { verdict($0.ret ?? 0) < 0 }.count, bad = v.filter { verdict($0.ret ?? 0) > 0 }.count
+                    HStack {
+                        mt(k + " \(v.count)").appFont(13, .semibold)
+                        Spacer()
+                        mt("판 게 나음 \(good)").appFont(12).foregroundStyle(Theme.down)
+                        mt("기다렸으면 나음 \(bad)").appFont(12).foregroundStyle(Theme.up)
+                    }
+                }
+                if !reasons.isEmpty { Divider().overlay(Theme.line) }
+                ForEach(Array(xs.suffix(8).reversed()), id: \.at) { x in afterLine(x, verdict) }
+                mt("판 값보다 뒤에 내리면 잘 판 거예요. 오르면 판 자리가 반환점이었던 거예요. 앱이 꺼져 놓친 때는 비워 둬요")
+                    .appFont(11).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func afterLine(_ x: MockAfter, _ verdict: (Double) -> Int) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline) {
+                mt(MockFmt.md(x.day) + " " + MockFmt.time(x.at)).appFont(11).foregroundStyle(Theme.muted).monospacedDigit()
+                mt(x.name).appFont(13, .semibold).lineLimit(1)
+                mt(x.exit).appFont(12).foregroundStyle(Theme.sub)
+                Spacer()
+                if let r = x.ret {
+                    let won = (x.last?.p ?? x.p0) - x.p0
+                    let v = verdict(r)
+                    mt(v < 0 ? "판 게 나음" : v > 0 ? "기다렸으면 " + MockFmt.signedWon(won * Double(x.qty)) : "비슷")
+                        .appFont(12, .bold).foregroundStyle(v < 0 ? Theme.down : v > 0 ? Theme.up : Theme.sub)
+                } else {
+                    mt("기다리는 중").appFont(12).foregroundStyle(Theme.muted)
+                }
+            }
+            if let l = x.last {
+                mt("판 값 " + MockFmt.won(x.p0) + " → " + l.name + " " + MockFmt.won(l.p) + " (" + MockFmt.pct(l.p / x.p0 - 1, digits: 1) + ")")
+                    .appFont(12).foregroundStyle(Theme.sub).monospacedDigit()
+            }
+        }
+    }
+
+    // MARK: 뒤 흐름 AI 조언 — 제목 옆 단추로 그 흐름만 읽힌다. 사라·팔아라는 하지 않는다 (2026-10-29)
+
+    private func flowHead(_ t: String, _ r: String, _ k: MockFlowRead.Kind, _ d: MockDesk, empty: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            mt(t).appFont(15, .bold)
+            HStack(spacing: 4) {
+                Button { Task { await d.aiFlow(k) } } label: {
+                    mt(d.aiBusy == k.rawValue ? "읽는 중" : "AI 조언").appFont(12, .semibold).frame(height: 18)
+                }
+                .buttonStyle(.bordered).controlSize(.mini).disabled(empty || d.aiBusy != nil || !d.active)
+                // AI 매매 연결 자리 (꺼짐 모양). 드링커님이 조건을 정해 켜기 전까지 잠가 둔다 (켤 때는 실전 안전장치를 거치게 잇는다)
+                Capsule().fill(Theme.line).frame(width: 34, height: 22)
+                    .overlay(alignment: .leading) { Circle().fill(Color.white).padding(2) }
+                    .opacity(0.5)
+                    .accessibilityElement().accessibilityLabel("AI 매매 · 잠김")
+            }
+            Spacer()
+            mt(r).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+        }
+    }
+
+    /// 흐름 카드 밑 조언 상자: 마지막 읽기, AI 매매 자리(잠금), 지난 조언
+    @ViewBuilder private func readCard(_ k: MockFlowRead.Kind, _ d: MockDesk) -> some View {
+        let rs = (d.s.flowReads ?? []).filter { $0.kind == k && $0.book == d.shown }
+        let open = pastReads.contains(k.rawValue)
+        // 마지막 조언 뒤에 부른 결과 (실패·안 부름). 단추가 아무 일도 안 한 것처럼 보이지 않게
+        let run = d.s.runs["ai"].flatMap { r in r.text.contains(MockDesk.aiName(k.rawValue)) && r.at > (rs.last?.at ?? .distantPast) ? r : nil }
+        if let run, rs.isEmpty {
+            Card(bg: Theme.tealBg, stroke: nil) { mt(run.text).appFont(12).foregroundStyle(run.ok ? Theme.sub : Theme.up).fixedSize(horizontal: false, vertical: true) }
+        }
+        if let a = rs.last {
+            Card(bg: Theme.tealBg, stroke: nil) {
+                head("AI 조언", a.range)
+                if let run { mt(run.text).appFont(12).foregroundStyle(run.ok ? Theme.sub : Theme.up).fixedSize(horizontal: false, vertical: true) }
+                readBody(a)
+                if rs.count > 1 {
+                    Divider().overlay(Theme.line)
+                    Button { withAnimation(.snappy) { pastReads.formSymmetricDifference([k.rawValue]) } } label: {
+                        HStack {
+                            mt("지난 조언 \(rs.count - 1)").appFont(13, .semibold)
+                            Spacer()
+                            Image(systemName: open ? "chevron.down" : "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted)
+                        }
+                        .frame(minHeight: 28).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    if open {
+                        ForEach(Array(rs.dropLast().reversed())) { p in
+                            VStack(alignment: .leading, spacing: 4) {
+                                mt(MockFmt.md(MockFmt.day(p.at)) + " " + MockFmt.time(p.at) + " · " + p.range).appFont(11).foregroundStyle(Theme.muted).monospacedDigit()
+                                readBody(p)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func readBody(_ a: MockFlowRead) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            mt(a.text).appFont(13).fixedSize(horizontal: false, vertical: true)
+            ForEach(a.terms, id: \.self) { t in
+                mt((t.first ?? "") + " · " + (t.dropFirst().first ?? "")).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: 체결 차이 — 체결 한 건이 막대 하나. 비싸게 사면(불리) 위, 싸게 사면 아래

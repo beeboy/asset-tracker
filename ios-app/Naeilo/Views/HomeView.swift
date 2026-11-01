@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @Environment(AppModel.self) private var m
     @State private var inbox = false
+    @State private var line: String? = nil   // 홈 말풍선 한 줄 (열 때·캐릭터를 누를 때마다 새로)
     @AppStorage("hideAmt") private var hideAmt = false
     @AppStorage(BoxLook.key) private var lookRaw = BoxLook.jump.rawValue
 
@@ -35,7 +36,7 @@ struct HomeView: View {
         .background(Theme.bg)
         .refreshable { await Market.shared.pullRefresh(m) }
         // 기록·소식 계산은 앱을 열 때와 1분 시세 갱신 때 한다 (App.swift). 탭 이동 땐 말풍선만
-        .onAppear { Remind.shared.nextBubble() }
+        .onAppear { Remind.shared.nextBubble(); line = HomeSay.home(m, hide: hideAmt) }
         .sheet(isPresented: $inbox, onDismiss: { Remind.shared.markAllSeen() }) { RemindSheet().environment(m) }
         .detailSheet()   // '오늘 많이 움직인 종목'을 누르면 종목 상세 팝업
         .toolbar(.hidden, for: .navigationBar)
@@ -177,7 +178,7 @@ struct HomeView: View {
         // 말풍선은 오늘 브리핑 한 문장. 인물 대사는 빼고, 인물은 오늘 장 흐름을 동작으로 보인다 (2026-10-23)
         // 리마인드 소식은 정보라 브리핑 아래에 둔다. 둘 다 없을 때(종목 없음)만 인물 한마디
         let news = b.map { $0.text + ($0.go != .nowhere ? " ›" : "") }
-        let say = [m.todayMoversText, news].compactMap { $0 }.joined(separator: "\n")
+        let say = [line ?? m.todayMoversText, news].compactMap { $0 }.joined(separator: "\n")
         let who = m.homeFriendShown
         let tint: Color = b.map { $0.cat.color.opacity(0.14) } ?? Theme.mintBg
         return VStack(alignment: .leading, spacing: 10) {
@@ -193,6 +194,7 @@ struct HomeView: View {
                         }
                     }
                     .accessibilityLabel(m.friendName(who))
+                    .onTapGesture { line = HomeSay.home(m, hide: hideAmt) }   // 캐릭터를 누르면 다음 한마디 (말풍선은 그대로 소식·쉼터로)
                     Text(say.isEmpty ? m.homeSay : say)
                         .appFont(14).lineSpacing(3)
                         .multilineTextAlignment(.leading)
@@ -280,6 +282,30 @@ struct HomeView: View {
 
 /// 실적 나온 날 (숫자 기다리는 중이거나 오늘 발표): 보유 종목마다 "{회사} 7~9월 실적" + 작은 막대 둘 + 작년 대비 %.
 /// 금액·평가하는 말 없음. 누르면 강 팝업. 나온 종목이 없으면 안 보인다
+/// 홈 말풍선: 오늘 브리핑답게 숫자·움직인 종목·인물의 홈 대사를 돌려 가며 (2026-10-29, 이어 온 날·쉼터 물건은 10-30에 뺌)
+enum HomeSay {
+    @MainActor static func home(_ m: AppModel, hide: Bool) -> String? {
+        if m.rows.isEmpty { return nil }   // 종목 없음은 예전처럼
+        let en = AppModel.en
+        let who = m.voice(m.homeFriendShown), mv = AppModel.sgn(m.todayMove), done = m.today.answer != nil
+        let chat = Lines.list("home.\(done ? "done" : "fresh").\(who)").map { $0.replacingOccurrences(of: "{move}", with: mv) }.filter { !$0.contains("{") }
+        let up = m.todayMove >= 0, pctG = Int(min(1, m.trackValue / max(1, m.gK * 1e4)) * 100)
+        var num = en ? ["My stocks moved \(mv) today.", up ? "Today is \(mv). The up side." : "Today is \(mv). The down side."]
+                     : ["오늘 내 종목은 \(mv) 움직였어요.", up ? "오늘은 \(mv), 위쪽이에요." : "오늘은 \(mv), 아래쪽이에요."]
+        if m.cost > 0 { num.append(en ? "\(AppModel.sgn(m.ret)) since buying." : "산 뒤로 \(AppModel.sgn(m.ret)) 왔어요.") }
+        if !hide {   // 금액 가리기를 켰으면 금액은 말하지 않는다
+            num.append(en ? "Your value right now: \(AppModel.won(m.total))." : "지금 평가액은 \(AppModel.won(m.total))이에요.")
+            if m.cost > 0 { let g = (m.total >= m.cost ? "+" : "−") + AppModel.won(m.total - m.cost); num.append(en ? "\(g) since buying." : "산 뒤로 \(g) 달라졌어요.") }
+        }
+        if m.isGoal, m.gK > 0 { num.append(en ? "\(pctG)% of the way to your \(AppModel.wonK(m.gK)) goal." : "목표 \(AppModel.wonK(m.gK))까지 \(pctG)% 왔어요.") }
+        else if !m.isGoal, m.cost > 0, m.total < m.cost { num.append(en ? "\(AppModel.sgn(m.cost / m.total - 1)) to break even." : "본전까지 \(AppModel.sgn(m.cost / m.total - 1)) 남았어요.") }
+        let move = m.todayMoversText.map { [$0] } ?? []
+        var day: [String] = []
+        if !done { day.append(en ? "Today's question is waiting. One minute is enough." : "오늘 질문 하나가 기다려요. 1분이면 돼요.") }
+        return SayDeck.next("home", [("chat", chat), ("num", num), ("move", move), ("day", day)])
+    }
+}
+
 struct EarnHomeCard: View {
     @Environment(AppModel.self) private var m
     @State private var river: EarnTarget? = nil
@@ -426,23 +452,36 @@ struct RoutineCard: View {
 // 줄바꿈되는 가로 배치
 struct FlowRow: Layout {
     var spacing: CGFloat = 6
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let w = proposal.width ?? .infinity
-        var x: CGFloat = 0, y: CGFloat = 0, rowH: CGFloat = 0, maxX: CGFloat = 0
-        for s in subviews {
-            let sz = s.sizeThatFits(.unspecified)
+    /// 끝의 몇 개를 마지막 줄 오른쪽 끝에 붙인다. 앞 줄에 자리가 없으면 함께 다음 줄로 (0 이면 그냥 흐름)
+    var tail = 0
+    private func rows(_ w: CGFloat, _ subviews: Subviews) -> (pts: [CGPoint], size: CGSize) {
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let n = sizes.count, k = min(tail, n)
+        var pts: [CGPoint] = [], x: CGFloat = 0, y: CGFloat = 0, rowH: CGFloat = 0, maxX: CGFloat = 0
+        for sz in sizes.prefix(n - k) {
             if x > 0 && x + sz.width > w { x = 0; y += rowH + spacing; rowH = 0 }
+            pts.append(CGPoint(x: x, y: y))
             x += sz.width + spacing; rowH = max(rowH, sz.height); maxX = max(maxX, x - spacing)
         }
-        return CGSize(width: min(w, maxX), height: y + rowH)
+        if k > 0 {
+            let tw = sizes.suffix(k).reduce(0) { $0 + $1.width } + spacing * CGFloat(k - 1)
+            if x > 0 && x + tw > w { x = 0; y += rowH + spacing; rowH = 0 }
+            var tx = max(x, w.isFinite ? w - tw : x)
+            for sz in sizes.suffix(k) {
+                pts.append(CGPoint(x: tx, y: y))
+                tx += sz.width + spacing; rowH = max(rowH, sz.height)
+            }
+            maxX = max(maxX, tx - spacing)
+        }
+        return (pts, CGSize(width: min(w, maxX), height: y + rowH))
+    }
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        rows(proposal.width ?? .infinity, subviews).size
     }
     func placeSubviews(in b: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = b.minX, y = b.minY, rowH: CGFloat = 0
-        for s in subviews {
-            let sz = s.sizeThatFits(.unspecified)
-            if x > b.minX && x + sz.width > b.maxX { x = b.minX; y += rowH + spacing; rowH = 0 }
-            s.place(at: CGPoint(x: x, y: y), proposal: .unspecified)
-            x += sz.width + spacing; rowH = max(rowH, sz.height)
+        let pts = rows(b.width, subviews).pts
+        for (s, p) in zip(subviews, pts) {
+            s.place(at: CGPoint(x: b.minX + p.x, y: b.minY + p.y), proposal: .unspecified)
         }
     }
 }

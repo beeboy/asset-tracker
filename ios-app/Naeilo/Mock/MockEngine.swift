@@ -555,7 +555,7 @@ enum MockCalc {
                          text: "\(o.type.name) \(n)주 · 평균 \(MockFmt.won(fill.avg)) · 수수료 \(MockFmt.won(fee)) · 세금 \(MockFmt.won(tax))",
                          test: test || wasTest, side: .sell, qty: n, price: fill.avg, amount: amount, fee: fee, tax: tax,
                          pnl: proceeds - basis, pnlGross: amount - gross, basis: basis, opener: opener, ref: o.id,
-                         conds: conds, buyWhy: buyWhy, exit: exitName(o.reason), entry: entry, low: low)
+                         conds: conds, buyWhy: buyWhy, exit: exitName(o.reason), exitWhy: o.reason.isEmpty ? nil : o.reason, entry: entry, low: low)
     }
 
     /// 판 이유 이름: 주문 이유의 첫 토막 ("손절 · 산 값 대비 −5.1%" → "손절")
@@ -574,39 +574,48 @@ enum MockCalc {
     }
 
     /// 보유 종목마다 팔기 규칙을 지금 가격으로 본다. 예외 종목은 규칙이 팔지 않는다.
-    /// 차례: 손절·흔들림 손절 → 마감 정리 → 이유 꺼짐 → 익절(첫 번은 반) → 되밀림(반 판 뒤) → 움직임 없음. 단타라 하루를 넘겨 들지 않는다 (2026-10-29)
+    /// 차례: 손절·흔들림 손절 → 마감 정리(15:00) → 이유 꺼짐 → 익절(첫 번은 반) → 되밀림(반 판 뒤) → 움직임 없음. 단타라 하루를 넘겨 들지 않는다 (2026-10-29)
     /// gone: 산 이유가 꺼진 종목 → 꺼진 조각 글 (마지막 훑기 기준). seg: 지금 하루 구간
     static func sellSignals(_ l: MockLedger, rule: MockSellRule, prices: [String: Double], excluded: [String: String], today: String,
                             seg: MockClock.Seg = .pick, gone: [String: String] = [:], now: Date = Date()) -> [SellSig] {
         guard rule.on else { return [] }
         let selling = Set(l.pending.filter { $0.side == .sell }.map(\.code))
-        let market = seg == .watch || seg == .pick || seg == .tidy
         var out: [SellSig] = []
         for p in l.positions.values.sorted(by: { $0.code < $1.code }) where !selling.contains(p.code) && excluded[p.code] == nil && p.who != .hand {
             guard let px = prices[p.code], px > 0, p.avg > 0 else { continue }
             let r = px / p.avg - 1
+            // 규칙이 서기 전에 산 몫은 손절·익절만 (산 때 기준을 지킨다)
+            let old = rule.since.map { p.openedDay < $0 } ?? false
             if let s = rule.stopLoss, r <= -s { out.append(SellSig(code: p.code, why: "손절 · 산 값 대비 " + MockFmt.pct(r, digits: 1))); continue }
             if let k = rule.volK, let rg = p.entry?.range20, rg > 0, r <= -k * rg {
                 out.append(SellSig(code: p.code, why: "손절 · 흔들림 · 하루 폭 " + MockFmt.pct(rg, digits: 1) + " × " + MockFmt.num(k) + " · 산 값 대비 " + MockFmt.pct(r, digits: 1))); continue
             }
-            // 정리 구간이거나, 지난 날 산 몫이 남았으면 장중에 바로 (앱이 꺼져 마감을 놓친 몫)
-            if rule.closeOut == true, market, seg == .tidy || p.openedDay < today {
-                out.append(SellSig(code: p.code, why: "마감 정리 · 산 값 대비 " + MockFmt.pct(r, digits: 1))); continue
+            // 정리 구간(15:00)에만. 앱이 꺼져 마감을 놓친 몫도 장중에 바로 팔지 않고 그날 산 몫과 함께 정리한다 (2026-10-29 드링커님 결정)
+            if !old, rule.closeOut == true, seg == .tidy {
+                let when = p.openedDay < today ? md(p.openedDay) + "에 산 몫 · 지난 마감을 놓쳐 오늘 15:00에" : "15:00 정리 구간"
+                out.append(SellSig(code: p.code, why: "마감 정리 · " + when + " · 산 값 대비 " + MockFmt.pct(r, digits: 1))); continue
             }
-            if rule.gone == true, let g = gone[p.code] { out.append(SellSig(code: p.code, why: "이유 꺼짐 · " + g)); continue }
+            if !old, rule.gone == true, let g = gone[p.code] { out.append(SellSig(code: p.code, why: "이유 꺼짐 · " + g)); continue }
             if let t = rule.takeProfit, r >= t, p.took != true {
                 let q = p.qty >= 2 ? p.qty / 2 : nil
                 out.append(SellSig(code: p.code, why: "익절 · 산 값 대비 " + MockFmt.pct(r, digits: 1) + (q != nil ? " · 반" : ""), qty: q)); continue
             }
-            if let tr = rule.trail, p.took == true, let pk = p.peak, pk > 0, px <= pk * (1 - tr) {
+            if !old, let tr = rule.trail, p.took == true, let pk = p.peak, pk > 0, px <= pk * (1 - tr) {
                 out.append(SellSig(code: p.code, why: "되밀림 · 고점 " + MockFmt.won(pk) + " 대비 " + MockFmt.pct(px / pk - 1, digits: 1))); continue
             }
-            if let m = rule.idleMin, let b = rule.idleBand, now.timeIntervalSince(p.opened) >= Double(m * 60), abs(r) <= b {
+            if !old, let m = rule.idleMin, let b = rule.idleBand, now.timeIntervalSince(p.opened) >= Double(m * 60), abs(r) <= b {
                 out.append(SellSig(code: p.code, why: "움직임 없음 · \(m)분 · 산 값 대비 " + MockFmt.pct(r, digits: 1))); continue
             }
-            if let d = rule.maxDays, weekdays(from: p.openedDay, to: today) >= d { out.append(SellSig(code: p.code, why: "보유 \(d)일 넘음")); continue }
+            if !old, let d = rule.maxDays, weekdays(from: p.openedDay, to: today) >= d { out.append(SellSig(code: p.code, why: "보유 \(d)일 넘음")); continue }
         }
         return out
+    }
+
+    /// "2026-10-27" → "10/27"
+    private static func md(_ day: String) -> String {
+        let p = day.split(separator: "-")
+        guard p.count == 3, let m = Int(p[1]), let d = Int(p[2]) else { return day }
+        return "\(m)/\(d)"
     }
 
     /// 산 이유가 약해졌나: 켠 관찰 조각 중 '약한 쪽'으로 벗어난 조각 글 (아래 문턱 밑으로 · 이동평균 반대편으로).

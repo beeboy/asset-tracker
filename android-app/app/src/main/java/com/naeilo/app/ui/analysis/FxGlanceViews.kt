@@ -421,10 +421,11 @@ object GlanceView {
 
 // ios: Views/AnalysisDetail.swift:2314,2315,2325
 @Composable
-fun GlanceView(m: AppModel) {
+fun GlanceView(m: AppModel, compact: Boolean = false, usd: Boolean? = null) {   // usd: 종목 탭의 $|원 선택을 따른다   // compact: 종목 탭 아래 넓은 지도 (2026-10-29)
     var pick by remember { mutableStateOf<String?>(null) }   // ios: Views/AnalysisDetail.swift:2133
     var period by remember { mutableStateOf(Period.d1) }   // ios: Views/AnalysisDetail.swift:2134
-    var inUsd by remember { mutableStateOf(false) }   // ios: Views/AnalysisDetail.swift:2135
+    var pickUsd by remember { mutableStateOf(false) }   // ios: Views/AnalysisDetail.swift:2135
+    val inUsd = usd ?: pickUsd   // ios: Views/AnalysisDetail.swift:2140
 
     val rows = m.rows; val stamp = Market.shared.updatedAt; val stats = Market.shared.stats
     // ios: Views/AnalysisDetail.swift:2326
@@ -439,6 +440,16 @@ fun GlanceView(m: AppModel) {
         GlanceView.Item(d.row, d.k, d.vol, d.has, if ((period == Period.d1 || d.has) && a != null && b != null && a > 0) b / a * k - 1 else null)
     }
 
+    // 종목 탭 아래: 기간 · 지도 · 누르면 상세만
+    if (compact) {
+        // ios: Views/AnalysisDetail.swift:2163,2164,2165,2166,2167,2168,2169
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ChipRow(items = Period.entries.map { it to it.label }, selection = period, onSelect = { period = it }, fill = true, pad = 4.dp)
+            Treemap(sorted, period, inUsd, pick, 180) { id -> pick = if (pick == id) null else id }
+            sorted.firstOrNull { it.row.id == pick }?.let { GlanceCard(m, it) }
+        }
+        return
+    }
     // ios: Views/AnalysisDetail.swift:2339,2359,2360 (제목 줄은 늘 한 줄: NavBar)
     Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
         // ios: Views/AnalysisDetail.swift:2340,2355,2356,2357
@@ -447,7 +458,7 @@ fun GlanceView(m: AppModel) {
             // ios: Views/AnalysisDetail.swift:2178,2179,2180,2181
             Row(Modifier.fillMaxWidth()) {
                 Spacer(Modifier.weight(1f))
-                HoldSeg(listOf(true to "$", false to "원"), inUsd, { inUsd = it }, label = "금액 단위: ${if (inUsd) tr("달러") else tr("원")}")
+                HoldSeg(listOf(true to "$", false to "원"), inUsd, { pickUsd = it }, label = "금액 단위: ${if (inUsd) tr("달러") else tr("원")}")
             }
             ChipRow(items = Period.entries.map { it to it.label }, selection = period, onSelect = { period = it }, fill = true, pad = 4.dp)   // ios: Views/AnalysisDetail.swift:2161
             // ios: Views/AnalysisDetail.swift:2342
@@ -507,10 +518,10 @@ private fun tone(d: GlanceView.Item, period: Period): Pair<Color, Color> {
 
 // ios: Views/AnalysisDetail.swift:2213
 @Composable
-private fun Treemap(list: List<GlanceView.Item>, period: Period, inUsd: Boolean, pick: String?, onPick: (String) -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxWidth().height(340.dp)) {
+private fun Treemap(list: List<GlanceView.Item>, period: Period, inUsd: Boolean, pick: String?, height: Int = 340, onPick: (String) -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxWidth().height(height.dp)) {
         // 0%인 종목도 누를 수 있게 아주 작은 칸은 남긴다
-        val rs = GlanceView.squarify(list.map { maxOf(it.k.w, 0.006) }, maxWidth.value.toDouble(), 340.0)   // ios: Views/AnalysisDetail.swift:2216
+        val rs = GlanceView.squarify(list.map { maxOf(it.k.w, 0.006) }, maxWidth.value.toDouble(), height.toDouble())   // ios: Views/AnalysisDetail.swift:2216
         list.forEachIndexed { i, d ->
             val r = rs[i]
             val w = maxOf(0f, r.width - 3f); val h = maxOf(0f, r.height - 3f)   // ios: Views/AnalysisDetail.swift:2219

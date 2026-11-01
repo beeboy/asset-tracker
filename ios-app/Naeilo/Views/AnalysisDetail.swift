@@ -2130,6 +2130,11 @@ struct GlanceView: View {
     @State private var pick: String?
     @State private var period: Period = .d1
     @State private var inUsd = false
+    /// 종목 탭 아래에 넣는 넓은 지도: 기간 · 지도 · 누르면 상세만 (2026-10-29)
+    var compact = false
+    /// 종목 탭의 $|원 선택을 따른다 (2026-10-29). nil이면 이 화면의 선택
+    var usd: Bool? = nil
+    private var unitUsd: Bool { usd ?? inUsd }
 
     /// mv: 고른 기간 등락 (기록이 없으면 nil)
     struct Item { let row: AppModel.Row; let k: AppModel.HoldMetrics; let vol: Double; let has: Bool; var mv: Double? = nil }
@@ -2161,7 +2166,7 @@ struct GlanceView: View {
     var body: some View {
         let all = m.rows.map { r in Item(row: r, k: m.metrics(r), vol: SiteStats.params(r.id).2, has: m.prices.hasHistory(r.sym)) }
         // 원으로 보면 달러 종목은 기간 환율 변화까지 곱한다 (2026-10-28 결정)
-        let fx = inUsd ? 1 : Self.fxRatio(period)
+        let fx = unitUsd ? 1 : Self.fxRatio(period)
         let sorted = all.sorted { $0.k.w > $1.k.w }.map { (d0: Item) -> Item in
             var d = d0
             let pts = m.prices.series(d.row.sym, period: period)
@@ -2170,6 +2175,15 @@ struct GlanceView: View {
             return d
         }
 
+        if compact {
+            VStack(alignment: .leading, spacing: 10) {
+                ChipRow(items: Period.allCases.map { ($0, $0.label) }, selection: $period, fill: true, pad: 4)
+                treemap(sorted, height: 180)
+                if let d = sorted.first(where: { $0.row.id == pick }) {
+                    card(d).id(d.row.id).transition(.opacity)
+                }
+            }
+        } else {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 DetailHead(title: String(localized: "종목 한눈에"), sub: "")
@@ -2202,6 +2216,7 @@ struct GlanceView: View {
         }
         .background(Theme.bg)
         .toolbarTitleDisplayMode(.inlineLarge)
+        }
     }
 
     private func summary(_ t: Item) -> String {
@@ -2224,7 +2239,7 @@ struct GlanceView: View {
     /// 칸 금액: 그 기간 평가금 변화. 달러로 보면 달러 종목만 $ (종목 탭과 같다)
     private func amountText(_ d: Item) -> String? {
         guard !Self.calm(d), let mv = d.mv, mv > -1 else { return nil }
-        let usd = inUsd && d.row.sym.currency == .usd
+        let usd = unitUsd && d.row.sym.currency == .usd
         let v = usd ? d.row.value / Market.shared.valFx : d.row.value
         let ch = v - v / (1 + mv)
         return (ch < 0 ? "−" : "+") + (usd ? "$" + Int(abs(ch).rounded()).formatted() : HoldFmt.won(abs(ch)))
@@ -2237,7 +2252,7 @@ struct GlanceView: View {
         return (Theme.change(mv).opacity(0.15 + 0.75 * t), t > 0.45 ? .white : Theme.ink)
     }
 
-    private func treemap(_ list: [Item]) -> some View {
+    private func treemap(_ list: [Item], height: CGFloat = 340) -> some View {
         GeometryReader { g in
             // 0%인 종목도 누를 수 있게 아주 작은 칸은 남긴다
             let rs = Self.squarify(list.map { max($0.k.w, 0.006) }, in: CGRect(origin: .zero, size: g.size))
@@ -2250,7 +2265,7 @@ struct GlanceView: View {
             }
             .frame(width: g.size.width, height: g.size.height)
         }
-        .frame(height: 340)
+        .frame(height: height)
     }
 
     private func tile(_ d: Item, _ sz: CGSize) -> some View {

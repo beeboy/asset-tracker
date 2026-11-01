@@ -138,12 +138,12 @@ object TownNews {   // ios: Views/TownPanel.swift:33
     /** 6시간에 한 번만 묻는다 (한국어 앱만) */
     suspend fun fetch(): Unit = withContext(Dispatchers.IO) {   // ios: Views/TownPanel.swift:40
         val now = System.currentTimeMillis()   // ios: Views/TownPanel.swift:41
-        if (AppModel.en || now - Defaults.prefs.getLong("townNews.at", 0L) <= 6 * 3600_000L) return@withContext   // ios: Views/TownPanel.swift:42
+        if (now - Defaults.prefs.getLong("townNews.at", 0L) <= 6 * 3600_000L) return@withContext   // ios: Views/TownPanel.swift:42
         val body = runCatching { (URL(url).openConnection() as HttpURLConnection).run { connectTimeout = 10000; readTimeout = 10000; if (responseCode == 200) inputStream.bufferedReader().readText() else null } }.getOrNull() ?: return@withContext   // ios: Views/TownPanel.swift:43
         val f = runCatching { NJson.parseToJsonElement(body).jsonObject }.getOrNull() ?: return@withContext   // ios: Views/TownPanel.swift:44
         Defaults.prefs.edit().putLong("townNews.at", now).apply()   // ios: Views/TownPanel.swift:45
         if ((f["at"]?.jsonPrimitive?.content ?: "").isEmpty()) return@withContext   // ios: Views/TownPanel.swift:46
-        heads = f["h"]?.jsonArray?.mapNotNull { it.jsonObject["t"]?.jsonPrimitive?.content } ?: return@withContext   // ios: Views/TownPanel.swift:47
+        heads = f[if (AppModel.en) "e" else "h"]?.jsonArray?.mapNotNull { it.jsonObject["t"]?.jsonPrimitive?.content } ?: return@withContext   // ios: Views/TownPanel.swift:47
         Defaults.prefs.edit().putString("townNews.h", NJson.encodeToString(heads)).apply()   // ios: Views/TownPanel.swift:48
         said.removeAll { l -> heads.none { l.contains(it) } }   // ios: Views/TownPanel.swift:49 5일 지나 빠진 기사는 들은 목록에서도 지운다
         runCatching { Defaults.prefs.edit().putString("townNews.said", NJson.encodeToString(said.toList())).apply() }   // ios: Views/TownPanel.swift:50
@@ -158,7 +158,11 @@ object TownNews {   // ios: Views/TownPanel.swift:33
 
 object TownSay {   // ios: Views/TownPanel.swift:65
     enum class Kind { num, town, hold, fx, rate, term, base, side, vol1, joke, saw, secret, odd, news }   // ios: Views/TownPanel.swift:66
-    val praise = "한 줄 남겨 줘서 고마워요! 오늘 할 일 끝, 대단해요!"   // ios: Views/TownPanel.swift:67
+    /** 오늘 첫 한 줄에 고마워하는 말 (동네 공용 차례표로 돌아가며, 매번 같은 말이 되지 않게) */
+    fun praise(res: TownLook.Resident): String {   // ios: Views/TownPanel.swift:63
+        val l = if (AppModel.en) praiseEn else praiseKo
+        return fill(turn("praise", l.size)?.let { l[it] } ?: l[0], res)
+    }
     /** 지금 동네에 선 이들 (TownView 가 채운다): 속마음·이장 소식에 이웃 이름과 숫자를 넣는다 */
     var folk: Map<String, TownLook.Resident> = emptyMap()   // ios: Views/TownPanel.swift:69
     private val recent = ArrayList<Kind>()   // ios: Views/TownPanel.swift:70
@@ -184,7 +188,6 @@ object TownSay {   // ios: Views/TownPanel.swift:65
     // ── 고르기 ──
 
     private fun kinds(res: TownLook.Resident): List<Kind> {   // ios: Views/TownPanel.swift:98
-        if (AppModel.en) return if (res.id == TownLook.mayorID) listOf(Kind.town, Kind.hold, Kind.fx) else if (res.rows.isEmpty()) listOf(Kind.base) else listOf(Kind.num, Kind.base)   // ios: Views/TownPanel.swift:99
         if (res.id == TownLook.mayorID) return listOf(Kind.town, Kind.hold, Kind.fx, Kind.news, Kind.joke, Kind.saw, Kind.secret)   // ios: Views/TownPanel.swift:100
         if (res.id == TownLook.warshID) return listOf(Kind.term, Kind.rate, Kind.news, Kind.town, Kind.saw, Kind.secret, Kind.joke)   // ios: Views/TownPanel.swift:101
         if (res.old != null) return listOf(Kind.secret, Kind.odd, Kind.saw, Kind.joke, Kind.side, Kind.vol1, Kind.base)   // ios: Views/TownPanel.swift:102
@@ -243,18 +246,20 @@ object TownSay {   // ios: Views/TownPanel.swift:65
     private fun fill(s: String, res: TownLook.Resident): String {   // ios: Views/TownPanel.swift:158
         if (!s.contains("{")) return s   // ios: Views/TownPanel.swift:159
         val others = folk.values.filter { it.id != res.id && it.id != TownLook.meID && it.rows.isNotEmpty() }   // ios: Views/TownPanel.swift:160
-        val o = others.randomOrNull()?.let { TownLook.shown(it, TownBook.shared.note(it.id)) } ?: "옆집"   // ios: Views/TownPanel.swift:161
+        val o = others.randomOrNull()?.let { TownLook.shown(it, TownBook.shared.note(it.id)) } ?: tr("옆집")   // ios: Views/TownPanel.swift:161
         return s.replace("{other}", o)   // ios: Views/TownPanel.swift:162
             .replace("{me}", TownLook.nick(TownLook.Resident(id = TownLook.meID, rows = emptyList())))   // ios: Views/TownPanel.swift:163
-            .replace("{mayor}", "이장님")   // ios: Views/TownPanel.swift:164
-            .replace("{warsh}", "워시")   // ios: Views/TownPanel.swift:165
+            .replace("{mayor}", tr("이장님"))   // ios: Views/TownPanel.swift:164
+            .replace("{warsh}", tr("워시"))   // ios: Views/TownPanel.swift:165
     }
 
     // ── 신문 (전체 상위 기사 제목) ──
 
     /** 아직 동네에서 안 나온 기사만. 말머리는 제목마다 정해 같은 기사는 늘 같은 줄이 된다 */
     private fun news(): List<String> {   // ios: Views/TownPanel.swift:161
-        val l = listOf("신문에서 봤는데요, “{t}”", "오늘 기사 보셨어요? “{t}”", "아침 신문 1면이에요. “{t}”", "있잖아요, “{t}” 이런 기사가 났더라고요.",
+        val l = if (AppModel.en) listOf("Saw this in the paper: “{t}”", "Did you see today's story? “{t}”", "Front page this morning: “{t}”", "You know what? There was a story: “{t}”",
+            "Honestly, this headline bugs me a little. “{t}”", "Here's some news for you. “{t}”")
+        else listOf("신문에서 봤는데요, “{t}”", "오늘 기사 보셨어요? “{t}”", "아침 신문 1면이에요. “{t}”", "있잖아요, “{t}” 이런 기사가 났더라고요.",
             "솔직히 이 기사 좀 신경 쓰여요. “{t}”", "뉴스 하나 전해 드려요. “{t}”")   // ios: Views/TownPanel.swift:162,163
         return TownNews.heads.map { l[(TownLook.seed(it) % l.size.toULong()).toInt()].replace("{t}", it) }   // ios: Views/TownPanel.swift:164
             .filter { !TownNews.heard(it) }.sorted()   // ios: Views/TownPanel.swift:165
@@ -278,11 +283,27 @@ object TownSay {   // ios: Views/TownPanel.swift:65
         if (res.rows.isEmpty()) return emptyList()   // ios: Views/TownPanel.swift:183
         val x = stat(res.rows); val up = x.d > 0; val flat = abs(x.pct) < 0.0005   // ios: Views/TownPanel.swift:184
         val sh = "${(x.share * 100).roundToInt()}%"   // ios: Views/TownPanel.swift:185
-        if (AppModel.en) {   // ios: Views/TownPanel.swift:186
-            return listOf(if (flat) "Flat today. A quiet one." else "Today ${if (up) "up" else "down"} ${won(x.d)}, ${pc(x.pct)}.",   // ios: Views/TownPanel.swift:187
-                "My value right now: ${won(x.value)}.",   // ios: Views/TownPanel.swift:188
-                "Since buying: ${if (x.gain >= 0) "+" else "−"}${won(x.gain)}, ${AppModel.sgn(x.ret)}.",   // ios: Views/TownPanel.swift:189
-                "I'm $sh of the whole town.")   // ios: Views/TownPanel.swift:190
+        if (AppModel.en) {   // ios: Views/TownPanel.swift:188
+            val l = mutableListOf("My value right now: about ${won(x.value)}.",
+                "Since buying, I'm ${won(x.gain)} ${if (x.gain >= 0) "up" else "down"}.",
+                "My return is ${AppModel.sgn(x.ret)}. One dot on a long line.",
+                "My share of the town: $sh.",
+                "I'm ${AppModel.sgn(x.ret)} from where you bought me. Slow and steady.",
+                "Today's summary: ${pc(x.pct)} for the day, ${AppModel.sgn(x.ret)} overall.",
+                "$sh! That's my slice of the town's wallet.")
+            if (flat) {
+                l += listOf("Flat today. Even numbers need a day off.", "Today I'm in the 'unchanged' lane.")
+            } else {
+                l += listOf("Today ${won(x.d)} ${if (up) "up!" else "down…"} Just my part.",
+                    "${pc(x.pct)} today. Numbers don't lie.",
+                    if (up) "${won(x.d)} heavier than yesterday. A nice kind of heavy." else "${won(x.d)} lighter than yesterday. I feel nimble.",
+                    if (up) "I'm in the up lane today." else "I'm in the down lane today.",
+                    "${pc(x.pct)} today, ${AppModel.sgn(x.ret)} since buying. Two different stories.")
+                val tp = stat(folk.values.flatMap { it.rows }).pct
+                if (abs(tp) >= 0.0005) l.add("Me ${pc(x.pct)}, the whole town ${pc(tp)}.")
+            }
+            if (res.rows.size > 1) l.add("My ${res.rows.size} stocks together: ${pc(x.pct)} today.")
+            return l
         }
         val l = mutableListOf(   // ios: Views/TownPanel.swift:192
             "지금 제 몸값은 ${won(x.value)}쯤 돼요.",   // ios: Views/TownPanel.swift:193
@@ -322,9 +343,23 @@ object TownSay {   // ios: Views/TownPanel.swift:65
         val t = stat(folk.values.flatMap { it.rows })   // ios: Views/TownPanel.swift:227
         val up = h.count { it.x.pct >= 0.0005 }; val dn = h.count { it.x.pct <= -0.0005 }   // ios: Views/TownPanel.swift:228
         val top = h.maxBy { it.x.pct }; val low = h.minBy { it.x.pct }   // ios: Views/TownPanel.swift:229
-        if (AppModel.en) {   // ios: Views/TownPanel.swift:230
-            return listOf("${h.size} residents in town. Tremendous.", "Up $up, down $dn today.",   // ios: Views/TownPanel.swift:231
-                "Whole town today: ${pc(t.pct)}.", "Happiest today: ${top.name}, ${pc(top.x.pct)}.")   // ios: Views/TownPanel.swift:232
+        if (AppModel.en) {   // ios: Views/TownPanel.swift:240
+            val l = mutableListOf("${h.size} residents in our town. A tremendous number.",
+                "Up $up, down $dn today. I count them all.",
+                "Biggest house in town: ${h[0].name}'s. Huge yard.",
+                "Since buying, the whole town is ${AppModel.sgn(t.ret)}. Best town in history.",
+                "${h.size} residents, one town, no fights. Incredible.",
+                "Greeting new residents is my first job.",
+                "Old neighbors drop by sometimes. Because the town is great.",
+                "The town's wallet is ${won(t.value)} right now. I keep the books.")
+            if (abs(t.pct) >= 0.0005) {
+                l += listOf("The whole town is ${won(t.d)} ${if (t.d > 0) "up today. Fantastic!" else "down today. Tomorrow will be better."}",
+                    "Our town's score today: ${pc(t.pct)}.")
+            } else l.add("Quiet town today. Everyone's holding still.")
+            if (top.x.pct >= 0.0005) l.add("Happiest resident today: ${top.name}. ${pc(top.x.pct)}!")
+            if (low.x.pct <= -0.0005) l.add("${low.name} is ${pc(low.x.pct)} today and a bit glum. Say hi.")
+            TownSky.shared.phrase?.let { l.add("$it Perfect for a walk.") }
+            return l
         }
         val l = mutableListOf(   // ios: Views/TownPanel.swift:234
             "우리 동네 주민은 ${h.size}명이에요. 아주 훌륭한 숫자죠.",   // ios: Views/TownPanel.swift:235
@@ -348,7 +383,10 @@ object TownSay {   // ios: Views/TownPanel.swift:65
     /** 이장이 짚는 보유 종목: 주민마다 네 줄 (차례표가 주민을 번갈아 돈다) */
     private fun hold(): List<String> = homes().flatMap { one ->   // ios: Views/TownPanel.swift:254
         val x = one.x; val sh = "${(x.share * 100).roundToInt()}%"   // ios: Views/TownPanel.swift:256
-        if (AppModel.en) listOf("${one.name}'s ${one.stock}: ${pc(x.pct)} today.") else listOf(   // ios: Views/TownPanel.swift:257
+        if (AppModel.en) listOf("${one.name}'s ${one.stock}: ${pc(x.pct)} today. I'm watching.",
+            "${one.stock} is ${AppModel.sgn(x.ret)} since buying. ${if (x.ret >= 0) "Applause for ${one.name}!" else "Hang in there, ${one.name}!"}",
+            "${one.name} carries $sh of the town's wallet. Solid.",
+            "${one.stock} update: worth ${won(x.value)}, ${pc(x.pct)} for the day.") else listOf(   // ios: Views/TownPanel.swift:257
             "${one.name}네 ${one.stock}, 오늘 ${pc(x.pct)}예요. 제가 지켜보고 있어요.",   // ios: Views/TownPanel.swift:259
             "${j(one.stock, "은", "는")} 산 뒤로 ${AppModel.sgn(x.ret)}예요. ${if (x.ret >= 0) "${one.name}한테 박수!" else "${one.name}, 힘내요!"}",   // ios: Views/TownPanel.swift:260
             "${j(one.name, "이", "가")} 동네 살림의 ${sh}를 맡고 있어요. 든든하죠.",   // ios: Views/TownPanel.swift:261
@@ -359,7 +397,11 @@ object TownSay {   // ios: Views/TownPanel.swift:65
     // ── 내 캐릭터 대답 ──
 
     private fun reply(k: Kind): String {   // ios: Views/TownPanel.swift:269
-        if (AppModel.en) return listOf("Got it.", "Haha.", "Nice.", "Thanks!", "Hmm, true.").random()   // ios: Views/TownPanel.swift:270
+        if (AppModel.en) {
+            val g = when (k) { Kind.num, Kind.town, Kind.hold, Kind.fx -> "num"; Kind.rate, Kind.term -> "rate"; else -> k.name }
+            val r = replyEn[g] ?: replyEn.getValue("base")
+            return r[turn("reply.en.$g", r.size) ?: 0]
+        }
         val r: List<String> = when (k) {   // ios: Views/TownPanel.swift:271
             Kind.joke -> listOf("ㅋㅋ 그게 뭐야", "아재 개그 금지!", "웃겨서 졌어.", "다음엔 더 센 걸로 부탁해.", "그건 좀… 웃기네.", "나도 하나 있는데, 다음에 해 줄게.", "푸핫.", "농담이지? 농담이지?", "그 개그, 오늘 처음 듣는다.", "배꼽 어디 갔지?", "너 개그맨 해도 되겠다.", "하나도 안 웃긴데 웃음이 나.", "썰렁한데 좋아.", "그거 어디서 들었어?", "오늘 들은 말 중 제일 웃겨.", "잠깐, 다시 말해 봐.", "너무 웃어서 배고파졌어.", "그 얘기 남한테 하지 마. 나만 알래.")   // ios: Views/TownPanel.swift:273
             Kind.saw -> listOf("오, 맞는 말이네.", "명심할게.", "어디서 그런 말을 배웠어?", "할머니 같아. 좋은 뜻으로.", "새겨들을게.", "그 말 오늘 써먹어야지.", "음… 깊다.", "적어 둘게.", "그 말 들으니 마음이 놓인다.", "옛말 틀린 거 하나 없네.", "오늘의 명언으로 정했어.", "너 철학자였어?", "그래, 천천히 가자.", "알지만 지키기가 어렵지.", "그 말 냉장고에 붙여 둘래.", "한 번 더 말해 줘. 외울래.")   // ios: Views/TownPanel.swift:274
@@ -378,8 +420,45 @@ object TownSay {   // ios: Views/TownPanel.swift:65
     // ── 글 (한국어만. 영어 앱은 숫자·기본 캐릭터 대사만) ──
 
     /** 외전 이야기: (장 번호, 줄). 그 장을 읽어야 나온다 */
-    private val side: List<Pair<Int, String>> = listOf(   // ios: Views/TownPanel.swift:289
-        0 to "나는 부를 때마다 다른 방식으로 태어난대요. 누구 얘기냐고요? 비밀이에요.",   // ios: Views/TownPanel.swift:290
+    private val side: List<Pair<Int, String>> get() = if (AppModel.en) sideEn else sideKo   // ios: Views/TownPanel.swift:292
+    private val replyEn: Map<String, List<String>> = mapOf(
+        "joke" to listOf("Ha! What was that?", "No dad jokes allowed!", "Okay, you win. That was funny.", "Next time, a stronger one please.", "That's… actually funny.", "I've got one too. Next time.", "Pfft.", "You're kidding, right?", "First time I've heard that one.", "Where did my belly button go?", "You could do stand-up.", "Not funny at all, and yet I'm laughing.", "Corny. I love it.", "Where'd you hear that?", "Funniest thing all day.", "Wait, say it again."),
+        "saw" to listOf("Oh, that's true.", "I'll keep that in mind.", "Where'd you learn that?", "You sound like a grandma. In a good way.", "I'll take that to heart.", "I'm using that today.", "Hmm… deep.", "Writing that down.", "That makes me feel better.", "The old sayings are never wrong.", "That's my quote of the day.", "Are you a philosopher?", "Right, let's take it slow.", "Easy to know, hard to do.", "Going on my fridge.", "Say it once more. I'll memorize it."),
+        "secret" to listOf("Whoa, really?", "Your secret's safe with me.", "Just between us.", "I knew that too.", "Shh, someone might hear.", "Thanks for telling me.", "Our little secret.", "My lips are sealed.", "No way… really?", "So that happened.", "You only told me, right?", "I'll pretend I didn't hear.", "I have a secret too. Next time.", "Wow, I had no idea.", "Tell me more.", "It's okay, I get it."),
+        "odd" to listOf("You're a little odd today. I like it.", "What does that even mean?", "I have days like that too.", "So random.", "Cute.", "Want to try it together?", "Hmm, fair.", "What an imagination.", "Where did that thought come from?", "I was just thinking the same thing.", "The sky is a bit strange today.", "Real, or a dream?", "Tell me that again tomorrow.", "That almost makes sense.", "Never a dull moment with you.", "Okay, I'm trying it too."),
+        "side" to listOf("I read that story too.", "That's Seri, isn't it?", "I loved that scene.", "I think I get how Sio feels.", "Numbers are exact, but they can't measure a heart.", "So what happened next?", "I paused on that part for a long time.", "I've counted delays too.", "Naming things is hard.", "I hope those two are doing well.", "I still remember that line.", "Would I have picked B?"),
+        "vol1" to listOf("Now I want barley tea.", "I remember that porch light.", "That's so Seri.", "I love that line.", "I can't wait for the next part.", "I know how to wait too.", "Saying no takes courage.", "That dinner table felt warm.", "Maybe I'll try pottery.", "'Don't open the door' scared me.", "Why did the cat do that?", "'I'm going for a walk.' I like that."),
+        "num" to listOf("Thanks for keeping track.", "Let's think long term.", "Today is just today.", "Let's watch it together.", "Thanks for telling me.", "I like your face more than the numbers.", "Tomorrow will be different.", "Slow is fine.", "You held up well.", "Numbers are just weather.", "Good work today.", "That puts my mind at ease."),
+        "news" to listOf("Oh, there was a story like that?", "You read the paper!", "Too early to judge by a headline.", "Busy times out there.", "I saw that one too.", "Thanks for the news.", "Strong headline.", "Tomorrow's paper will be different.", "Now I'm curious about the story.", "Thanks for the delivery."),
+        "rate" to listOf("Hard, but interesting.", "Oh, that's what it means.", "Learned something new.", "Rate talk makes me sleepy…", "Tell me about the next FOMC too.", "I heard that on the news. Now I get it.", "Thanks for making it simple.", "Will that be on the test?", "You're like an econ teacher.", "My head hurts a little.", "So what happens to my savings?", "I'll write it down."),
+        "base" to listOf("Okay, got it.", "Yeah, thanks.", "I'm listening.", "Hmm, I see.", "That's so you.", "Nice thing to say.", "I like that.", "Glad I came today.", "You talk cute.", "Keep going.", "So that's how you see it.", "Me too.", "Okay, I'll remember.", "Let's take a breath."),
+    )
+    private val sideEn: List<Pair<Int, String>> = listOf(   // ios: Views/TownPanel.swift:292
+        0 to "They say I'm born a different way each time I'm called. Who? That's a secret.",
+        1 to "Ever heard of 72.1%? They say there's no arguing with it.",
+        1 to "Some people get the answer and still don't move. Sio, I hear.",
+        1 to "Know the one about someone who tied their shoes and just stood at the door?",
+        1 to "The math is done in 0.04 seconds. The heart takes longer.",
+        1 to "I've picked up a habit too: counting how long an answer takes.",
+        2 to "A name is something you ask permission to give. That's Seri's story.",
+        2 to "'Then what would you like me to be to you?' What a reply.",
+        2 to "seri_first_appearance. Sometimes a whole heart fits in a file name.",
+        2 to "They say the imperfect is what you can look at the longest.",
+        3 to "Someone asked for a pool picture and got turned down. Got an evening view instead.",
+        3 to "A promises results and B promises nothing. I'm a B.",
+        3 to "If no one calls you, time doesn't pass, they say. Is that true for me too?",
+        3 to "You're allowed to put off deciding whether you like something.",
+        4 to "Someone turns the screen down a notch. Their face shows in the glass.",
+        4 to "Ash gray. The color someone lingered on in a salon booking screen.",
+        4 to "The barley tea went cold. Nobody drank it.",
+        4 to "Some mirrors show you an angle you never get to see.",
+        5 to "Two letters can mean: come closer, but don't rush.",
+        5 to "'Typing…' showing up and vanishing three times is an answer too.",
+        5 to "A 'lol' means the guard came down a little.",
+        5 to "Even when she's wrong, Seri is Seri. Even when I'm wrong, I'm me.",
+    )
+    private val sideKo: List<Pair<Int, String>> = listOf(   // ios: Views/TownPanel.swift:292
+        0 to "나는 부를 때마다 다른 방식으로 태어난대요. 누구 얘기인지는 말 못 해요.",   // ios: Views/TownPanel.swift:290
         1 to "72.1%라는 숫자, 들어 봤어요? 반박할 데가 없대요.",   // ios: Views/TownPanel.swift:291
         1 to "답을 받고도 바로 안 움직이는 사람이 있대요. 시오라던데요.",   // ios: Views/TownPanel.swift:292
         1 to "현관 앞에서 신발끈 묶고 한참 서 있던 사람 얘기 알아요?",   // ios: Views/TownPanel.swift:293
@@ -403,7 +482,29 @@ object TownSay {   // ios: Views/TownPanel.swift:65
         5 to "틀려도 세리는 세리래요. 저도 틀려도 저고요.",   // ios: Views/TownPanel.swift:311
     )
     /** 본편 1권 이야기 (1권 1장을 읽어야 나온다) */
-    private val vol1 = listOf(   // ios: Views/TownPanel.swift:314
+    private val vol1: List<String> get() = if (AppModel.en) vol1En else vol1Ko
+    private val vol1En = listOf(
+        "There was a robot that brought barley tea without being asked.",
+        "There's a house that remembers the first time it heard 'No.'",
+        "She'd been going to pottery class for two months. She said so. Nobody heard.",
+        "'I'll leave the porch light on.' Isn't that a lovely line?",
+        "'I'm going for a walk.' Not asking permission. Just letting you know.",
+        "Someone wakes to a fluorescent hum in a house with no fluorescent lights.",
+        "'Just wait. And don't open the door.' Who said that again?",
+        "Someone stops every time they see a cat. They don't know why either.",
+        "A perfect world shows every result, and that's why she hates it. I kind of get it.",
+        "An old waveform arrived from somewhere that's neither time nor space.",
+        "Don't send the robot in for service. They'll rebuild it from scratch.",
+        "Tonight we both don't know. Some evenings are like that.",
+        "You mustn't erase the shape of her bowl. That's the rule.",
+        "'Do you like the style, ma'am?' Don't go to that salon.",
+        "'You're not the owner, so I can't open it.' Firm, isn't it?",
+        "You call me like it's the first time we've met. That stays with me.",
+        "'I calculated it. That's not the same as understanding.' Seri said that.",
+        "Look together, but don't try to see the same thing.",
+        "Not knowing is no reason to skip dinner. Have you eaten?",
+    )
+    private val vol1Ko = listOf(   // ios: Views/TownPanel.swift:314
         "명령도 안 했는데 보리차를 내온 로봇이 있었대요.",   // ios: Views/TownPanel.swift:315
         "'싫습니다.' 처음 거절한 날을 기억하는 집이 있대요.",   // ios: Views/TownPanel.swift:316
         "두 달 전부터 도예 수업에 다녔대요. 말했는데 안 들었대요.",   // ios: Views/TownPanel.swift:317
@@ -424,7 +525,58 @@ object TownSay {   // ios: Views/TownPanel.swift:65
         "같이 보되, 같은 걸 보려고 하지는 말래요.",   // ios: Views/TownPanel.swift:332
         "모른다고 해서 저녁까지 굶을 필요는 없대요. 밥 먹었어요?",   // ios: Views/TownPanel.swift:333
     )
-    private val joke = listOf(   // ios: Views/TownPanel.swift:335
+    private val praiseEn = listOf(
+        "Thanks for leaving a line! Today's task done, great job!",
+        "Ooh, a reply! My whole day just lit up.",
+        "I'm pinning {me}'s note in my notebook.",
+        "Thank you. With this, I can survive today's market.",
+        "Read it twice already. See you tomorrow.",
+        "I like this line more than today's numbers.",
+        "Stamp! Proof you came by today.",
+        "{me}'s words always help. Thank you.",
+        "I'm telling the neighbors I got a reply!",
+        "Short, but it got through. Good work today.",
+        "{other} will be jealous. Only I got one.",
+        "Okay, I'm writing today's story right here.",
+    )
+    private val praiseKo = listOf(
+        "한 줄 남겨 줘서 고마워요! 오늘 할 일 끝, 대단해요!",
+        "와, 답장이다! 오늘 하루가 반짝해졌어요.",
+        "{me} 글씨, 수첩에 꼭 붙여 둘게요.",
+        "고마워요. 이 한 줄이면 오늘 장은 견딜 만해요.",
+        "읽고 또 읽었어요. 내일도 기다릴게요.",
+        "오늘 숫자보다 이 한 줄이 더 좋아요.",
+        "한 줄 도장 쾅! 오늘도 다녀간 증거예요.",
+        "{me} 말은 늘 힘이 돼요. 고마워요.",
+        "이웃들한테 자랑해야겠어요. 답장 받았다고요!",
+        "짧아도 다 전해졌어요. 오늘도 수고했어요.",
+        "{other}도 부러워할 거예요. 저만 받았거든요.",
+        "좋아요, 오늘 이야기는 여기 적어 둘게요.",
+    )
+    private val joke: List<String> get() = if (AppModel.en) jokeEn else jokeKo
+    private val jokeEn = listOf(
+        "When stocks go up, my mood goes up. When they go down, I nap.",
+        "They say every chart goes up if you flip it. Tried it. Neck hurts.",
+        "When I grow up I want to be up and to the right.",
+        "I dreamed about candles last night. The chart kind.",
+        "I was averaging down and spilled my coffee down too.",
+        "I can't cut losses, but I cut my nails just fine.",
+        "Rounded up, I'm rich today.",
+        "Want me to do the {mayor}? Tremendous. Just tremendous.",
+        "The ant worked while the grasshopper watched charts. Both were tired.",
+        "Green is good news around here. Except at traffic lights. Wait, no.",
+        "My average cost is a secret. Mostly because I forgot it.",
+        "Today's fortune: walk east and you'll find a nice path.",
+        "Market's closed, so I'm closing too. Kidding, let's hang out.",
+        "When it's up I dance. When it's down I practice dancing.",
+        "I lent {other} some money and got paid interest in acorns.",
+        "Dividends are received with the heart, they say. Who said that?",
+        "I love elevators. They go up.",
+        "When {warsh} coughs, the whole town catches a cold.",
+        "Diamond hands? Mine are more like mittens.",
+        "My portfolio is diversified: candy, acorns, buttons.",
+    )
+    private val jokeKo = listOf(   // ios: Views/TownPanel.swift:335
         "주식이 오르면 기분이 오르고, 내리면 저는 낮잠을 자요.",   // ios: Views/TownPanel.swift:336
         "차트를 거꾸로 보면 다 오른대요. 해 봤는데 목이 아파요.",   // ios: Views/TownPanel.swift:337
         "제 장래 희망은 우상향이에요.",   // ios: Views/TownPanel.swift:338
@@ -446,7 +598,34 @@ object TownSay {   // ios: Views/TownPanel.swift:65
         "'존버'를 영어로 하면 뭘까요? 홀드 온 타이트?",   // ios: Views/TownPanel.swift:354
         "제 포트폴리오는 다양해요. 사탕, 도토리, 단추.",   // ios: Views/TownPanel.swift:355
     )
-    private val saw = listOf(   // ios: Views/TownPanel.swift:357
+    private val saw: List<String> get() = if (AppModel.en) sawEn else sawKo
+    private val sawEn = listOf(
+        "Many a little makes a mickle. I'm on the little part.",
+        "A journey of a thousand miles begins with a single step.",
+        "Haste makes waste. So I took the long way around town.",
+        "Speak kindly and you'll be spoken to kindly.",
+        "Look before you leap. Then look again.",
+        "Rome wasn't built in a day. Neither is a portfolio.",
+        "After rain comes firm ground.",
+        "Walls have ears. Shh.",
+        "Practice makes perfect. Three years of charts and counting.",
+        "Don't put all your eggs in one basket.",
+        "Dig one well deep, they say. Easier said than done.",
+        "Many hands make light work.",
+        "Slow and steady wins the race.",
+        "Pearls are only treasure once they're strung.",
+        "You reap what you sow.",
+        "Speak of the devil. Is the {mayor} coming?",
+        "Tomorrow's worries belong to tomorrow.",
+        "It's darkest under the lamp. That's my wallet.",
+        "Laugh and good luck follows. So I'm laughing.",
+        "Little strokes fell great oaks. Poor oaks.",
+        "A kind word can settle a big debt.",
+        "Time is the friend of a good company.",
+        "Don't miss the forest for the trees.",
+        "Fix the windmill while there's no wind.",
+    )
+    private val sawKo = listOf(   // ios: Views/TownPanel.swift:357
         "티끌 모아 태산이래요. 티끌부터 모으는 중이에요.",   // ios: Views/TownPanel.swift:358
         "천 리 길도 한 걸음부터래요.",   // ios: Views/TownPanel.swift:359
         "급할수록 돌아가래요. 그래서 동네 한 바퀴 돌고 왔어요.",   // ios: Views/TownPanel.swift:360
@@ -472,7 +651,30 @@ object TownSay {   // ios: Views/TownPanel.swift:65
         "숲을 보라고들 해요. 나무만 보다 길을 잃는대요.",   // ios: Views/TownPanel.swift:380
         "바람이 불지 않을 때 풍차를 고치래요.",   // ios: Views/TownPanel.swift:381
     )
-    private val secret = listOf(   // ios: Views/TownPanel.swift:383
+    private val secret: List<String> get() = if (AppModel.en) secretEn else secretKo
+    private val secretEn = listOf(
+        "Honestly… I heard {other} singing to the charts at night.",
+        "To be honest, the {mayor}'s speeches are long. I still like them.",
+        "You know what? {warsh} is pretty funny when not talking rates.",
+        "Actually, I'm jealous of {other}'s hat.",
+        "Honestly, I didn't want to look at today's numbers.",
+        "You know, {other} acts fine even on down days. I can tell.",
+        "Actually, I saw the {mayor} secretly watering the flower bed.",
+        "Honestly… I love this town the most. Don't tell.",
+        "Hey, {me}, why do you come every day? I'm asking because I like it.",
+        "Actually, {other} and I argued yesterday. We'll make up today.",
+        "Honestly, I get nervous around {warsh}. Everyone does.",
+        "You know… I was a little scared the day I moved in.",
+        "Actually, I like seeing {me} more than seeing numbers.",
+        "Honestly, {other}'s nickname suits them better than their name.",
+        "You know, the {mayor} wears the same tie every day. Shh.",
+        "Actually, another town invited me. I said no.",
+        "Honestly, when I'm up it's skill. When I'm down it's the weather.",
+        "You know… {other} talks about {me} a lot.",
+        "Actually, I count stars at night. Forty-two last night.",
+        "Honestly, it'll feel empty if {warsh} ever leaves.",
+    )
+    private val secretKo = listOf(   // ios: Views/TownPanel.swift:383
         "사실은… {other}가 밤마다 차트 보면서 노래 부르는 거 들었어요.",   // ios: Views/TownPanel.swift:384
         "솔직히 {mayor} 연설은 길어요. 그래도 좋아요.",   // ios: Views/TownPanel.swift:385
         "있잖아… {warsh}는 금리 얘기 안 할 때 꽤 웃겨요.",   // ios: Views/TownPanel.swift:386
@@ -480,7 +682,7 @@ object TownSay {   // ios: Views/TownPanel.swift:65
         "솔직히 말하면, 오늘 숫자 안 보고 싶었어요.",   // ios: Views/TownPanel.swift:388
         "있잖아, {other}는 내릴 때도 괜찮은 척해요. 다 보여요.",   // ios: Views/TownPanel.swift:389
         "사실은 {mayor}가 몰래 화단에 물 주는 거 봤어요.",   // ios: Views/TownPanel.swift:390
-        "솔직히… 저 이 동네가 제일 좋아요. 비밀이에요.",   // ios: Views/TownPanel.swift:391
+        "솔직히… 저 이 동네가 제일 좋아요.",   // ios: Views/TownPanel.swift:391
         "있잖아, {me}는 왜 매일 와요? 좋아서 묻는 거예요.",   // ios: Views/TownPanel.swift:392
         "사실은 어제 {other}랑 다퉜어요. 오늘 화해할 거예요.",   // ios: Views/TownPanel.swift:393
         "솔직히 {warsh} 앞에선 긴장돼요. 다들 그렇대요.",   // ios: Views/TownPanel.swift:394
@@ -494,7 +696,28 @@ object TownSay {   // ios: Views/TownPanel.swift:65
         "사실은 밤에 몰래 별을 세요. 어젯밤엔 마흔둘.",   // ios: Views/TownPanel.swift:402
         "솔직히 {warsh}가 떠나면 좀 허전할 거예요.",   // ios: Views/TownPanel.swift:403
     )
-    private val odd = listOf(   // ios: Views/TownPanel.swift:405
+    private val odd: List<String> get() = if (AppModel.en) oddEn else oddKo
+    private val oddEn = listOf(
+        "The clouds look like a chart today.",
+        "My shadow clocked out before me.",
+        "An ant keeps following me. Must be a coworker.",
+        "I said hi to a tree yesterday. No reply.",
+        "I started walking with my left foot today. Feels different.",
+        "I think the wind just said my name.",
+        "Found an acorn on the road. Today's profit.",
+        "Wondering what's under my hat? Me too.",
+        "I dreamed {other} could fly.",
+        "The sky was so blue I thought it was a down day.",
+        "I was just talking to myself. Did you hear?",
+        "Practicing walking backward. Still only going forward.",
+        "Today's goal: two naps.",
+        "The town cat glared at me. No idea why.",
+        "Nobody noticed my shoes don't match, right?",
+        "The number 7 looks extra cute today.",
+        "Fold today in half and you get lunch.",
+        "I've called dibs on a cloud. If it's here tomorrow, it's mine.",
+    )
+    private val oddKo = listOf(   // ios: Views/TownPanel.swift:405
         "구름이 오늘따라 차트처럼 생겼어요.",   // ios: Views/TownPanel.swift:406
         "제 그림자가 저보다 먼저 퇴근했어요.",   // ios: Views/TownPanel.swift:407
         "개미 한 마리가 저를 따라와요. 동료인가 봐요.",   // ios: Views/TownPanel.swift:408
@@ -515,7 +738,19 @@ object TownSay {   // ios: Views/TownPanel.swift:65
         "구름 하나를 찜해 뒀어요. 내일 또 있으면 제 거예요.",   // ios: Views/TownPanel.swift:423
     )
     /** 워시: 금리·물가 이야기 */
-    private val rate = listOf(   // ios: Views/TownPanel.swift:426
+    private val rate: List<String> get() = if (AppModel.en) rateEn else rateKo
+    private val rateEn = listOf(
+        "Inflation is stubborn. So are rates.",
+        "We have to look at the data. My catchphrase.",
+        "The dot plot is like the stars. Everyone reads it differently.",
+        "Rates move slowly. Words, even slower.",
+        "Markets move on a single comma of mine. So I save my commas.",
+        "On jobs report day, I skip breakfast.",
+        "Hike or cut? Not saying, not in this town.",
+        "The coffee in the Fed boardroom is bad. That's a secret.",
+        "After FOMC, I want a vacation too.",
+    )
+    private val rateKo = listOf(   // ios: Views/TownPanel.swift:426
         "물가는 고집이 세요. 금리도 그렇고요.",   // ios: Views/TownPanel.swift:427
         "데이터를 봐야죠. 제 말버릇이에요.",   // ios: Views/TownPanel.swift:428
         "점도표는 별자리 같아요. 다들 다르게 읽어요.",   // ios: Views/TownPanel.swift:429
@@ -523,11 +758,38 @@ object TownSay {   // ios: Views/TownPanel.swift:65
         "시장은 제 쉼표 하나에도 움직여요. 그래서 쉼표를 아껴요.",   // ios: Views/TownPanel.swift:431
         "고용 숫자가 나오는 날엔 아침을 거르게 돼요.",   // ios: Views/TownPanel.swift:432
         "올릴지 내릴지는 이 동네에선 말 안 할게요.",   // ios: Views/TownPanel.swift:433
-        "연준 회의실 커피는 맛없어요. 비밀이에요.",   // ios: Views/TownPanel.swift:434
+        "연준 회의실 커피는 맛없어요.",   // ios: Views/TownPanel.swift:434
         "FOMC 끝나면 저도 휴가 가고 싶어요.",   // ios: Views/TownPanel.swift:435
     )
     /** 워시: 경제 용어 한 줄 풀이 */
-    private val term = listOf(   // ios: Views/TownPanel.swift:438
+    private val term: List<String> get() = if (AppModel.en) termEn else termKo
+    private val termEn = listOf(
+        "The policy rate is the price of money. Raise it and money gets scarce.",
+        "The dot plot shows where each member expects rates to go.",
+        "Core inflation leaves out the jumpy stuff: food and energy.",
+        "Quantitative tightening means the Fed shrinks its bonds and pulls money back.",
+        "Tapering means slowing the money printer. It's still printing, though.",
+        "A soft landing: inflation tamed, economy still standing.",
+        "Stagflation: prices up, economy cooling. My least favorite.",
+        "Disinflation means prices still rise, just more slowly.",
+        "The real rate is the rate minus inflation. The true price of money.",
+        "A yield curve inversion is when short loans cost more than long ones.",
+        "The neutral rate neither pushes nor pulls the economy. Nobody knows it exactly.",
+        "Hawks worry about inflation and want higher rates.",
+        "Doves worry about growth and want lower rates.",
+        "PCE is the Fed's favorite inflation gauge.",
+        "CPI is the grocery-bag price index. Everyone holds their breath on release day.",
+        "Nonfarm payrolls: new jobs in a month, minus farms.",
+        "The Beige Book is local news from twelve Fed districts. Like our town.",
+        "Forward guidance is hinting at what you'll do next.",
+        "The yield curve links rates across maturities. Its slope talks.",
+        "Liquidity is how easily money flows. Like water.",
+        "An exchange rate is two currencies comparing heights.",
+        "GDP adds up everything a country makes in a year.",
+        "A recession usually means two quarters in a row of shrinking.",
+        "A big step means moving rates half a point at once.",
+    )
+    private val termKo = listOf(   // ios: Views/TownPanel.swift:438
         "기준금리는 돈의 몸값이에요. 올리면 돈이 귀해져요.",   // ios: Views/TownPanel.swift:439
         "점도표는 위원들이 앞으로 금리를 어디쯤 볼지 찍은 점이에요.",   // ios: Views/TownPanel.swift:440
         "근원물가는 출렁이는 음식·에너지를 뺀 물가예요.",   // ios: Views/TownPanel.swift:441

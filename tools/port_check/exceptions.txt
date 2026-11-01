@@ -33,10 +33,10 @@ Data/Me.swift:204 플랫폼: en_US_POSIX 는 자바에 없는 이름, 같은 뜻
 Data/ForecastEngine.swift:116 검사기 한계: 부호 없는 64비트 상수 uL (옮김, ForecastEngine.kt fnv)
 # C 단계 (goal): Recovery.swift → core/calc/Recovery.kt, GoalRoute.swift → core/calc/GoalRoute.kt
 Data/Recovery.swift:176 검사기 한계: 보간 속 따옴표 String(format: "%.4f") (옮김, Recovery.kt paths key)
-Data/GoalRoute.swift:313 검사기 한계: 보간 속 따옴표 replacingOccurrences(of: "원") (옮김, GoalRoute.kt goalPresets meaning)
-Data/GoalRoute.swift:321 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, GoalRoute.kt goalPresets need)
-Data/GoalRoute.swift:368-369 검사기 한계: 보간 속 따옴표 (옮김, GoalRoute.kt shift own line·note)
-Data/GoalRoute.swift:391 검사기 한계: 보간 속 따옴표 replacingOccurrences(of: " 뒤") (옮김, GoalRoute.kt shift note)
+Data/GoalRoute.swift:333 검사기 한계: 보간 속 따옴표 replacingOccurrences(of: "원") (옮김, GoalRoute.kt goalPresets meaning)
+Data/GoalRoute.swift:341 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, GoalRoute.kt goalPresets need)
+Data/GoalRoute.swift:388-389 검사기 한계: 보간 속 따옴표 (옮김, GoalRoute.kt shift own line·note)
+Data/GoalRoute.swift:411 검사기 한계: 보간 속 따옴표 replacingOccurrences(of: " 뒤") (옮김, GoalRoute.kt shift note)
 # C 단계 (par): Data/Parallel.swift → core/calc/Parallel.kt
 Data/Parallel.swift:611 보간 안에 따옴표("")가 겹쳐 검사기가 조각(")")을 문구로 읽음. Parallel.kt parallelRun 의 key 줄에 같은 동작으로 옮김
 Data/Parallel.swift:678 보간 안에 따옴표("%.1f")가 겹쳐 검사기가 조각(", need * 100)))%")을 문구로 읽음. Parallel.kt parallelDistance 에 같은 동작으로 옮김
@@ -61,9 +61,8 @@ Data/Backup.swift:67 플랫폼: SwiftUI FileDocument 의 읽을 형식(.json). �
 Data/Backup.swift:73-74 플랫폼: SwiftUI FileDocument 읽기·쓰기 틀. 안드로이드는 BackupFile.data·read 가 바이트를 주고받는다
 Data/Backup.swift:77-78 플랫폼: iOS 보안 범위 파일 접근. 안드로이드 SAF 는 받은 Uri 로 바로 읽는다
 # E 단계 (홈·설정): Views/HomeView·SettingsView·SettingsDetail·StartView·Guide·MyRecordCard·ShareCard → ui/home·ui/settings·ui/start·ui/
-Views/HomeView.swift:191 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, HomeView.kt RecoverSummary 어제→오늘 줄)
-Views/HomeView.swift:295 검사기 한계: 보간 속 따옴표 ?? "" (옮김, HomeView.kt Reminder 일정 띠)
-Views/HomeView.swift:515 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HomeView.kt MiniPath 읽어 주기 글)
+Views/HomeView.swift:162 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, HomeView.kt RecoverSummary 어제→오늘 줄)
+Views/HomeView.swift:250 검사기 한계: 보간 속 따옴표 ?? "" (옮김, HomeView.kt Reminder 일정 띠)
 Views/SettingsView.swift:84 키체인 접근성: KeyVault(Keystore) 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
 Views/SettingsView.swift:314 검사기 한계: 보간 속 따옴표 String(describing:) (옮김, SettingsView.kt PriceBasisView 원/달러 줄)
 Views/SettingsView.swift:315 검사기 한계: 보간 속 따옴표 String(format: "%.2f") (옮김, SettingsView.kt PriceBasisView 평가 환율 줄)
@@ -94,6 +93,7 @@ Views/AnalysisView.swift:260-282 플랫폼: iOS 26 화면 아무 데서나 밀�
 Views/AnalysisView.swift:303 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, AnalysisView.kt ForecastView 물음 글)
 Views/AnalysisView.swift:405-407 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, AnalysisView.kt Table msg)
 Views/AnalysisView.swift:512 검사기 한계: 보간 속 따옴표 String(format: "%d.%02d") (옮김, AnalysisView.kt ForecastView.ym)
+Views/AnalysisView.swift:524 플랫폼: 알약 줄 ZStack 크기(84) 맞춤. 안드로이드 AmtRow 는 부모 BoxWithConstraints(84.dp) 안에 바로 그린다
 Views/ForecastParts.swift:27 검사기 한계: 보간 속 따옴표 String(format: "%.1f억") (옮김, ForecastParts.kt ScenarioChart.axis)
 Views/AnalysisDetail.swift:97 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, AnalysisCommon.kt wonRead)
 # G2 평행 세계·투자 갈래·분석 상세
@@ -247,7 +247,8 @@ Views/ParallelView.swift:439 플랫폼: 432 과 같음 (FitRow 한 줄 고정)
 Data/Sync.swift:304-305 플랫폼: beginBackgroundTask·번호 상자는 안드로이드에 없음 (Sync.kt flush 는 MainScope 로만)
 Data/Sync.swift:308 플랫폼: 288 과 같음 (endBackgroundTask)
 Data/Sync.swift:568 플랫폼: BGTaskBox(UIBackgroundTaskIdentifier 상자)는 안드로이드에 없음
-Views/HomeView.swift:92 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, HomeView.kt sceneOf status "본전까지 +…%")
+Views/HomeView.swift:291 검사기 한계: 보간 속 따옴표 ? "done" : "fresh" (옮김, HomeView.kt HomeSay.home chat)
+Views/HomeView.swift:84 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, HomeView.kt sceneOf status "본전까지 +…%")
 Views/SettingsDetail.swift:383 플랫폼: 안드로이드 런처는 길게 누르면 '위젯' 단추 (SettingsDetail.kt AddStep 2 '"위젯" 누르기')
 Views/SettingsDetail.swift:385-386 플랫폼: 안드로이드는 '추가'로 넣고 위젯 길게 눌러 '설정'(reconfigurable)으로 인물을 바꾼다 (AddStep 4·5)
 Data/Services.swift:88 플랫폼: LocalDate.now() 는 연·월·일이 늘 있어 ?? 1970·1·1 기본값이 없다 (Services.kt series from)
@@ -270,3 +271,7 @@ Views/FlowView.swift:533 플랫폼: Compose 그림자는 shadow(8.dp) 높이로 
 Views/FlowView.swift:538 플랫폼: .transition(.opacity) 는 애니메이션 없이 바뀌는 term 이라 아이폰도 바로 나타난다 (Compose 도 바로)
 Data/TossSum.swift:72-73 플랫폼: java.time ZonedDateTime 은 연·월·일·시가 늘 있어 Calendar 기본값(1970·1·0)이 없다 (TossSum.kt lastLine)
 Data/TossSum.swift:136 플랫폼: 날짜 글자는 Locale.ROOT 로 (en_US_POSIX 와 같은 숫자 꼴)
+Views/HomeView.swift:21 실기기 맞춤: 안드로이드는 padding(end = 6.5.dp) (아이폰 20줄 주석 "안드로이드 실기기 재서 +4.5")
+Views/HomeView.swift:466-474 안드로이드에 없음: FlowRow tail 은 Mock/MockViews.swift 만 쓴다 (안드로이드엔 Mock 화면 없음)
+Views/HomeView.swift:727 검사기 한계: 같은 색 둘을 halo 변수 하나로 씀 (옮김, HomeView.kt HorizonScene 불빛)
+Views/HomeView.swift:919 이름만 다름: 안드로이드는 NavPage 를 돌려주는 homePage(m, route) (App.kt PathSheet)

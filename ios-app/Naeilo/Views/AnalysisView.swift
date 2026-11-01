@@ -449,47 +449,55 @@ struct AnalysisView: View {
         }
     }
 
-    // MARK: 어떻게 올릴까? 구성마다 목표에 닿는 때: 금색 알약 이름 · 슬라이드(점 = 보통, 막대 = 10번 중 8번, 점선 = 목표일) · 연도
+    // MARK: 어떻게 올릴까? 목표일에 가질 금액 (2026-10-30 시안): 가로 금액선 한 줄 · 위 = 내 종목, 아래 = 모의바구니 · 알약 = 보통, 옅은 막대 = 10번 중 8번 · 점선 = 목표
+    static let simTint = Color(hex: 0x7A5BC7, dark: 0xA58BEA)
+
     private var raise: some View {
-        let yrsE = m.etaYears
-        let mixes = [(String(localized: "지금 구성"), m.nowMix), (String(localized: "성장 구성"), AppModel.mixes[1]), (String(localized: "방패 구성"), AppModel.mixes[2])]
-        // 모의바구니: 평행 세계에 저장한 모의 바구니 (없으면 줄을 숨긴다)
+        // 모의바구니: 평행 세계에 저장한 모의 바구니 (비었으면 그 자리에 안내). 종목은 키 순서로 (사전 순서는 실행마다 달라 경로가 달라진다)
         let mine = m.pworld?.segs.last?.w.filter { $0.value > 0 } ?? [:]
-        let customSim: GoalSim? = mine.isEmpty ? nil : m.simulate(m.nowMix, years: yrsE, parts: mine.map { id, x in
+        let me = m.amountAtGoal(m.nowMix)
+        let sim: GoalAmt? = mine.isEmpty ? nil : m.amountAtGoal(m.nowMix, parts: mine.sorted { $0.key < $1.key }.map { id, x in
             let usd = m.rows.first { $0.id == id }.map { $0.sym.currency == .usd } ?? ExtraStats.shared.usd(id) ?? true
             return (key: SiteStats.mcKey(id), ccy: usd ? "USD" : "KRW", w: x)
         })
-        let customDesc = mine.sorted { $0.value > $1.value }.prefix(3).map { id, x in
-            let name = m.rows.first { $0.id == id }?.sym.name ?? Parallel.universe.first { $0.id == id }?.name ?? ExtraStats.shared.name(id) ?? id
-            return "\(name) \(Int((x * 100).rounded()))"
-        }.joined(separator: " · ") + (mine.count > 3 ? " …" : "")
-        let sims = mixes.map { m.simulate($0.1, years: yrsE) } + (customSim.map { [$0] } ?? [])
-        let goalMo = max(0, m.goalToDate.timeIntervalSince(Date()) / (365.25 * 86400) * 12)
-        let ax = EtaRow.axis(sims, goalYear: AppModel.yearAt(goalMo)), a0 = ax.0, a1 = ax.1
-        let x = { (y: Double) in min(1, max(0, (y - a0) / max(0.5, a1 - a0))) }
-        let step = a1 - a0 > 6 ? 2 : 1
-        let ys = Array(stride(from: Int(a0), through: Int(a1), by: step))
-        return panel(String(localized: "어떻게 올릴까?")) {
-            HStack(spacing: 8) {
-                Color.clear.frame(width: 84, height: 1)
-                GeometryReader { g in
-                    ForEach(ys, id: \.self) { y in
-                        Text(String(format: "'%02d", y % 100)).appFont(11).foregroundStyle(Theme.sub).fixedSize()
-                            .position(x: min(g.size.width - 10, max(10, x(Double(y)) * g.size.width)), y: 7)
+        let K = max(1, m.gK * 1e4), top = K * 1.2
+        // 축 단위: 억 (목표가 1억 아래면 만), 영어는 M (100억 넘으면 B). 알약 숫자는 단위 없이 (단위는 축에)
+        let u: (v: Double, s: String) = AppModel.en ? (K >= 1e10 ? (1e9, "B") : (1e6, "M")) : (K >= 1e8 ? (1e8, String(localized: "억")) : (1e4, String(localized: "만")))
+        let step = Self.niceStep(K / u.v / 5)
+        let ticks = Array(stride(from: 0, through: K / u.v - step * 0.6, by: step))
+        let x = { (v: Double) in CGFloat(min(1, max(0, v / top))) }
+        let c = Calendar.current.dateComponents([.year, .month], from: m.goalToDate)
+        let goalDay = "\(c.year ?? 0).\(c.month ?? 0)", goalName = "\(m.keyName) \(AppModel.wonK(m.gK))"
+        let say = [me.map { String(localized: "내 종목") + " " + AppModel.eok($0.med) }, sim.map { String(localized: "모의바구니") + " " + AppModel.eok($0.med) }].compactMap { $0 }
+        return panel(String(localized: "어떻게 올릴까?"), spacing: 6) {
+            GeometryReader { g in
+                let w = g.size.width, ax: CGFloat = 36, gx = x(K) * w
+                ZStack(alignment: .topLeading) {
+                    Rectangle().fill(Theme.dash).frame(width: w, height: 2).position(x: w / 2, y: ax)
+                    ForEach(ticks.indices, id: \.self) { i in
+                        let tx = x(ticks[i] * u.v) * w
+                        Rectangle().fill(Theme.dash).frame(width: 1, height: 6).position(x: tx, y: ax)
+                        Text(Self.tick(ticks[i], u.s)).appFont(10).foregroundStyle(Theme.sub).fixedSize().position(x: max(10, tx), y: ax + 42)
+                    }
+                    Path { $0.move(to: CGPoint(x: gx, y: 14)); $0.addLine(to: CGPoint(x: gx, y: ax + 34)) }
+                        .stroke(Self.warn, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    Text(goalDay).appFont(10, .bold).foregroundStyle(Self.warn).fixedSize().position(x: gx, y: 7)
+                    Text(goalName).appFont(10, .bold).foregroundStyle(Self.warn).fixedSize().position(x: gx, y: ax + 42)
+                    if let me { amtRow(me, y: ax - 17, tint: Theme.teal, x: x, w: w, unit: u.v) }
+                    if let sim { amtRow(sim, y: ax + 17, tint: Self.simTint, x: x, w: w, unit: u.v) }
+                    else if mine.isEmpty {
+                        Text("모의바구니와 비교할 수 있어요").appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
+                            .frame(width: max(10, gx - 8)).position(x: gx / 2, y: ax + 17)
                     }
                 }
-                .frame(height: 14)
-                Color.clear.frame(width: 52, height: 1)
+                .frame(width: w, height: 84)
             }
-            .accessibilityHidden(true)
-            ForEach(mixes.indices, id: \.self) { i in
-                etaLine(mixes[i].0, mixes[i].1.desc, sims[i], x: x, gx: x(AppModel.yearAt(goalMo)), mine: i == 0)
-            }
-            if let customSim {
-                etaLine(String(localized: "모의바구니"), customDesc, customSim, x: x, gx: x(AppModel.yearAt(goalMo)), mine: false)
-            }
-            HStack(spacing: 8) {
-                Text("● 보통 · ─ 10번 중 8번 · ┊ 목표일").appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
+            .frame(height: 84)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(goalDay) \(goalName), " + say.joined(separator: ", "))
+            HStack(spacing: 12) {
+                legend(Theme.teal, String(localized: "내 종목"))
+                legend(Self.simTint, String(localized: "모의바구니"))
                 Spacer(minLength: 4)
                 if !m.rows.isEmpty {   // 처음 루트도 종목을 담았으면 보인다
                     Button { comparing = true } label: {
@@ -500,38 +508,42 @@ struct AnalysisView: View {
                     .sheet(isPresented: $comparing) { MyPathCompareView() }
                 }
             }
+            .padding(.top, 4)
         }
     }
 
-    private func etaLine(_ name: String, _ desc: String, _ s: GoalSim, x: (Double) -> Double, gx: Double, mine: Bool) -> some View {
-        let lo = x(AppModel.yearAt(s.etaLo)), hi = s.etaHi.isFinite ? x(AppModel.yearAt(s.etaHi)) : 1
-        let mid = s.etaMonths.isFinite ? x(AppModel.yearAt(s.etaMonths)) : 1
-        let range = mine ? Color(hex: 0xA9D6CB, dark: 0x2F6B62) : Color(hex: 0xA9B0BA, dark: 0x4A5260)
-        let dot = mine ? Theme.teal : Color(hex: 0x4A5260, dark: 0xA9B0BA)
-        let when = AppModel.whenText(s.etaMonths, cap: s.capYears)
-        return VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Text(name).appFont(12, .bold).foregroundStyle(Theme.inkFixed).lineLimit(1).fixedSize()
-                    .padding(.horizontal, 9).padding(.vertical, 3).background(Theme.yellow, in: Capsule())
-                    .frame(width: 84, alignment: .leading)
-                GeometryReader { g in
-                    let w = g.size.width
-                    ZStack(alignment: .topLeading) {
-                        Rectangle().fill(Theme.dash).frame(width: w, height: 2).offset(y: 6)
-                        Path { $0.move(to: CGPoint(x: gx * w, y: -2)); $0.addLine(to: CGPoint(x: gx * w, y: 16)) }
-                            .stroke(Theme.sub, style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
-                        Capsule().fill(range).frame(width: max(6, (hi - lo) * w), height: 4).offset(x: lo * w, y: 5)
-                        Circle().fill(dot).frame(width: 14, height: 14).offset(x: mid * w - 7)
-                    }
-                    .animation(.easeInOut(duration: 0.25), value: s.etaMonths)
-                }
-                .frame(height: 14)
-                Text(when).appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.6).frame(width: 52, alignment: .trailing)
-            }
-            Text(desc).appFont(12).foregroundStyle(Theme.sub).lineLimit(1)
+    /// 한 바구니: 옅은 막대(10번 중 8번) 위에 보통 금액 알약
+    private func amtRow(_ a: GoalAmt, y: CGFloat, tint: Color, x: (Double) -> CGFloat, w: CGFloat, unit: Double) -> some View {
+        let lo = x(a.lo) * w, hi = x(a.hi) * w, mid = x(a.med) * w
+        return ZStack(alignment: .topLeading) {
+            Capsule().fill(tint.opacity(0.25)).frame(width: max(6, hi - lo), height: 6).position(x: (lo + max(lo + 6, hi)) / 2, y: y)
+            Text(Self.num(a.med / unit)).appFont(11, .bold).foregroundStyle(Theme.card).lineLimit(1).fixedSize()
+                .padding(.horizontal, 7).frame(minWidth: 34, minHeight: 18).background(tint, in: Capsule())
+                .position(x: min(w - 18, max(18, mid)), y: y)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(name), 보통 \(when), 10번 중 8번은 \(AppModel.whenText(s.etaLo, cap: s.capYears))에서 \(AppModel.whenText(s.etaHi, cap: s.capYears)) 사이")
+        .frame(width: w, height: 84)
+        .animation(.easeInOut(duration: 0.25), value: a.med)
+    }
+
+    private func legend(_ c: Color, _ t: String) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(c).frame(width: 10, height: 10)
+            Text(t).appFont(12).foregroundStyle(Theme.sub).lineLimit(1)
+        }
+    }
+
+    /// 눈금 간격: 1·2·2.5·5 × 10ⁿ 중 r 이상인 가장 작은 값
+    static func niceStep(_ r: Double) -> Double {
+        guard r > 0, r.isFinite else { return 1 }
+        let p = pow(10, floor(log10(r)))
+        return [1, 2, 2.5, 5, 10].map { $0 * p }.first { $0 >= r * 0.999 } ?? 10 * p
+    }
+    /// 알약 숫자: 10 아래는 소수 한 자리 (5.4), 그 위는 정수
+    static func num(_ v: Double) -> String { v < 10 ? String(format: "%.1f", v) : Int(v.rounded()).formatted() }
+    /// 눈금 글: 2억 · 5,000만 · ₩200M
+    static func tick(_ n: Double, _ s: String) -> String {
+        let t = n == n.rounded() ? Int(n).formatted() : String(format: "%.1f", n)
+        return AppModel.en ? "₩" + t + s : t + s
     }
 }
 

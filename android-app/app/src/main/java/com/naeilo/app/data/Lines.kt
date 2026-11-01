@@ -98,9 +98,29 @@ object Lines {
         return l
     }
     private val everyCache = HashMap<String, List<String>>()   // ios: Data/Lines.swift:64
+    /** 한 상황의 줄 전부 (빈칸 그대로). 홈 말풍선이 차례표로 돌린다 */
+    fun list(key: String): List<String> = all[key] ?: emptyList()   // ios: Data/Lines.swift:67
 
     /** 전체 줄 수 (설정 등에서 보여 줄 때) */
     val count: Int get() = all.values.fold(0) { a, l -> a + l.size }   // ios: Data/Lines.swift:58
+}
+
+
+/** 화면 말풍선 고르기 (홈·미션): 갈래마다 차례로 돌고, 바로 앞에 나온 갈래는 건너뛴다.
+ *  화면을 열 때와 캐릭터를 누를 때마다 다음 줄 (동네 주민 TownSay 와 같은 방식) */
+object SayDeck {   // ios: Data/Lines.swift:75
+    private val pos: HashMap<String, Int> = HashMap(runCatching { Defaults.prefs.getString("sayDeck.pos", null)?.let { NJson.decodeFromString<Map<String, Int>>(it) } }.getOrNull() ?: emptyMap())   // ios: Data/Lines.swift:76
+    private val last = HashMap<String, String>()   // ios: Data/Lines.swift:77
+    fun next(deck: String, kinds: List<Pair<String, List<String>>>): String? {   // ios: Data/Lines.swift:78
+        val open = kinds.filter { it.second.isNotEmpty() }   // ios: Data/Lines.swift:79
+        val fresh = open.filter { it.first != last[deck] }   // ios: Data/Lines.swift:80
+        val k = (if (fresh.isEmpty()) open else fresh).randomOrNull() ?: return null   // ios: Data/Lines.swift:81
+        last[deck] = k.first   // ios: Data/Lines.swift:82
+        val id = deck + "." + k.first; val p = pos[id] ?: 0   // ios: Data/Lines.swift:83
+        pos[id] = p + 1   // ios: Data/Lines.swift:84
+        runCatching { Defaults.prefs.edit().putString("sayDeck.pos", NJson.encodeToString(pos.toMap())).apply() }   // ios: Data/Lines.swift:85
+        return k.second[p % k.second.size]   // ios: Data/Lines.swift:86
+    }
 }
 
 /** 대사 차례: 화면을 열거나, 앱을 앞으로 가져오거나, 당겨서 갱신할 때 하나씩 오른다.

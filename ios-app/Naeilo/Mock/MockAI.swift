@@ -114,6 +114,90 @@ enum MockAI {
         """
     }
 
+    // MARK: 뒤 흐름 읽기 (단추로만 부른다. AI 장부와 따로 켠다, 2026-10-29)
+
+    /// 뒤 흐름 읽기를 부르나 (on 과 따로)
+    static let flowOn = true
+    /// 하나씩 보낼 최근 판 수. 그 앞은 판 이유별로 묶어 보낸다
+    static let afterMax = 15
+
+    private static func r(_ p: Double?, _ p0: Double) -> String { p.map { MockFmt.pct(p0 > 0 ? $0 / p0 - 1 : 0, digits: 1) } ?? "—" }
+
+    private static func flowHead(_ book: MockBook, _ day: String) -> String {
+        "\(day). \(book == .real ? "실전 장부(실제 돈)" : "모의 장부(가상 돈)")의 단타 기록이다. 하루 안에 사고팔고 15:00에 모두 정리하는 규칙으로 돈다.\n" +
+        "읽는 사람은 장기 투자만 해 봤고 단타는 처음이다. 사고팔 판단은 그 사람이 한다.\n"
+    }
+
+    /// 서버에 새 꼴을 두지 않고 하루 정리 꼴(summary · points)로 받는다. summary = 읽기, points = "낱말 || 뜻"
+    private static let flowAsk = """
+    할 일: 이 흐름에서 무엇이 보이는지 읽어 준다. 사라·팔아라·규칙을 바꾸라는 말은 하지 않는다.
+    - summary: 숫자를 들어 쉬운 말 다섯 문장 이하. 단타 말(반환점·갭·투매·흔들림·되밀림 같은 것)은 이 기록에 맞춰 풀어 쓴다.
+    - points: summary 에 쓴 단타 말을 세 개 이하, 한 줄에 하나 "낱말 || 뜻(한 문장)".
+    - —로 빈 값은 앱이 꺼져 못 잰 것이니 짐작하지 않는다.
+    """
+
+    /// 걸린 종목 뒤 흐름 물음과 읽은 범위
+    static func followPrompt(book: MockBook, follows: [(f: MockFollow, bought: Bool)], day: String) -> (prompt: String, range: String)? {
+        guard !follows.isEmpty else { return nil }
+        var t = flowHead(book, day) + "장중 조건에 처음 걸린 종목의 뒤 흐름 (처음 걸린 값 대비 30분 · 1시간 · 마감, 날마다 산 것·안 산 것 평균):\n"
+        let days = Dictionary(grouping: follows, by: { $0.f.day }).sorted { $0.key < $1.key }
+        for (d, v) in days {
+            for (name, xs) in [("산 것", v.filter { $0.bought }), ("안 산 것", v.filter { !$0.bought })] where !xs.isEmpty {
+                func avg(_ k: KeyPath<MockFollow, Double?>) -> String {
+                    let rs = xs.compactMap { $0.f.ret($0.f[keyPath: k]) }
+                    return rs.isEmpty ? "—" : MockFmt.pct(rs.reduce(0, +) / Double(rs.count), digits: 1)
+                }
+                t += "- \(d) \(name) \(xs.count)종목 · 30분 \(avg(\.p30)) · 1시간 \(avg(\.p60)) · 마감 \(avg(\.pEnd))\n"
+            }
+        }
+        if let last = days.last {
+            t += "가장 최근 날(\(last.key)) 종목별:\n"
+            for v in last.value.prefix(30) {
+                let f = v.f
+                t += "- \(MockFmt.time(f.at)) \(f.name) 처음 \(MockFmt.won(f.p0)) · 30분 \(r(f.p30, f.p0)) · 1시간 \(r(f.p60, f.p0)) · 마감 \(r(f.pEnd, f.p0)) · \(v.bought ? "산 것" : "안 산 것")\n"
+            }
+        }
+        let range = (days.first.map { MockFmt.md($0.key) } ?? "") + "~" + (days.last.map { MockFmt.md($0.key) } ?? "") + " · \(follows.count)종목"
+        return (t + flowAsk, range)
+    }
+
+    /// 판 뒤 흐름 물음과 읽은 범위
+    static func afterPrompt(book: MockBook, sells: [(x: MockAfter, e: MockEvent?)], older: [MockAfter], day: String) -> (prompt: String, range: String)? {
+        guard !sells.isEmpty else { return nil }
+        var t = flowHead(book, day) + "판 종목의 뒤 흐름 (판 값 대비 판 뒤 30분 · 1시간 · 마감 · 다음 날 시가):\n"
+        for s in sells {
+            let x = s.x
+            t += "- \(x.day) \(MockFmt.time(x.at)) \(x.name) \(x.exit) · \(x.qty)주 · 판 값 \(MockFmt.won(x.p0))"
+            if let e = s.e {
+                if let pnl = e.pnl { t += " · 손익 \(MockFmt.won(pnl))" }
+                if let b = e.buyWhy, !b.isEmpty { t += " · 산 이유 \(b.prefix(60))" }
+                if let w = e.exitWhy, !w.isEmpty { t += " · 판 이유 \(w.prefix(80))" }
+            }
+            t += " · 30분 \(r(x.p30, x.p0)) · 1시간 \(r(x.p60, x.p0)) · 마감 \(r(x.pEnd, x.p0)) · 다음 날 시가 \(r(x.pOpen, x.p0))\n"
+        }
+        let done = older.filter { $0.ret != nil }
+        if !done.isEmpty {
+            t += "그 앞 판 종목 (판 이유별, 마지막으로 잰 값 기준):\n"
+            for (k, v) in Dictionary(grouping: done, by: { $0.exit }).sorted(by: { $0.value.count > $1.value.count }) {
+                let rs = v.compactMap(\.ret)
+                t += "- \(k) \(v.count)건 · 판 뒤 내림 \(rs.filter { $0 < -0.003 }.count) · 오름 \(rs.filter { $0 > 0.003 }.count) · 평균 \(MockFmt.pct(rs.reduce(0, +) / Double(rs.count), digits: 1))\n"
+            }
+        }
+        let all = older + sells.map { $0.x }
+        let range = MockFmt.md(all.first?.day ?? "") + "~" + MockFmt.md(all.last?.day ?? "") + " · 판 \(all.count)건"
+        return (t + flowAsk, range)
+    }
+
+    static func flowRead(_ a: [String: Any], kind: MockFlowRead.Kind, book: MockBook, range: String) -> MockFlowRead {
+        var r = MockFlowRead(kind: kind, book: book, at: Date(), range: range, text: String((a["summary"] as? String ?? "").prefix(600)))
+        for p in (a["points"] as? [String] ?? []).prefix(3) {
+            let f = p.components(separatedBy: "||").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            guard f.count >= 2, !f[0].isEmpty else { continue }
+            r.terms.append([String(f[0].prefix(20)), String(f[1...].joined(separator: " ").prefix(120))])
+        }
+        return r
+    }
+
     // MARK: 답 확인 (AI 가 정해진 꼴로 답해도 지킬 것은 앱이 다시 본다)
 
     static func ledgerPlans(_ answer: [String: Any], ledger l: MockLedger, candidates: [String: String],

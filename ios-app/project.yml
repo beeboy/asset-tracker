@@ -25,6 +25,10 @@ settings:
     # Xcode Run(Debug)에서도 전망 몬테카를로가 1초 안에 끝나게 최적화 (최적화 없으면 50배 느림)
     Debug:
       SWIFT_OPTIMIZATION_LEVEL: "-O"
+# 결 (다이내믹 아일랜드·잠금 화면). 앱과 떼어 둔 부분: 빼려면 Gyeol/README.md
+packages:
+  GyeolKit:
+    path: Gyeol
 targets:
   NaeiloApp:
     type: application
@@ -64,6 +68,8 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UIRequiresFullScreen: true
         ITSAppUsesNonExemptEncryption: false
+        NSSupportsLiveActivities: true   # 결
+        UIBackgroundModes: [audio]   # 결 작은 창: 앱이 뒤에 있어도 PiP에 그린다
         # 동네 날씨: 대략적인 위치로 하루 한 번
         NSLocationWhenInUseUsageDescription: "동네 날씨를 내 지역 날씨로 보여 주려고 대략적인 위치를 써요."
         # 개발용 Tiingo 토큰 (계약 전이라 비워 둠). 출시 때는 naeilo 중계 서버를 거친다
@@ -73,11 +79,14 @@ targets:
       path: Naeilo/App.entitlements
       properties:
         com.apple.security.application-groups: [group.com.naeilo.widget]
+        aps-environment: development   # 결: 클로드 연동 푸시
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.naeilo.widget
         # 개발자 모의투자(Naeilo/Mock/): 내부 베타에서만 MOCK 이 켜진다. 공개 베타·출시는 코드가 아예 들어가지 않는다
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(NAEILO_MOCK_$(NAEILO_CHANNEL))"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(NAEILO_MOCK_$(NAEILO_CHANNEL)) $(NAEILO_GYEOL) $(NAEILO_GYEOL_PIP)"
+        NAEILO_GYEOL: ""   # 결: 보류(2026-10-31). 다시 붙이려면 GYEOL (Gyeol/README.md)
+        NAEILO_GYEOL_PIP: GYEOLPIP   # 결 작은 창(PiP). 빼려면 비우고 Naeilo/Gyeol/GyeolPip·GyeolBake·GyeolDraw·gyeol-bake.json
         NAEILO_MOCK_internalBeta: MOCK
         LOCALIZATION_PREFERS_STRING_CATALOGS: YES
         SWIFT_EMIT_LOC_STRINGS: YES
@@ -88,6 +97,8 @@ targets:
     dependencies:
       - target: NaeiloWidgets
       - target: NaeiloWatch
+      # - package: GyeolKit   # 결 (보류 2026-10-31)
+      # - target: NaeiloGyeol   # 결 (보류 2026-10-31)
     postCompileScripts:
       # 시세 자료 넣기: 내부 베타는 사이트가 Yahoo 로 모은 자료(data/), 공개 베타·출시는 가상 샘플(data/sample/)
       - name: 시세 자료 넣기
@@ -109,6 +120,12 @@ targets:
           [ "$CONFIGURATION" = "Debug" ] || exit 0
           V=$(cat "$BUILT_PRODUCTS_DIR/.naeilo-build" 2>/dev/null || date +%y%m%d.%H%M%S)
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $V" "$TARGET_BUILD_DIR/$INFOPLIST_PATH"
+          # 결 확장도 같은 빌드 번호로 (Gyeol/README.md)
+          G="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/PlugIns/NaeiloGyeol.appex"
+          if [ -d "$G" ]; then
+            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $V" "$G/Info.plist"
+            codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --preserve-metadata=identifier,entitlements,flags --timestamp=none "$G" || exit 1
+          fi
           # 워치 앱·워치 위젯도 같은 빌드 번호로 (다르면 워치가 설치를 거부한다). 바꾼 뒤 안쪽부터 다시 서명
           W="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Watch/NaeiloWatch.app"
           [ -d "$W" ] || exit 0
@@ -158,6 +175,29 @@ targets:
         SWIFT_EMIT_LOC_STRINGS: YES
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WIDGET_EXT"
+  # 결 Live Activity 확장: 다이내믹 아일랜드·잠금 화면 (화면은 GyeolKit, 빼는 법은 Gyeol/README.md)
+  NaeiloGyeol:
+    type: app-extension
+    platform: iOS
+    sources: [Gyeol/Widget]
+    dependencies:
+      - package: GyeolKit
+    info:
+      path: Gyeol/Widget/Info.plist
+      properties:
+        CFBundleDisplayName: naeilo
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Gyeol/Widget/Gyeol.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.naeilo.widget]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.naeilo.widget.gyeol
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
   # 워치 앱: 아이폰이 보낸 위젯 값을 받아 App Group 에 쓴다 (스마트 스택 위젯용)
   NaeiloWatch:
     type: application
