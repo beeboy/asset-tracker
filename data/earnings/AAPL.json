@@ -3,7 +3,9 @@
  "name": "Apple Inc.",
  "cik": 320193,
  "currency": "USD",
- "pending": null,
+ "pending": {
+  "announced": "2026-11-02"
+ },
  "quarters": [
   {
    "start": "2024-06-30",
