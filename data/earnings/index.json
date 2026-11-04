@@ -1,10 +1,10 @@
 {
  "symbols": {
   "AAPL": {
-   "announced": "2026-07-30",
-   "end": "2026-06-27",
-   "label": "26.4~6",
-   "pending": "2026-11-02"
+   "announced": "2026-11-02",
+   "end": "2026-09-26",
+   "label": "26.7~9",
+   "pending": null
   },
   "DRNK": {
    "announced": "2026-10-22",
