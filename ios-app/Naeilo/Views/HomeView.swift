@@ -300,9 +300,7 @@ enum HomeSay {
         if m.isGoal, m.gK > 0 { num.append(en ? "\(pctG)% of the way to your \(AppModel.wonK(m.gK)) goal." : "목표 \(AppModel.wonK(m.gK))까지 \(pctG)% 왔어요.") }
         else if !m.isGoal, m.cost > 0, m.total < m.cost { num.append(en ? "\(AppModel.sgn(m.cost / m.total - 1)) to break even." : "본전까지 \(AppModel.sgn(m.cost / m.total - 1)) 남았어요.") }
         let move = m.todayMoversText.map { [$0] } ?? []
-        var day: [String] = []
-        if !done { day.append(en ? "Today's question is waiting. One minute is enough." : "오늘 질문 하나가 기다려요. 1분이면 돼요.") }
-        return SayDeck.next("home", [("chat", chat), ("num", num), ("move", move), ("day", day)])
+        return SayDeck.next("home", [("chat", chat), ("num", num), ("move", move)])
     }
 }
 
