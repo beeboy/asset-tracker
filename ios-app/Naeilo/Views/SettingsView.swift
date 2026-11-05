@@ -890,11 +890,11 @@ struct AppIconScreen: View {
 #if MOCK
 /// 모의투자 켜기 (토스 키 사용자, 2026-11-05). 가상 돈으로만 사고판다. 실전은 개발자 기기만
 private struct MockSwitchCard: View {
-    @State private var on = MockDesk.shared.on
+    @State private var on = MockDesk.shared.allowed   // 허용만. 탭 전환은 홈 평가액 박스 (끄면 투자 모드도 꺼진다)
     var body: some View {
         Card {
-            Toggle(isOn: Binding(get: { on }, set: { v in on = v; MockDesk.shared.on = v })) { Text("모의투자 켜기").appFont(15, .bold) }.tint(Theme.teal)
-            Text("가상 돈으로 내 규칙을 연습해요. 실제 주문은 나가지 않아요. 켜면 아래 탭이 관찰·선정·일지·계좌로 바뀌어요.")
+            Toggle(isOn: Binding(get: { on }, set: { v in on = v; MockDesk.shared.allowed = v })) { Text("모의투자 켜기").appFont(15, .bold) }.tint(Theme.teal)
+            Text("가상 돈으로 내 규칙을 연습해요. 실제 주문은 나가지 않아요. 켜고 홈 탭의 평가액을 누르면 아래 탭이 관찰·선정·일지·계좌로 바뀌고, 한 번 더 평가액을 누르면 원래 탭으로 돌아와요.")
                 .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
         }
     }

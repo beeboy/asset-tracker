@@ -2787,6 +2787,16 @@
         }
       }
     },
+    "%@ 전" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ago"
+          }
+        }
+      }
+    },
     "%@ 저장 · 종목 %@개 · 이 폰 종목·미션 진행이 바뀌어요" : {
       "localizations" : {
         "en" : {
@@ -2799,16 +2809,6 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ 저장 · 종목 %2$@개 · 이 폰 종목·미션 진행이 바뀌어요"
-          }
-        }
-      }
-    },
-    "%@ 전" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ ago"
           }
         }
       }
@@ -4381,6 +4381,16 @@
         }
       }
     },
+    "%@일" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@d"
+          }
+        }
+      }
+    },
     "%@이야. 어제보다 하루 더 셌어." : {
       "localizations" : {
         "en" : {
@@ -4427,16 +4437,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "It's %@. I can feel things arriving on time."
-          }
-        }
-      }
-    },
-    "%@일" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@d"
           }
         }
       }
@@ -4531,6 +4531,16 @@
         }
       }
     },
+    "%@줄" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ lines"
+          }
+        }
+      }
+    },
     "%@주만큼 · 확대" : {
       "localizations" : {
         "en" : {
@@ -4553,16 +4563,6 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@주차 체크인: %2$@"
-          }
-        }
-      }
-    },
-    "%@줄" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ lines"
           }
         }
       }
@@ -7609,6 +7609,16 @@
     "가능성 %@ · " : {
 
     },
+    "값" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Value"
+          }
+        }
+      }
+    },
     "가능성 %@ · %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7642,6 +7652,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Calculating odds"
+          }
+        }
+      }
+    },
+    "가상 돈으로 내 규칙을 연습해요. 실제 주문은 나가지 않아요. 켜고 홈 탭의 평가액을 누르면 아래 탭이 관찰·선정·일지·계좌로 바뀌고, 한 번 더 평가액을 누르면 원래 탭으로 돌아와요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Practice your rules with virtual money. No real orders are sent. Once it's on, tapping the value box on Home switches the tabs below to Watch·Picks·Journal·Account. Tap it again to go back."
           }
         }
       }
@@ -7906,16 +7926,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pick one by gut. We'll check the answer with numbers."
-          }
-        }
-      }
-    },
-    "값" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Value"
           }
         }
       }
@@ -8432,6 +8442,16 @@
         }
       }
     },
+    "견본" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sample"
+          }
+        }
+      }
+    },
     "결" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8449,16 +8469,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Winter"
-          }
-        }
-      }
-    },
-    "견본" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sample"
           }
         }
       }
@@ -9552,63 +9562,12 @@
         }
       }
     },
-    "구독 보기" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "See subscription"
-          }
-        }
-      }
-    },
-    "국내" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Korea"
-          }
-        }
-      }
-    },
-    "군" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gun"
-          }
-        }
-      }
-    },
     "구독" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Subscription"
-          }
-        }
-      }
-    },
-    "구독 ›" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Subscribe ›"
-          }
-        }
-      }
-    },
-    "구독 관리" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manage subscription"
           }
         }
       }
@@ -9623,42 +9582,12 @@
         }
       }
     },
-    "구독 시 열림" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Opens with subscription"
-          }
-        }
-      }
-    },
     "구독 중이에요" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Subscribed"
-          }
-        }
-      }
-    },
-    "구독하면" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "With a subscription"
-          }
-        }
-      }
-    },
-    "구독하면 열려요." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Opens with a subscription."
           }
         }
       }
@@ -9683,22 +9612,132 @@
         }
       }
     },
-    "구독하지 못했어요. 잠시 뒤 다시 해 주세요." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn't subscribe. Please try again later."
-          }
-        }
-      }
-    },
     "구름" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cloud"
+          }
+        }
+      }
+    },
+    "구슬에 제 얼굴이 비쳐요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I can see my face in the bead."
+          }
+        }
+      }
+    },
+    "국내 세금 15.4%" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Korea tax 15.4%"
+          }
+        }
+      }
+    },
+    "국내 주식" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Korean stocks"
+          }
+        }
+      }
+    },
+    "국제 행복의 날" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "International Day of Happiness"
+          }
+        }
+      }
+    },
+    "군" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gun"
+          }
+        }
+      }
+    },
+    "구독 ›" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscribe ›"
+          }
+        }
+      }
+    },
+    "구독 관리" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage subscription"
+          }
+        }
+      }
+    },
+    "구독 보기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See subscription"
+          }
+        }
+      }
+    },
+    "구독 시 열림" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens with subscription"
+          }
+        }
+      }
+    },
+    "구독하면" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With a subscription"
+          }
+        }
+      }
+    },
+    "구독하면 열려요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens with a subscription."
+          }
+        }
+      }
+    },
+    "구독하지 못했어요. 잠시 뒤 다시 해 주세요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't subscribe. Please try again later."
           }
         }
       }
@@ -9786,22 +9825,23 @@
         }
       }
     },
-    "구슬에 제 얼굴이 비쳐요." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "I can see my face in the bead."
-          }
-        }
-      }
-    },
     "구슬은 하나뿐이에요." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "There is only one bead."
+          }
+        }
+      }
+    },
+    "국내" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Korea"
           }
         }
       }
@@ -9837,26 +9877,6 @@
         }
       }
     },
-    "국내 세금 15.4%" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Korea tax 15.4%"
-          }
-        }
-      }
-    },
-    "국내 주식" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Korean stocks"
-          }
-        }
-      }
-    },
     "국내 주식 합계" : {
       "localizations" : {
         "en" : {
@@ -9874,16 +9894,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Korean stocks: no capital gains tax unless a major shareholder"
-          }
-        }
-      }
-    },
-    "국제 행복의 날" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "International Day of Happiness"
           }
         }
       }
@@ -10127,33 +10137,23 @@
         }
       }
     },
-    "그날그날 함께 움직인 만큼 · 한 달 이내" : {
+    "그냥 둠" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Day-to-day co-movement · within 1 month"
+            "value" : "Just holding"
           }
         }
       }
     },
-    "그래프 쪽을 돌아봄" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Look at the graph"
-          }
-        }
-      }
-    },
-    "그럴 때도 있죠. 여기서 좀 쉬다 가요." : {
+    "그쵸? 이런 날엔 산책이 최고예요." : {
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Happens sometimes. Rest here a while."
+            "value" : "Right? A walk is best on days like this."
           }
         }
       }
@@ -10208,12 +10208,12 @@
         }
       }
     },
-    "그냥 둠" : {
+    "그날그날 함께 움직인 만큼 · 한 달 이내" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Just holding"
+            "value" : "Day-to-day co-movement · within 1 month"
           }
         }
       }
@@ -10269,12 +10269,33 @@
         }
       }
     },
+    "그래프 쪽을 돌아봄" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Look at the graph"
+          }
+        }
+      }
+    },
     "그래프와 미션은 종가로 계산해요. 아래로 당기면 바로 다시 받아요." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Graphs and missions use closing prices. Pull down to refresh."
+          }
+        }
+      }
+    },
+    "그럴 때도 있죠. 여기서 좀 쉬다 가요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Happens sometimes. Rest here a while."
           }
         }
       }
@@ -10358,17 +10379,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Right? I think something good will happen today."
-          }
-        }
-      }
-    },
-    "그쵸? 이런 날엔 산책이 최고예요." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Right? A walk is best on days like this."
           }
         }
       }
@@ -10959,26 +10969,6 @@
         }
       }
     },
-    "기다리는 동안 뭘 했어?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "What did you do while waiting?"
-          }
-        }
-      }
-    },
-    "기다림" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Waiting"
-          }
-        }
-      }
-    },
     "기다리는 것도 실력이야." : {
       "localizations" : {
         "en" : {
@@ -10999,32 +10989,22 @@
         }
       }
     },
+    "기다리는 동안 뭘 했어?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What did you do while waiting?"
+          }
+        }
+      }
+    },
     "기다리는 동안 심은 씨앗." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "A seed planted while waiting."
-          }
-        }
-      }
-    },
-    "기다리는 아이" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The Waiting Child"
-          }
-        }
-      }
-    },
-    "기다리는 형" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The Waiter"
           }
         }
       }
@@ -11045,6 +11025,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "You cleared as much as you waited."
+          }
+        }
+      }
+    },
+    "기다림" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting"
+          }
+        }
+      }
+    },
+    "기다리는 아이" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Waiting Child"
+          }
+        }
+      }
+    },
+    "기다리는 형" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Waiter"
           }
         }
       }
@@ -12282,22 +12292,22 @@
         }
       }
     },
+    "내 기대수익" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My expected return"
+          }
+        }
+      }
+    },
     "내 기록" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "My record"
-          }
-        }
-      }
-    },
-    "내 기록 순위" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "My record ranking"
           }
         }
       }
@@ -12313,12 +12323,12 @@
         }
       }
     },
-    "내 기대수익" : {
+    "내 기록 순위" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "My expected return"
+            "value" : "My record ranking"
           }
         }
       }
@@ -13093,6 +13103,16 @@
         }
       }
     },
+    "내리면" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If it falls"
+          }
+        }
+      }
+    },
     "내리면 팖" : {
       "localizations" : {
         "en" : {
@@ -13109,16 +13129,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "fell"
-          }
-        }
-      }
-    },
-    "내리면" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "If it falls"
           }
         }
       }
@@ -13680,17 +13690,6 @@
         }
       }
     },
-    "누르면 내 몫" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tap for my share"
-          }
-        }
-      }
-    },
     "눈" : {
       "localizations" : {
         "en" : {
@@ -13717,6 +13716,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A small pouch someone packed."
+          }
+        }
+      }
+    },
+    "누르면 내 몫" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap for my share"
           }
         }
       }
@@ -16266,66 +16276,6 @@
         }
       }
     },
-    "마지막 공이야. 어디서 받을 거야?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Last ball. Where will you catch it?"
-          }
-        }
-      }
-    },
-    "마지막 칸 = 목표" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Last cell = goal"
-          }
-        }
-      }
-    },
-    "마지막: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Last: %@"
-          }
-        }
-      }
-    },
-    "마지막으로 받은 때 %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Last updated %@"
-          }
-        }
-      }
-    },
-    "막대 = 내 돈 흔들림" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bar = swing in my money"
-          }
-        }
-      }
-    },
-    "만" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " ×10k"
-          }
-        }
-      }
-    },
     "마스크" : {
       "localizations" : {
         "en" : {
@@ -16366,6 +16316,16 @@
         }
       }
     },
+    "마지막 공이야. 어디서 받을 거야?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last ball. Where will you catch it?"
+          }
+        }
+      }
+    },
     "마지막 공이에요. 가운데를 지켜요." : {
       "localizations" : {
         "en" : {
@@ -16396,12 +16356,42 @@
         }
       }
     },
+    "마지막 칸 = 목표" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last cell = goal"
+          }
+        }
+      }
+    },
+    "만" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " ×10k"
+          }
+        }
+      }
+    },
     "마지막 칸 = 본전" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Last cell = break-even"
+          }
+        }
+      }
+    },
+    "마지막: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last: %@"
           }
         }
       }
@@ -16427,6 +16417,16 @@
         }
       }
     },
+    "마지막으로 받은 때 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last updated %@"
+          }
+        }
+      }
+    },
     "마지막이야. 서두르지 말고." : {
       "localizations" : {
         "en" : {
@@ -16443,6 +16443,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Last one. Widgets aren't given in advance. One per step, and finishing all three unlocks the rest."
+          }
+        }
+      }
+    },
+    "막대 = 내 돈 흔들림" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bar = swing in my money"
           }
         }
       }
@@ -17176,16 +17186,6 @@
         }
       }
     },
-    "목" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Thu"
-          }
-        }
-      }
-    },
     "모두" : {
       "localizations" : {
         "en" : {
@@ -17212,6 +17212,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "All off"
+          }
+        }
+      }
+    },
+    "목" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thu"
           }
         }
       }
@@ -17396,6 +17406,9 @@
           }
         }
       }
+    },
+    "모의투자 켜기" : {
+
     },
     "모이면 공개" : {
       "localizations" : {
@@ -18902,16 +18915,6 @@
         }
       }
     },
-    "바꾸기" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change"
-          }
-        }
-      }
-    },
     "바꾼 비중" : {
       "localizations" : {
         "en" : {
@@ -18933,6 +18936,16 @@
       }
     },
     "바꿈" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change"
+          }
+        }
+      }
+    },
+    "바꾸기" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -19216,22 +19229,22 @@
         }
       }
     },
-    "반바지" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Shorts"
-          }
-        }
-      }
-    },
     "반반" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Half and half"
+          }
+        }
+      }
+    },
+    "반바지" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shorts"
           }
         }
       }
@@ -21920,22 +21933,22 @@
         }
       }
     },
-    "새까만 눈" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jet-black eyes"
-          }
-        }
-      }
-    },
     "색" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Color"
+          }
+        }
+      }
+    },
+    "새까만 눈" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jet-black eyes"
           }
         }
       }
@@ -25244,22 +25257,22 @@
         }
       }
     },
-    "앞서 달리는 형" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The Runner-ahead"
-          }
-        }
-      }
-    },
     "앞서 달림" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rushing"
+          }
+        }
+      }
+    },
+    "앞서 달리는 형" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Runner-ahead"
           }
         }
       }
@@ -25326,22 +25339,22 @@
         }
       }
     },
-    "애쉬그레이" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ash gray"
-          }
-        }
-      }
-    },
     "앱" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "App"
+          }
+        }
+      }
+    },
+    "애쉬그레이" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ash gray"
           }
         }
       }
@@ -25673,47 +25686,6 @@
         }
       }
     },
-    "어둡게" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dark"
-          }
-        }
-      }
-    },
-    "어디로 보낼 건데?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Where will you send it?"
-          }
-        }
-      }
-    },
-    "어디에도 남지 않아요." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nothing is kept anywhere."
-          }
-        }
-      }
-    },
-    "어떤 구성으로?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Which mix?"
-          }
-        }
-      }
-    },
     "어떤 구성이 덜 흔들리는지 보세요. …… 처음이라면 단순한 구성부터 비교해 봐도 돼요." : {
       "localizations" : {
         "en" : {
@@ -25734,52 +25706,12 @@
         }
       }
     },
-    "어떻게 번지나?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "How does it spread?"
-          }
-        }
-      }
-    },
-    "어떻게 올릴까?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "How to raise it?"
-          }
-        }
-      }
-    },
-    "어려움" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hard"
-          }
-        }
-      }
-    },
     "어려움 완주" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Finish Hard"
-          }
-        }
-      }
-    },
-    "억" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " ×100M"
           }
         }
       }
@@ -25846,6 +25778,97 @@
         }
       }
     },
+    "어제 종가와 비교해, 오늘 내 평가액은?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compared with yesterday's close, my value today is?"
+          }
+        }
+      }
+    },
+    "억" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " ×100M"
+          }
+        }
+      }
+    },
+    "어둡게" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dark"
+          }
+        }
+      }
+    },
+    "어디로 보낼 건데?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where will you send it?"
+          }
+        }
+      }
+    },
+    "어디에도 남지 않아요." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing is kept anywhere."
+          }
+        }
+      }
+    },
+    "어떤 구성으로?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Which mix?"
+          }
+        }
+      }
+    },
+    "어떻게 번지나?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How does it spread?"
+          }
+        }
+      }
+    },
+    "어떻게 올릴까?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How to raise it?"
+          }
+        }
+      }
+    },
+    "어려움" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hard"
+          }
+        }
+      }
+    },
     "어제 남긴 예측: “%@”\n" : {
       "localizations" : {
         "en" : {
@@ -25862,16 +25885,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Based on yesterday's close · excludes deposits/withdrawals · not investment advice"
-          }
-        }
-      }
-    },
-    "어제 종가와 비교해, 오늘 내 평가액은?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Compared with yesterday's close, my value today is?"
           }
         }
       }
@@ -26483,22 +26496,22 @@
         }
       }
     },
-    "열림" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open"
-          }
-        }
-      }
-    },
     "열리는 것: %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Unlocks: %@"
+          }
+        }
+      }
+    },
+    "열림" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open"
           }
         }
       }
@@ -27295,16 +27308,6 @@
         }
       }
     },
-    "오르면 더 사고, 내리면 바로 판다" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buys more on rises, sells right away on drops"
-          }
-        }
-      }
-    },
     "오른" : {
       "localizations" : {
         "en" : {
@@ -27342,6 +27345,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rides only the uptrends"
+          }
+        }
+      }
+    },
+    "오르면 더 사고, 내리면 바로 판다" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buys more on rises, sells right away on drops"
           }
         }
       }
@@ -28147,22 +28160,22 @@
         }
       }
     },
-    "원" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : ""
-          }
-        }
-      }
-    },
     "워시" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Warsh"
+          }
+        }
+      }
+    },
+    "원" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ""
           }
         }
       }
@@ -29149,6 +29162,46 @@
         }
       }
     },
+    "이미 세금 0 · 더 줄여도 그대로" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tax already 0 · same if trimmed more"
+          }
+        }
+      }
+    },
+    "이번 주 %lld일" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld days this week"
+          }
+        }
+      }
+    },
+    "인터미션 %@주차" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intermission week %@"
+          }
+        }
+      }
+    },
+    "일" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sun"
+          }
+        }
+      }
+    },
     "이대로 입기" : {
       "localizations" : {
         "en" : {
@@ -29209,6 +29262,16 @@
         }
       }
     },
+    "이르의 연결장 문턱에서 \"저는 여기까지예요.\" 한 발을 들였다가 0.8초 만에 스스로 뺀다. 이유는 끝까지 말하지 않는다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At the threshold of Ir's connection field: \"This is as far as I go.\" Steps in once, and pulls back on his own after 0.8 seconds. Never says why."
+          }
+        }
+      }
+    },
     "이름" : {
       "localizations" : {
         "en" : {
@@ -29229,6 +29292,16 @@
         }
       }
     },
+    "이름 순" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By name"
+          }
+        }
+      }
+    },
     "이름·티커·종목 코드" : {
       "localizations" : {
         "en" : {
@@ -29245,88 +29318,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The One Who Allows Names"
-          }
-        }
-      }
-    },
-    "이번 주" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This week"
-          }
-        }
-      }
-    },
-    "이번 주 %@ 비중은?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This week, what is %@'s weight?"
-          }
-        }
-      }
-    },
-    "이에요" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "is"
-          }
-        }
-      }
-    },
-    "일" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sun"
-          }
-        }
-      }
-    },
-    "이틀째부터 하루 1명" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 a day from day 2"
-          }
-        }
-      }
-    },
-    "입" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mouth"
-          }
-        }
-      }
-    },
-    "이르의 연결장 문턱에서 \"저는 여기까지예요.\" 한 발을 들였다가 0.8초 만에 스스로 뺀다. 이유는 끝까지 말하지 않는다." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "At the threshold of Ir's connection field: \"This is as far as I go.\" Steps in once, and pulls back on his own after 0.8 seconds. Never says why."
-          }
-        }
-      }
-    },
-    "이름 순" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "By name"
           }
         }
       }
@@ -29377,16 +29368,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Already above break-even (%@)"
-          }
-        }
-      }
-    },
-    "이미 세금 0 · 더 줄여도 그대로" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tax already 0 · same if trimmed more"
           }
         }
       }
@@ -29518,6 +29499,27 @@
         }
       }
     },
+    "이번 주" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This week"
+          }
+        }
+      }
+    },
+    "이번 주 %@ 비중은?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This week, what is %@'s weight?"
+          }
+        }
+      }
+    },
     "이번 주 %@%lld점 · 주 최대 %lld점" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -29531,16 +29533,6 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "이번 주 %1$@%2$lld점 · 주 최대 %3$lld점"
-          }
-        }
-      }
-    },
-    "이번 주 %lld일" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld days this week"
           }
         }
       }
@@ -29689,6 +29681,17 @@
         }
       }
     },
+    "이에요" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "is"
+          }
+        }
+      }
+    },
     "이에요!\n" : {
       "localizations" : {
         "en" : {
@@ -29782,6 +29785,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Village head here. {fx}"
+          }
+        }
+      }
+    },
+    "이틀째부터 하루 1명" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 a day from day 2"
           }
         }
       }
@@ -29972,16 +29985,6 @@
         }
       }
     },
-    "인터미션 %@주차" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Intermission week %@"
-          }
-        }
-      }
-    },
     "인터미션 %@주차에 만나요" : {
       "localizations" : {
         "en" : {
@@ -30143,6 +30146,16 @@
         }
       }
     },
+    "입" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mouth"
+          }
+        }
+      }
+    },
     "입구는 둘이에요. 공은 어느 쪽으로 나올까요?" : {
       "localizations" : {
         "en" : {
@@ -30187,22 +30200,22 @@
         }
       }
     },
-    "자람" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Growing"
-          }
-        }
-      }
-    },
     "자라는 형" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The Grower"
+          }
+        }
+      }
+    },
+    "자람" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Growing"
           }
         }
       }
@@ -35243,46 +35256,6 @@
         }
       }
     },
-    "크기 고르고 \"위젯 추가\"" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pick a size, tap \"Add Widget\""
-          }
-        }
-      }
-    },
-    "큰 눈" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Big eyes"
-          }
-        }
-      }
-    },
-    "큰 변화일수록 오차 큼" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bigger moves, bigger error"
-          }
-        }
-      }
-    },
-    "큼" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "High"
-          }
-        }
-      }
-    },
     "크게 오른다" : {
       "localizations" : {
         "en" : {
@@ -35309,6 +35282,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Size"
+          }
+        }
+      }
+    },
+    "크기 고르고 \"위젯 추가\"" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick a size, tap \"Add Widget\""
           }
         }
       }
@@ -35343,6 +35326,16 @@
         }
       }
     },
+    "큰 눈" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Big eyes"
+          }
+        }
+      }
+    },
     "큰 변동일 기다림" : {
       "localizations" : {
         "en" : {
@@ -35359,6 +35352,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "3 big-move days (±5%) passed with no trades"
+          }
+        }
+      }
+    },
+    "큰 변화일수록 오차 큼" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bigger moves, bigger error"
           }
         }
       }
@@ -35390,6 +35393,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Claude link"
+          }
+        }
+      }
+    },
+    "큼" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "High"
           }
         }
       }
@@ -35838,6 +35851,42 @@
         }
       }
     },
+    "파도를 만들 자산 기록이 아직 짧아요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not enough asset history yet to make waves"
+          }
+        }
+      }
+    },
+    "판 부분의 %@은 %@이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The %1$@ on the part you sold is %2$@."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "판 부분의 %1$@은 %2$@이에요."
+          }
+        }
+      }
+    },
+    "팖" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sold"
+          }
+        }
+      }
+    },
     "파도" : {
       "localizations" : {
         "en" : {
@@ -35864,16 +35913,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gentle waves. Just don't doze off on the board."
-          }
-        }
-      }
-    },
-    "파도를 만들 자산 기록이 아직 짧아요" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Not enough asset history yet to make waves"
           }
         }
       }
@@ -35986,22 +36025,6 @@
         }
       }
     },
-    "판 부분의 %@은 %@이에요." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The %1$@ on the part you sold is %2$@."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "판 부분의 %1$@은 %2$@이에요."
-          }
-        }
-      }
-    },
     "판 수량 (주)" : {
       "localizations" : {
         "en" : {
@@ -36090,16 +36113,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No selling. Missed months aren't made up in a lump next month."
-          }
-        }
-      }
-    },
-    "팖" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sold"
           }
         }
       }
@@ -36853,6 +36866,46 @@
         }
       }
     },
+    "하나 남았어요. 응원할게요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One left. I'm cheering for you."
+          }
+        }
+      }
+    },
+    "한" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One"
+          }
+        }
+      }
+    },
+    "하나 남았는데, 계획 있어?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One left. Got a plan?"
+          }
+        }
+      }
+    },
+    "하나 남았어. 기다렸다 받아." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One left. Wait, then catch."
+          }
+        }
+      }
+    },
     "하나 더 보기" : {
       "localizations" : {
         "en" : {
@@ -36900,46 +36953,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Descending triangle"
-          }
-        }
-      }
-    },
-    "한" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "One"
-          }
-        }
-      }
-    },
-    "하나 남았는데, 계획 있어?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "One left. Got a plan?"
-          }
-        }
-      }
-    },
-    "하나 남았어. 기다렸다 받아." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "One left. Wait, then catch."
-          }
-        }
-      }
-    },
-    "하나 남았어요. 응원할게요." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "One left. I'm cheering for you."
           }
         }
       }
@@ -38150,22 +38163,22 @@
         }
       }
     },
-    "홈" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Home"
-          }
-        }
-      }
-    },
     "호흡기" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Respirator"
+          }
+        }
+      }
+    },
+    "홈" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Home"
           }
         }
       }
