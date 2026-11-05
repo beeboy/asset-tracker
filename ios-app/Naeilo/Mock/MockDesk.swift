@@ -1445,6 +1445,26 @@ final class MockDesk {
         log(.rules, book: .rule, text: what)
         save()
     }
+    /// 걸린 종목 뒤 흐름 모두 지우기 (그 흐름의 지난 AI 조언도). 장부를 가리지 않고 하나로 쌓여 모두 지운다
+    func clearFollows() {
+        edit("걸린 종목 뒤 흐름 지움") { s in
+            s.follows = nil
+            s.flowReads?.removeAll { $0.kind == .follow }
+        }
+    }
+    /// 판 뒤 흐름 지우기: 그 장부 것만 (그 장부의 판 뒤 흐름 AI 조언도)
+    func clearAfters(_ b: MockBook) {
+        edit("판 뒤 흐름 지움 · " + (b == .real ? "실전" : "모의")) { s in
+            s.afters?.removeAll { $0.book == b }
+            s.flowReads?.removeAll { $0.kind == .after && $0.book == b }
+        }
+    }
+    /// 판 뒤 흐름 한 건 지우기 (판 시각·종목으로 찾는다)
+    func deleteAfter(_ x: MockAfter) {
+        edit("판 뒤 흐름 한 건 지움 · " + x.name) { s in
+            s.afters?.removeAll { $0.at == x.at && $0.code == x.code && $0.book == x.book }
+        }
+    }
     /// 관찰 조건 알약을 바꾼다 (켜기·끄기·넣기·고치기·지우기)
     func setConds(_ what: String, _ new: [MockCond]) {
         edit("관찰 조건 · " + what) { $0.conds = new }
