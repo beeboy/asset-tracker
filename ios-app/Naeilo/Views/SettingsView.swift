@@ -894,7 +894,7 @@ private struct MockSwitchCard: View {
     var body: some View {
         Card {
             Toggle(isOn: Binding(get: { on }, set: { v in on = v; MockDesk.shared.on = v })) { Text("모의투자 켜기").appFont(15, .bold) }.tint(Theme.teal)
-            Text("가상 돈으로 내 규칙을 연습해요. 실제 주문은 나가지 않아요. 켜면 아래 탭이 관찰·선정·일지·계좌로 바뀌어요.")
+            Text("가상 돈으로 내 규칙을 연습해요. 실제 주문은 나가지 않아요. 켜고 홈 탭의 평가액을 누르면 아래 탭이 관찰·선정·일지·계좌로 바뀌고, 한 번 더 평가액을 누르면 원래 탭으로 돌아와요.")
                 .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
         }
     }
