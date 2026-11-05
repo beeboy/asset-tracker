@@ -413,9 +413,9 @@ struct MockAccountView: View {
             if d.shown == .real && d.s.sellCheck == true { sellCheckCard(d) }
             winCard(d)
             followCard(d)
-            readCard(.follow, d)
+            if MockAI.on { readCard(.follow, d) }
             afterCard(d)
-            readCard(.after, d)
+            if MockAI.on { readCard(.after, d) }
             ordersCard(d)
             gapCard(d)
             lights(d)
@@ -737,7 +737,7 @@ struct MockAccountView: View {
     private func flowHead(_ t: String, _ r: String, _ k: MockFlowRead.Kind, _ d: MockDesk, empty: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             mt(t).appFont(15, .bold)
-            HStack(spacing: 4) {
+            if MockAI.on { HStack(spacing: 4) {
                 Button { Task { await d.aiFlow(k) } } label: {
                     mt(d.aiBusy == k.rawValue ? "읽는 중" : "AI 조언").appFont(12, .semibold).frame(height: 18)
                 }
@@ -747,7 +747,7 @@ struct MockAccountView: View {
                     .overlay(alignment: .leading) { Circle().fill(Color.white).padding(2) }
                     .opacity(0.5)
                     .accessibilityElement().accessibilityLabel("AI 매매 · 잠김")
-            }
+            } }
             Spacer()
             mt(r).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
         }
@@ -1179,7 +1179,7 @@ struct MockEntry: ViewModifier {
         let d = MockDesk.shared
         content
             .contentShape(Rectangle())
-            .onTapGesture { if Support.shared.dev { d.on.toggle() } }
+            .onTapGesture { if Support.shared.dev { d.on.toggle() } }   // 일반 사용자는 설정 > 내 Toss API 키에서 켠다
             .sensoryFeedback(.selection, trigger: d.on)
     }
 }

@@ -1,13 +1,17 @@
 #if MOCK
 import Foundation
 
-// 모의투자 시세 길: 개발자 서버(server.py)의 /api/mock/… 만 부른다.
-// 일봉은 서버가 한도 안에서 동시에 받아 묶어 준다. 호가는 주문하는 순간에만.
+// 모의투자 시세 길 두 갈래 (2026-11-05):
+// - 개발자 기기(열쇠·주소가 있음): 개발자 서버(server.py)의 /api/mock/…. 일봉은 서버가 묶어 준다.
+// - 일반 사용자: 본인 토스 키 + 공용 중계 (아래 MockToss). 실전 주문·계좌·AI 는 개발자 서버에만 있다.
+// 호가는 주문하는 순간에만.
 enum MockFeed {
     struct Fail: Error { let why: String }
 
     /// 개발자 서버: Tailscale 주소(TossFeed.base)가 있으면 그쪽, 없으면 공용 중계 toss.naeilo.com 뒤 (Caddy 가 /api/mock 만 개발자 서버로 넘긴다)
     static var base: String? { TossFeed.base ?? (token == nil ? nil : Config.tossRelay) }
+    /// 일반 사용자 길: 개발자 서버가 없고 내 토스 키가 있을 때
+    static var user: Bool { base == nil && TossKeys.on }
 
     /// 개발자 서버 열쇠. naeilo://mock?t=… 로 이 기기에만 넣는다. 저장소·앱 코드에는 없다
     static let tokenKey = "mock_dev_token"
@@ -92,6 +96,14 @@ enum MockFeed {
             let part = Array(codes[i..<min(codes.count, i + 100)])
             if skip.contains(i) { done += part.count; continue }
             try Task.checkCancellation()
+            if user {
+                let (got, errs) = try await MockToss.daily(part, count: count)
+                // 처음 묶음이 모두 실패면 그만 (키·허용 IP 문제)
+                if got.isEmpty && i == 0, let e = errs.values.first { throw Fail(why: e) }
+                bars.merge(got) { _, b in b }; errors.merge(errs) { _, b in b }
+                await batch?(i, got, errs)
+                done += part.count; await progress(done); continue
+            }
             let o: [String: Any]
             do { o = try await get("/api/mock/daily?count=\(count)&symbols=" + enc(part.joined(separator: ",")), timeout: 70) }
             catch let f as Fail {
@@ -133,6 +145,7 @@ enum MockFeed {
 
     /// 마지막 거래일 정규장 1분봉 (d = "09:01")
     static func minutes(_ code: String) async throws -> (day: String, bars: [MockBar]) {
+        if user { return try await MockToss.minutes(code) }
         let o = try await get("/api/mock/minutes?symbol=" + enc(code), timeout: 12)
         let mins = (o["bars"] as? [[Any]] ?? []).compactMap { r -> MockBar? in
             guard r.count >= 6, let d = r[0] as? String, let op = num(r[1]), let h = num(r[2]), let l = num(r[3]), let cl = num(r[4]) else { return nil }
@@ -145,6 +158,7 @@ enum MockFeed {
     /// 지금 가격 (토스 코드 → 가격)
     static func last(_ codes: [String]) async throws -> [String: Double] {
         guard !codes.isEmpty else { return [:] }
+        if user { return try await MockToss.last(codes) }
         var out: [String: Double] = [:]
         for i in stride(from: 0, to: codes.count, by: 200) {
             let part = Array(codes[i..<min(codes.count, i + 200)])
@@ -158,7 +172,7 @@ enum MockFeed {
 
     /// 호가 (주문 순간)
     static func book(_ code: String) async throws -> MockCalc.Book {
-        let o = try await get("/api/mock/book?symbol=" + enc(code), timeout: 6)
+        let o = try await (user ? MockToss.book(code) : get("/api/mock/book?symbol=" + enc(code), timeout: 6))
         func levels(_ k: String) -> [MockCalc.Level] {
             (o[k] as? [[String: Any]] ?? []).compactMap { e in
                 guard let p = num(e["price"]), let v = num(e["volume"]) else { return nil }
@@ -171,6 +185,7 @@ enum MockFeed {
     /// 유의사항 (최대 30종목): 코드 → 지금 걸린 종류. 거래정지·정리매매는 종목 정보로 따로 물어 같이 넣는다 (SUSPENDED · LIQUIDATION_TRADING)
     static func warnings(_ codes: [String]) async throws -> [String: [String]] {
         guard !codes.isEmpty else { return [:] }
+        if user { return try await MockToss.warnings(codes) }
         let top = Array(codes.prefix(30))
         let w = try await get("/api/mock/warnings?symbols=" + enc(top.joined(separator: ",")), timeout: 20)
         var out: [String: [String]] = [:]
@@ -186,6 +201,7 @@ enum MockFeed {
 
     /// 오늘 상한가·하한가 (서버가 하루 한 번 받는다)
     static func limits(_ code: String) async throws -> (upper: Double, lower: Double)? {
+        if user { return try await MockToss.limits(code) }
         let o = try await get("/api/mock/limits?symbol=" + enc(code), timeout: 6)
         guard let u = num(o["upper"]), let l = num(o["lower"]) else { return nil }
         return (u, l)
@@ -199,7 +215,7 @@ enum MockFeed {
         var got: Date
     }
     static func calendar() async throws -> Session {
-        let o = try await get("/api/mock/calendar?market=KR", timeout: 6)
+        let o = try await (user ? MockToss.calendar() : get("/api/mock/calendar?market=KR", timeout: 6))
         guard let t = o["today"] as? [String: Any], let d = t["date"] as? String else { throw Fail(why: "장 일정을 읽지 못함") }
         let reg = (t["integrated"] as? [String: Any])?["regularMarket"] as? [String: Any]
         return Session(day: d, open: (reg?["startTime"] as? String).flatMap(isoDate), close: (reg?["endTime"] as? String).flatMap(isoDate), got: Date())
@@ -363,4 +379,242 @@ enum TossOrderAPI {
     }
 }
 
+
+// MARK: 일반 사용자 시세 길
+// 모의투자 시세 길 (일반 사용자, 2026-11-05): 사용자 본인 토스 키 + 공용 중계(toss.naeilo.com/api/toss/v1/…).
+// 개발자 서버(server.py /api/mock/…)가 하던 일을 폰에서 한다. 주문·계좌 경로는 없다 (실전은 개발자 기기만).
+// 토스 응답 모양·다시 쓰기 시간은 server.py mock_* 와 같게 둔다.
+enum MockToss {
+    typealias Fail = MockFeed.Fail
+
+    /// 중계 GET. 토큰이 끊겼으면(401) 한 번 새로, 한도(429)면 Retry-After(없으면 1·2·4초) 뒤 3번까지 다시
+    static func call(_ path: String, timeout: TimeInterval = 6) async throws -> [String: Any] {
+        guard TossKeys.on, let url = URL(string: Config.tossRelay + "/api/toss/v1" + path) else { throw Fail(why: "토스 키를 넣으면 모의투자를 쓸 수 있어요") }
+        var renewed = false
+        var attempt = 0
+        while true {
+            let (tok, e) = await TossFeed.token(renew: renewed)
+            guard let tok else { throw Fail(why: e ?? "토큰 실패") }
+            try await MockGate.shared.wait()
+            var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
+            req.setValue("Bearer " + tok, forHTTPHeaderField: "Authorization")
+            req.setValue("naeilo-ios-mock/0.2", forHTTPHeaderField: "User-Agent")
+            let data: Data, resp: URLResponse
+            do { (data, resp) = try await URLSession.shared.data(for: req) }
+            catch let e as URLError {
+                if e.code == .cancelled { throw CancellationError() }
+                throw Fail(why: e.code == .timedOut ? "중계 응답 없음 (\(Int(timeout))초)" : "중계에 닿지 못함 (\(e.code.rawValue))")
+            }
+            let h = resp as? HTTPURLResponse, code = h?.statusCode ?? 0
+            let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            if code == 401 && !renewed { renewed = true; continue }
+            if code == 429 && attempt < 3 {
+                let after = h?.value(forHTTPHeaderField: "Retry-After").flatMap { Double($0) } ?? pow(2, Double(attempt))
+                attempt += 1
+                try await Task.sleep(for: .seconds(min(after, 10)))
+                continue
+            }
+            if code == 429 { throw Fail(why: "토스 호출 한도 · 3번 다시 불러도 막힘") }
+            if code == 404 { throw Fail(why: "없는 종목") }
+            guard code == 200, let o else { throw Fail(why: TossFeed.why(code, o)) }
+            return o
+        }
+    }
+
+    /// 다시 쓰기 (server.py 와 같은 시간)
+    actor Cache {
+        static let shared = Cache()
+        private var dailyM: [String: (at: Date, count: Int, bars: [MockBar])] = [:]
+        private var minsM: [String: (at: Date, day: String, bars: [MockBar])] = [:]
+        private var warnM: [String: (at: Date, v: [String])] = [:]
+        private var suspM: [String: (at: Date, suspended: Bool, liquidation: Bool)] = [:]
+        private var limM: [String: (day: String, upper: Double, lower: Double)] = [:]
+        private var calM: (at: Date, o: [String: Any])? = nil
+
+        func daily(_ c: String, count: Int, ttl: TimeInterval) -> [MockBar]? {
+            guard let x = dailyM[c], x.count >= count, Date().timeIntervalSince(x.at) < ttl else { return nil }
+            return Array(x.bars.suffix(count))
+        }
+        func putDaily(_ c: String, count: Int, _ b: [MockBar]) { dailyM[c] = (Date(), count, b) }
+        func mins(_ c: String) -> (String, [MockBar])? {
+            guard let x = minsM[c], Date().timeIntervalSince(x.at) < 60 else { return nil }
+            return (x.day, x.bars)
+        }
+        func putMins(_ c: String, _ day: String, _ b: [MockBar]) { minsM[c] = (Date(), day, b) }
+        func warn(_ c: String, ttl: TimeInterval) -> [String]? {
+            guard let x = warnM[c], Date().timeIntervalSince(x.at) < ttl else { return nil }
+            return x.v
+        }
+        func putWarn(_ c: String, _ v: [String]) { warnM[c] = (Date(), v) }
+        func needSusp(_ cs: [String]) -> [String] { cs.filter { c in suspM[c].map { Date().timeIntervalSince($0.at) >= 600 } ?? true } }
+        func putSusp(_ c: String, _ s: Bool, _ l: Bool) { suspM[c] = (Date(), s, l) }
+        func susp(_ c: String) -> (Bool, Bool)? { suspM[c].map { ($0.suspended, $0.liquidation) } }
+        func lim(_ c: String, day: String) -> (Double, Double)? { limM[c].flatMap { $0.day == day ? ($0.upper, $0.lower) : nil } }
+        func putLim(_ c: String, day: String, _ u: Double, _ l: Double) { limM[c] = (day, u, l) }
+        func cal() -> [String: Any]? { calM.flatMap { Date().timeIntervalSince($0.at) < 600 ? $0.o : nil } }
+        func putCal(_ o: [String: Any]) { calM = (Date(), o) }
+    }
+
+    static let kst = TimeZone(identifier: "Asia/Seoul")!
+    static var kstCal: Calendar { var c = Calendar(identifier: .gregorian); c.timeZone = kst; return c }
+    static func kstDay(_ d: Date = Date()) -> String {
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = kst; f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: d)
+    }
+    /// 한국 평일 8시~20시: 일봉 마지막 칸이 바뀌는 때
+    static var krBusy: Bool {
+        let c = kstCal, now = Date(), wd = c.component(.weekday, from: now), h = c.component(.hour, from: now)
+        return (2...6).contains(wd) && (8..<20).contains(h)
+    }
+    static let num = MockFeed.num
+    static let enc = MockFeed.enc
+
+    // MARK: 일봉
+
+    /// 한 종목 일봉 (오래된 것부터). 수정주가. 장중 5분, 장 밖 6시간 다시 쓰기
+    static func dailyOne(_ c: String, count: Int) async throws -> [MockBar] {
+        if let b = await Cache.shared.daily(c, count: count, ttl: krBusy ? 300 : 6 * 3600) { return b }
+        let o = try await call("/candles?symbol=\(enc(c))&interval=1d&count=\(count)&adjusted=true")
+        let rows = ((o["result"] as? [String: Any])?["candles"] as? [[String: Any]] ?? []).compactMap { v -> MockBar? in
+            guard let t = v["timestamp"] as? String, t.count >= 10, let op = num(v["openPrice"]), let h = num(v["highPrice"]),
+                  let l = num(v["lowPrice"]), let cl = num(v["closePrice"]), cl > 0 else { return nil }
+            return MockBar(d: String(t.prefix(10)), o: op, h: h, l: l, c: cl, v: num(v["volume"]) ?? 0)
+        }.sorted { $0.d < $1.d }
+        await Cache.shared.putDaily(c, count: count, rows)
+        return rows
+    }
+
+    /// 여러 종목 일봉: 8개씩 같이 부른다 (한도는 MockGate 가 줄 세운다). 실패는 종목마다 이유
+    static func daily(_ codes: [String], count: Int) async throws -> (bars: [String: [MockBar]], errors: [String: String]) {
+        let count = max(2, min(200, count))
+        var bars: [String: [MockBar]] = [:], errs: [String: String] = [:]
+        for i in stride(from: 0, to: codes.count, by: 8) {
+            try Task.checkCancellation()
+            let part = codes[i..<min(codes.count, i + 8)]
+            await withTaskGroup(of: (String, Result<[MockBar], Error>).self) { g in
+                for c in part { g.addTask { do { return (c, .success(try await dailyOne(c, count: count))) } catch { return (c, .failure(error)) } } }
+                for await (c, r) in g {
+                    switch r {
+                    case .success(let b): bars[c] = b
+                    case .failure(let e): errs[c] = (e as? Fail)?.why ?? (e is CancellationError ? "취소" : "실패")
+                    }
+                }
+            }
+            if Task.isCancelled { throw CancellationError() }
+        }
+        return (bars, errs)
+    }
+
+    // MARK: 1분봉
+
+    /// 마지막 거래일 정규장(9:00~15:30) 1분봉 (d = "09:01"). 장 끝부터 거꾸로 200개씩. 1분 다시 쓰기
+    static func minutes(_ c: String) async throws -> (day: String, bars: [MockBar]) {
+        if let x = await Cache.shared.mins(c) { return x }
+        let cal = kstCal
+        func sess(_ d: Date) -> (Date, Date) {
+            (cal.date(bySettingHour: 9, minute: 0, second: 0, of: d)!, cal.date(bySettingHour: 15, minute: 30, second: 0, of: d)!)
+        }
+        let now = Date(), (o0, c0) = sess(now)
+        var before = now < o0 ? sess(now.addingTimeInterval(-86400)).1 : min(now, c0)
+        var got: [Date: MockBar] = [:], win: (Date, Date)? = nil
+        let iso = ISO8601DateFormatter(); iso.timeZone = kst
+        let hm = DateFormatter(); hm.locale = Locale(identifier: "en_US_POSIX"); hm.timeZone = kst; hm.dateFormat = "HH:mm"
+        for _ in 0..<4 {
+            let o = try await call("/candles?symbol=\(enc(c))&interval=1m&count=200&adjusted=false&before=" + enc(iso.string(from: before.addingTimeInterval(60))), timeout: 8)
+            var page: [Date: MockBar] = [:]
+            for v in (o["result"] as? [String: Any])?["candles"] as? [[String: Any]] ?? [] {
+                guard let ts = v["timestamp"] as? String, let d = MockFeed.isoDate(ts), let op = num(v["openPrice"]), let h = num(v["highPrice"]),
+                      let l = num(v["lowPrice"]), let cl = num(v["closePrice"]), cl > 0 else { continue }
+                page[d] = MockBar(d: hm.string(from: d), o: op, h: h, l: l, c: cl, v: num(v["volume"]) ?? 0)
+            }
+            guard let newest = page.keys.max(), let oldest = page.keys.min() else { break }
+            if win == nil {
+                win = sess(newest)
+                // 마지막 봉이 장 끝 뒤(애프터)면 장 끝부터 다시
+                if newest > win!.1.addingTimeInterval(60) { before = win!.1; continue }
+            }
+            got.merge(page) { a, _ in a }
+            if oldest <= win!.0 { break }
+            before = oldest.addingTimeInterval(-60)
+        }
+        guard let w = win else { return ("", []) }
+        let out = got.keys.sorted().filter { $0 > w.0 && $0 <= w.1.addingTimeInterval(60) }.compactMap { got[$0] }
+        let day = kstDay(w.0)
+        await Cache.shared.putMins(c, day, out)
+        return (day, out)
+    }
+
+    // MARK: 지금 가격 · 호가 · 유의사항 · 상하한가 · 장 일정
+
+    static func last(_ codes: [String]) async throws -> [String: Double] {
+        var out: [String: Double] = [:]
+        for i in stride(from: 0, to: codes.count, by: 200) {
+            let o = try await call("/prices?symbols=" + codes[i..<min(codes.count, i + 200)].joined(separator: ","), timeout: 8)
+            for q in o["result"] as? [[String: Any]] ?? [] {
+                if let s = q["symbol"] as? String, let v = num(q["lastPrice"]), v > 0 { out[s] = v }
+            }
+        }
+        return out
+    }
+
+    static func book(_ c: String) async throws -> [String: Any] {
+        (try await call("/orderbook?symbol=" + enc(c), timeout: 4))["result"] as? [String: Any] ?? [:]
+    }
+
+    /// 지금 걸린 유의사항 (VI·투자경고…). 장중 15초, 장 밖 1시간
+    static func warnOne(_ c: String) async throws -> [String] {
+        if let w = await Cache.shared.warn(c, ttl: krBusy ? 15 : 3600) { return w }
+        let o = try await call("/stocks/" + enc(c) + "/warnings")
+        let today = kstDay()
+        let out = Set((o["result"] as? [[String: Any]] ?? []).compactMap { w -> String? in
+            guard let t = w["warningType"] as? String else { return nil }
+            if let e = w["endDate"] as? String, e < today { return nil }
+            if let s = w["startDate"] as? String, s > today { return nil }
+            return t
+        }).sorted()
+        await Cache.shared.putWarn(c, out)
+        return out
+    }
+
+    /// 유의사항 + 거래정지·정리매매 (최대 30종목, 걸린 것만)
+    static func warnings(_ codes: [String]) async throws -> [String: [String]] {
+        let top = Array(codes.prefix(30))
+        var out: [String: [String]] = [:]
+        for c in top { if let w = try? await warnOne(c), !w.isEmpty { out[c] = w } }
+        let need = await Cache.shared.needSusp(top)
+        for i in stride(from: 0, to: need.count, by: 200) {
+            let o = try await call("/stocks?symbols=" + need[i..<min(need.count, i + 200)].joined(separator: ","), timeout: 8)
+            for x in o["result"] as? [[String: Any]] ?? [] {
+                guard let s = x["symbol"] as? String else { continue }
+                let d = x["koreanMarketDetail"] as? [String: Any] ?? [:]
+                await Cache.shared.putSusp(s, d["krxTradingSuspended"] as? Bool == true, d["liquidationTrading"] as? Bool == true)
+            }
+        }
+        for c in top {
+            guard let x = await Cache.shared.susp(c) else { continue }
+            let (s, l) = x
+            if s { out[c, default: []].append("SUSPENDED") }
+            if l && !(out[c] ?? []).contains("LIQUIDATION_TRADING") { out[c, default: []].append("LIQUIDATION_TRADING") }
+        }
+        return out
+    }
+
+    /// 오늘 상한가·하한가 (하루 한 번)
+    static func limits(_ c: String) async throws -> (upper: Double, lower: Double)? {
+        let day = kstDay()
+        if let x = await Cache.shared.lim(c, day: day) { return (x.0, x.1) }
+        let r = (try await call("/price-limits?symbol=" + enc(c)))["result"] as? [String: Any] ?? [:]
+        guard let u = num(r["upperLimitPrice"]), let l = num(r["lowerLimitPrice"]) else { return nil }
+        await Cache.shared.putLim(c, day: day, u, l)
+        return (u, l)
+    }
+
+    /// 국내 장 운영 정보 (10분 다시 쓰기)
+    static func calendar() async throws -> [String: Any] {
+        if let o = await Cache.shared.cal() { return o }
+        let o = (try await call("/market-calendar/KR"))["result"] as? [String: Any] ?? [:]
+        await Cache.shared.putCal(o)
+        return o
+    }
+}
 #endif
