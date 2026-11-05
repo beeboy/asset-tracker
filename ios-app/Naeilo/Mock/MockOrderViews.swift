@@ -406,6 +406,7 @@ struct MockAccountView: View {
     @State private var editRow: MockPickRow?
     @State private var sel: UUID?
     @State private var pastReads: Set<String> = []   // 지난 AI 조언을 편 흐름
+    @State private var clearAsk: MockFlowRead.Kind?   // 지우기를 물을 흐름 카드
 
     var body: some View {
         let d = MockDesk.shared
@@ -425,6 +426,16 @@ struct MockAccountView: View {
         .sheet(isPresented: $settings) { MockSettingsView() }
         .confirmationDialog(Text(verbatim: "실전을 켤까요?"), isPresented: $liveAsk, titleVisibility: .visible) {
             Button(role: .destructive) { note = d.setLive(true) } label: { mt("실전 켜기 (실제 주문)") }
+        }
+        .confirmationDialog(Text(verbatim: clearAsk == .follow ? "걸린 종목 뒤 흐름을 지울까요?" : "판 뒤 흐름을 지울까요?"),
+                            isPresented: Binding(get: { clearAsk != nil }, set: { if !$0 { clearAsk = nil } }), titleVisibility: .visible) {
+            Button(role: .destructive) {
+                if clearAsk == .follow { d.clearFollows() } else { d.clearAfters(d.shown) }
+                clearAsk = nil
+            } label: { mt("지우기") }
+            Button(role: .cancel) { clearAsk = nil } label: { mt("그만두기") }
+        } message: {
+            mt(clearAsk == .follow ? "쌓인 기록과 지난 AI 조언을 모두 지워요" : "지금 장부의 판 기록과 지난 AI 조언을 지워요")
         }
     }
 
@@ -702,7 +713,13 @@ struct MockAccountView: View {
                     }
                 }
                 if !reasons.isEmpty { Divider().overlay(Theme.line) }
-                ForEach(Array(xs.suffix(8).reversed()), id: \.at) { x in afterLine(x, verdict) }
+                ForEach(Array(xs.suffix(8).reversed()), id: \.at) { x in
+                    afterLine(x, verdict)
+                        .contentShape(Rectangle())
+                        .contextMenu {   // 길게 눌러 한 건만 지운다
+                            Button(role: .destructive) { d.deleteAfter(x) } label: { Label { mt("이 기록 지우기") } icon: { Image(systemName: "trash") } }
+                        }
+                }
                 mt("판 값보다 뒤에 내리면 잘 판 거예요. 오르면 판 자리가 반환점이었던 거예요. 앱이 꺼져 놓친 때는 비워 둬요")
                     .appFont(11).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
             }
@@ -750,6 +767,10 @@ struct MockAccountView: View {
             } }
             Spacer()
             mt(r).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+            if !empty {
+                Button { clearAsk = k } label: { mt("지우기").appFont(12, .semibold).frame(height: 18) }
+                    .buttonStyle(.bordered).controlSize(.mini).tint(Theme.sub)
+            }
         }
     }
 
