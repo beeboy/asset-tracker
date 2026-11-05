@@ -460,7 +460,7 @@ struct TossKeyView: View {
                 TossLinkMap(on: on)
                 if on { onCard } else { steps }
                 #if MOCK
-                if on { MockSwitchCard() }
+                if on || Support.shared.dev { MockSwitchCard() }   // 개발자는 키 없이도 허용 스위치를 본다
                 #endif
             }
             .padding(16)
