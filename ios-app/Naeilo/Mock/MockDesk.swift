@@ -97,8 +97,14 @@ final class MockDesk {
     var on: Bool = UserDefaults.standard.bool(forKey: "mock.on") {
         didSet { UserDefaults.standard.set(on, forKey: "mock.on") }
     }
+    /// 설정 > 내 Toss API 키 > 모의투자 켜기. 허용만 하고, 탭 전환은 홈 평가액 박스로 한다
+    var allowed: Bool = UserDefaults.standard.bool(forKey: "mock.allowed") {
+        didSet { UserDefaults.standard.set(allowed, forKey: "mock.allowed"); if !allowed { on = false } }
+    }
+    /// 평가액 박스로 투자 모드에 들어갈 수 있나: 개발자 기기, 또는 허용 + 토스 키
+    var canEnter: Bool { Support.shared.dev || (allowed && TossKeys.on) }
     /// 모의는 개발자 기기 또는 토스 키 사용자, 실전은 개발자 기기만 (2026-11-05 결정: 일반 사용자에겐 모의만)
-    var active: Bool { on && (Support.shared.dev || TossKeys.on) }
+    var active: Bool { on && canEnter }
     static var realOK: Bool { Support.shared.dev }
 
     private(set) var s: MockState
