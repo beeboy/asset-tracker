@@ -1173,7 +1173,7 @@ struct MockTabs: View {
     }
 }
 
-/// 홈 평가액 박스: 들어갈 수 있으면(개발자 기기, 또는 설정에서 모의투자 허용 + 토스 키) 금액 글자 밖을 누를 때 투자 모드를 켜고 끈다 (금액 글자 탭 = 가리기, 길게 = 모양 고르기는 그대로)
+/// 홈 평가액 박스: 들어갈 수 있으면(설정에서 모의투자 허용 + 개발자 기기 또는 토스 키) 금액 글자 밖을 누를 때 투자 모드를 켜고 끈다 (금액 글자 탭 = 가리기, 길게 = 모양 고르기는 그대로)
 struct MockEntry: ViewModifier {
     func body(content: Content) -> some View {
         let d = MockDesk.shared
