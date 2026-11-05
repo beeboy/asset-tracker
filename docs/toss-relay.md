@@ -11,7 +11,7 @@
 2. 앱: 키를 키체인(`TossKeys`, `com.naeilo.toss`, 이 기기만)에 저장. `POST {중계}/api/toss/token` 으로 토큰을 받아 키체인에 만료 시각과 함께 둔다.
 3. 앱: `GET {중계}/api/toss/v1/prices?symbols=…` 에 `Authorization: Bearer` 를 붙여 부른다. 401 이면 토큰을 한 번 새로 받는다. 404 묶음은 종목별로 다시 묻고 없는 종목은 하루 뺀다 (`server.py` 개발자 경로와 같은 규칙).
 4. 앱: 같은 토큰으로 `GET {중계}/api/toss/v1/candles?symbol=…&interval=1d&adjusted=false&count=…[&before=…]`(지난 종가, 종목마다 하루 한 번)와 `GET {중계}/api/toss/v1/exchange-rate[?dateTime=…]`(원/달러, 10분마다)도 부른다 (`TossHistory`).
-5. 중계(`proxy/toss_relay.py`): 토큰·현재가·일봉(1d만)·원/달러(USD/KRW만) 네 경로만 토스에 그대로 넘긴다. 키·토큰을 저장·기록하지 않고, 주문·계좌 경로와 계좌 헤더는 없다. IP 하나가 1분에 60번 넘게 부르면 429.
+5. 중계(`proxy/toss_relay.py`): 토큰·현재가·봉(1d·1m)·원/달러(USD/KRW만), 그리고 모의투자용 호가·장 일정·유의사항·종목 정보·상하한가를 토스에 그대로 넘긴다. 키·토큰을 저장·기록하지 않고, 주문·계좌 경로와 계좌 헤더는 없다. IP 하나가 1분에 600번 넘게 부르면 429.
 
 개발자 주소(`naeilo://toss?u=…ts.net`)가 있으면 그쪽이 먼저다. 둘 다 없으면 기본 시세(Yahoo·사이트)를 쓴다.
 
@@ -32,12 +32,12 @@
 ## 권한과 한도 (2026-10-25 기준, 바꾸면 여기부터 고친다)
 | 누가 | 어느 길 | 무엇을 | 한도 |
 |---|---|---|---|
-| 모든 사용자 (내 토스 키) | 공용 중계 `toss.naeilo.com/api/toss/*` → 8766 `proxy/toss_relay.py` | 토큰 · 현재가 · 일봉(1d) · 1분봉(1m, 종목 상세 1일) · 원/달러. 주문·계좌·호가 없음 | IP 하나 1분 60번 (같은 와이파이 폰은 나눠 씀). 넘으면 429, 1분 뒤 풀림 |
+| 모든 사용자 (내 토스 키) | 공용 중계 `toss.naeilo.com/api/toss/*` → 8766 `proxy/toss_relay.py` | 토큰 · 현재가 · 일봉(1d) · 1분봉(1m) · 원/달러 · 호가 · 장 일정(KR·US) · 유의사항 · 종목 정보 · 상하한가. 주문·계좌 없음 | IP 하나 1분 600번 (같은 와이파이 폰은 나눠 씀). 넘으면 429, 1분 뒤 풀림. 그보다 촘촘한 한도는 토스가 키마다 건다 |
 | 개발자 폰 (모의투자 열쇠를 넣은 내부 베타) | 같은 공용 중계 | 위와 같음 | 없음. 앱이 머리글 `X-Naeilo-Dev` 를 보내고 중계가 서버 `~/asset-tracker/dev_token.json` 과 견준다 (Drinker 결정) |
 | 개발자 폰만 | `toss.naeilo.com/api/mock/*` → Caddy → 8765 `server.py` (naeilo-dev) | 모의투자 일봉·현재가·호가·장 달력·1분봉(정규장)·AI | 자체 한도 없음. 열쇠가 틀리면 403. 토스 쪽 한도(응답 머리 X-RateLimit)만 맞춘다 |
 | 토스 | — | 봉은 1m·1d 뿐 (1h 는 400, 서버에서 확인) | 한 번에 200개 |
 
-- 60 이라는 값은 열린 통로로 쓰이지 않게 2026-10-15 Claude 가 근거 없이 잡았다. Drinker 가 정하면 바꾼다.
+- 600 (2026-11-05 Drinker 결정): 모의 훑기가 일봉을 종목마다 부른다(약 2,700번). 한도는 토스 429·Retry-After 에 맡긴다.
 - 서버 파일은 콘솔에서 손으로 고친 적이 있다 (2026-10-25: server.py 1분봉, proxy/toss_relay.py 1m·개발자 열쇠). 저장소에 올린 뒤 서버에서 `git pull` 하기 전에 `git checkout server.py proxy/toss_relay.py` 먼저.
 
 ## 남은 확인

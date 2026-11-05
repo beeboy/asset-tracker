@@ -459,6 +459,9 @@ struct TossKeyView: View {
                 Text("내 Toss API 키").appFont(22, .bold)
                 TossLinkMap(on: on)
                 if on { onCard } else { steps }
+                #if MOCK
+                if on { MockSwitchCard() }
+                #endif
             }
             .padding(16)
         }
@@ -883,3 +886,17 @@ struct AppIconScreen: View {
         .toolbarTitleDisplayMode(.inlineLarge)
     }
 }
+
+#if MOCK
+/// 모의투자 켜기 (토스 키 사용자, 2026-11-05). 가상 돈으로만 사고판다. 실전은 개발자 기기만
+private struct MockSwitchCard: View {
+    @State private var on = MockDesk.shared.on
+    var body: some View {
+        Card {
+            Toggle(isOn: Binding(get: { on }, set: { v in on = v; MockDesk.shared.on = v })) { Text("모의투자 켜기").appFont(15, .bold) }.tint(Theme.teal)
+            Text("가상 돈으로 내 규칙을 연습해요. 실제 주문은 나가지 않아요. 켜면 아래 탭이 관찰·선정·일지·계좌로 바뀌어요.")
+                .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+#endif

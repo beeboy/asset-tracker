@@ -138,7 +138,7 @@ struct MockBox<Fig: View>: View {
             HStack(spacing: 8) {
                 mt(label).appFont(13).foregroundStyle(BoxInk.dim).lineLimit(1)
                 Spacer(minLength: 4)
-                if ai { MockAIPill() }
+                if ai && MockAI.on { MockAIPill() }
                 if MockDesk.shared.shown == .real {
                     mt("실전").appFont(11, .bold).foregroundStyle(.white).padding(.horizontal, 8).padding(.vertical, 3).background(BoxInk.up, in: Capsule())
                 }
@@ -962,7 +962,7 @@ struct MockScreen<Content: View>: View {
                 HStack(spacing: 0) {
                     AppHeader(tab: tab.name)
                     // 계좌 탭만: 실전 규칙 목록 · 모의투자 설정 (그 뒤에 전환)
-                    if tab == .account {
+                    if tab == .account && MockDesk.realOK {
                         Button { live = true } label: {
                             Image(systemName: "checkmark.shield").font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.sub)
                                 .frame(width: 44, height: 44).contentShape(Rectangle())
@@ -976,14 +976,18 @@ struct MockScreen<Content: View>: View {
                         }
                         .buttonStyle(.plain).accessibilityLabel(Text(verbatim: "모의투자 설정"))
                     }
-                    // 모의 ↔ 실전 전환: 누를 때마다 바뀌고 네 탭이 같이 따른다
-                    Button { d.show(d.shown == .real ? .rule : .real) } label: {
-                        Image(systemName: d.shown == .real ? "bolt.fill" : "testtube.2").font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(d.shown == .real ? Theme.up : Theme.sub)
-                            .frame(width: 44, height: 44).contentShape(Rectangle())
+                    // 모의 ↔ 실전 전환: 누를 때마다 바뀌고 네 탭이 같이 따른다 (실전은 개발자 기기만)
+                    if MockDesk.realOK {
+                        Button { d.show(d.shown == .real ? .rule : .real) } label: {
+                            Image(systemName: d.shown == .real ? "bolt.fill" : "testtube.2").font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(d.shown == .real ? Theme.up : Theme.sub)
+                                .frame(width: 44, height: 44).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain).accessibilityLabel(Text(verbatim: d.shown == .real ? "실전 · 눌러서 모의로" : "모의 · 눌러서 실전으로"))
+                        .padding(.trailing, 8)
+                    } else {
+                        Spacer().frame(width: 8)
                     }
-                    .buttonStyle(.plain).accessibilityLabel(Text(verbatim: d.shown == .real ? "실전 · 눌러서 모의로" : "모의 · 눌러서 실전으로"))
-                    .padding(.trailing, 8)
                 }
                 .padding(.horizontal, -16)
                 MockTabBox(tab: tab)

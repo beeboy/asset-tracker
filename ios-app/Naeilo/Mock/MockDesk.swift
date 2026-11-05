@@ -97,8 +97,9 @@ final class MockDesk {
     var on: Bool = UserDefaults.standard.bool(forKey: "mock.on") {
         didSet { UserDefaults.standard.set(on, forKey: "mock.on") }
     }
-    /// 개발자 기기에서만 켜진다
-    var active: Bool { on && Support.shared.dev }
+    /// 모의는 개발자 기기 또는 토스 키 사용자, 실전은 개발자 기기만 (2026-11-05 결정: 일반 사용자에겐 모의만)
+    var active: Bool { on && (Support.shared.dev || TossKeys.on) }
+    static var realOK: Bool { Support.shared.dev }
 
     private(set) var s: MockState
     private(set) var events: [MockEvent]
@@ -116,12 +117,12 @@ final class MockDesk {
     private let paper = MockPaperBroker()
     private let toss = MockTossBroker()
     func broker(_ b: MockBook) -> MockBroker { b == .real ? toss : paper }
-    var live: Bool { s.live == true }
+    var live: Bool { s.live == true && Self.realOK }
 
     /// [모의]·[실전] 칸. 탭 머리 전환 아이콘으로 바꾸면 세 탭이 같이 따른다 (앱을 켤 때는 설정의 시작 칸으로)
-    var shown: MockBook { s.shown == .real ? .real : .rule }
+    var shown: MockBook { s.shown == .real && Self.realOK ? .real : .rule }
     func show(_ b: MockBook) {
-        guard b != s.shown else { return }
+        guard b != s.shown, b != .real || Self.realOK else { return }
         setView { $0.shown = b }
         if b == .real { Task { await refreshAccount() } }
     }
@@ -164,6 +165,7 @@ final class MockDesk {
     @discardableResult
     func setLive(_ on: Bool) -> String? {
         if s.ledgers.contains(where: { !$0.pending.isEmpty }) { return "대기 주문을 먼저 정리해 주세요" }
+        if on && !Self.realOK { return "실전은 개발자 기기에서만 켤 수 있어요" }
         if on, let why = liveBlock { return "실전 못 켬 · " + why }
         edit(on ? "실전 켬 · 토스 브로커" : "실전 끔 · 모의 브로커") { $0.live = on ? true : nil }
         toss.armed = on
@@ -200,7 +202,7 @@ final class MockDesk {
         if !s.ledgers.contains(where: { $0.book == .real }) { s.ledgers.append(MockLedger(book: .real, started: now)); save() }
         // 기본은 [모의]로 시작 (설정 '시작 실전'을 켜면 [실전])
         s.shown = s.startReal == true ? .real : .rule
-        toss.armed = s.live == true
+        toss.armed = s.live == true && Self.realOK
         settleDue()
         checkDaily()
         let n = guards.perSec
@@ -1806,6 +1808,7 @@ extension MockDesk {
     /// 서버에 묻는다. 실패면 이유를 기록하고 nil (AI 장부는 그 차례만 건너뛴다). 실패해도 쓴 돈이 있으면 남긴다
     /// server: 서버에 보낼 꼴 이름 (없으면 kind)
     private func ask(_ kind: String, _ prompt: String, book: MockBook, as server: String? = nil) async -> [String: Any]? {
+        guard MockAI.on else { return nil }   // AI 문: 스위치가 꺼져 있으면 서버를 부르지 않는다 (2026-11-05)
         let name = Self.aiName(kind)
         let o: [String: Any]
         do { o = try await MockFeed.ai(kind: server ?? kind, prompt: prompt, limits: s.ai.limits) }

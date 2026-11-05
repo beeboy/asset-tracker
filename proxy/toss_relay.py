@@ -7,7 +7,10 @@
 - 키(client_id·client_secret)와 토큰은 저장하지 않는다. 받은 그대로 토스에 넘기고 토스 응답을 그대로 돌려준다.
 - 기록(로그)에 키·토큰·요청 본문을 남기지 않는다.
 - 토큰 발급, 현재가(/api/v1/prices), 일봉·1분봉(/api/v1/candles, 1d·1m), 원/달러(/api/v1/exchange-rate)만 넘긴다. 주문·계좌·자산 경로는 없다 (계좌 헤더도 넘기지 않는다).
-- 한 IP 가 1분에 60번 넘게 부르면 429 (열린 중계로 쓰이지 않게). 개발자 열쇠(머리글 X-Naeilo-Dev = 저장소 dev_token.json)가 맞으면 세지 않는다.
+- 모의투자용 시세(2026-11-05): 호가(/api/v1/orderbook), 장 일정(/api/v1/market-calendar/KR|US), 유의사항(/api/v1/stocks/{종목}/warnings),
+  종목 정보(/api/v1/stocks?symbols=), 상하한가(/api/v1/price-limits). 모두 읽기 시세이고 주문·계좌는 여전히 없다.
+- 한 IP 가 1분에 600번 넘게 부르면 429 (열린 중계로 쓰이지 않게). 더 촘촘한 한도는 토스가 키마다 건다(429·Retry-After 를 그대로 넘긴다).
+  개발자 열쇠(머리글 X-Naeilo-Dev = 저장소 dev_token.json)가 맞으면 세지 않는다.
 
 실행: NAEILO_TOSS_IP=<이 서버 공인 IP> python3 proxy/toss_relay.py [--port 8766]
 앞에 HTTPS(예: Caddy toss.naeilo.com → 127.0.0.1:8766)를 둔다. 개발자 키를 쓰는 server.py 와는 따로 돈다.
@@ -28,7 +31,9 @@ TOSS = "https://openapi.tossinvest.com"
 SYMBOLS = re.compile(r"[A-Za-z0-9.,]{1,2400}")  # 6자리 국내 코드·미국 티커, 쉼표로 200개까지
 SYMBOL = re.compile(r"[A-Za-z0-9.]{1,12}")  # 일봉은 한 종목씩
 ISO = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})")
-PER_MIN = 60
+PER_MIN = 600  # 2026-11-05 Drinker 결정: 모의 훑기(일봉 2,700번)에 맞춰 토스 한도에 맡긴다
+MARKETS = ("KR", "US")
+WARN = re.compile(r"/api/toss/v1/stocks/([A-Za-z0-9.]{1,12})/warnings")
 
 _hits: dict[str, list[float]] = {}
 _lock = threading.Lock()
@@ -100,7 +105,11 @@ class Relay(BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         if u.path == "/api/toss/ip":  # 사용자가 토스에 등록할 IP (앱 설정 화면에 보여 준다)
             return self.reply(200, json.dumps({"ip": os.environ.get("NAEILO_TOSS_IP", "")}).encode())
-        if u.path not in ("/api/toss/v1/prices", "/api/toss/v1/candles", "/api/toss/v1/exchange-rate"):
+        simple = ("/api/toss/v1/prices", "/api/toss/v1/candles", "/api/toss/v1/exchange-rate",
+                  "/api/toss/v1/orderbook", "/api/toss/v1/stocks", "/api/toss/v1/price-limits")
+        cal = u.path.startswith("/api/toss/v1/market-calendar/") and u.path.rsplit("/", 1)[1] in MARKETS
+        warn = WARN.fullmatch(u.path)
+        if u.path not in simple and not cal and not warn:
             return self.err(404, "없는 경로")
         if not dev_ok(self.headers) and too_many(self.client_ip()):
             return self.err(429, "잠시 뒤에 다시")
@@ -108,11 +117,22 @@ class Relay(BaseHTTPRequestHandler):
         auth = self.headers.get("Authorization") or ""
         if not auth.startswith("Bearer "):
             return self.err(400, "잘못된 요청")
-        if u.path == "/api/toss/v1/prices":
+        if u.path in ("/api/toss/v1/prices", "/api/toss/v1/stocks"):
+            # 현재가 · 종목 정보(거래정지·정리매매), 200개까지
             syms = q.get("symbols", "")
             if not SYMBOLS.fullmatch(syms):
                 return self.err(400, "잘못된 요청")
-            out = "/api/v1/prices?symbols=" + urllib.parse.quote(syms, safe=",")
+            out = u.path.replace("/api/toss", "/api") + "?symbols=" + urllib.parse.quote(syms, safe=",")
+        elif u.path in ("/api/toss/v1/orderbook", "/api/toss/v1/price-limits"):
+            # 호가 · 오늘 상하한가 (한 종목)
+            sym = q.get("symbol", "")
+            if not SYMBOL.fullmatch(sym):
+                return self.err(400, "잘못된 요청")
+            out = u.path.replace("/api/toss", "/api") + "?symbol=" + sym
+        elif cal:
+            out = "/api/v1/market-calendar/" + u.path.rsplit("/", 1)[1]
+        elif warn:
+            out = "/api/v1/stocks/" + warn.group(1) + "/warnings"
         elif u.path == "/api/toss/v1/candles":
             # 일봉(지난 종가)과 1분봉(종목 상세 1일 차트). 한 번에 200개까지, before 로 더 지난 쪽을 받는다
             sym, before = q.get("symbol", ""), q.get("before", "")
