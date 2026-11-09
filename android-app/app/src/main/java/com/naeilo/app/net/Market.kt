@@ -122,7 +122,7 @@ class Market {   // ios: Data/Market.swift:13,14
      *  평가 환율: 매매기준율 먼저 (토스 총자산이 이걸로 센다). 없으면 토스 원/달러, 그다음 지금 환율 */
     val valFx: Double get() = marRate ?: tossFx?.rate ?: fx.last   // ios: Data/Market.swift:38
     val marRate: Double? get() = marUse?.rate   // ios: Data/Market.swift:39
-    /** 지금 쓰는 매매기준율 (값, 고시 날짜). 토스처럼 새 날짜 고시는 그날 오전 8시 59분(한국)부터, 그 전엔 앞 고시. 5일 넘게 묵었으면 null */
+    /** 지금 쓰는 매매기준율 (값, 고시 날짜). 토스처럼 새 날짜 고시는 그날 주간거래 열리기 1분 전(한국 8시 59분·겨울 9시 59분)부터, 그 전엔 앞 고시. 5일 넘게 묵었으면 null */
     val marUse: MarUse? get() {   // ios: Data/Market.swift:41
         val m = mar?.takeIf { it.rate > 0 } ?: return null   // ios: Data/Market.swift:42
         val u = if (MarFeed.started(m.date)) MarUse(m.rate, m.date) else (m.prev?.let { MarUse(it.rate, it.date) } ?: MarUse(m.rate, m.date))   // ios: Data/Market.swift:43
@@ -223,7 +223,9 @@ class Market {   // ios: Data/Market.swift:13,14
     /** 공개 베타·출시에서 내 키 시세가 없는 실제 미국 종목: 가격 칸에 키 안내를 띄우고 평가액에서 뺀다 (가짜 값·0원으로 세지 않는다) */
     fun needsKey(s: Symbol): Boolean {   // ios: Data/Market.swift:69
         if (Config.usesCollectedData || Sample.isVirtual(s.id) || s.currency != Currency.usd) return false   // ios: Data/Market.swift:70
-        return toss?.q?.get(s.id) == null && alpaca?.q?.get(s.id) == null && longbridge?.q?.get(s.id) == null
+        if (toss?.q?.get(s.id) != null || alpaca?.q?.get(s.id) != null || longbridge?.q?.get(s.id) != null) return false   // ios: Data/Market.swift:143
+        // 다시 열 때 시세 파일이 15분 지나 비었어도 키가 있으면 마지막 좋은 값으로 센다 (평가액이 0으로 먼저 뜨지 않게)
+        return !((TossKeys.on || AlpacaKeys.on || LongbridgeKeys.on) && synchronized(goodLock) { good.containsKey(s.id) })   // ios: Data/Market.swift:145,146,147
     }
     fun isAlpaca(s: Symbol): Boolean = tossLast(s) == null && alpacaQ(s) != null   // ios: Data/Market.swift:68
     /** Longbridge 값을 쓰는 종목 (종목 화면에 "Longbridge 시세" 표시) */
@@ -835,13 +837,14 @@ object TossHistory {   // ios: Data/Market.swift:439
 /** 매매기준율: 사이트가 하루 한 번 저장하는 data/mar.json ({"USD": {"rate", "date"}}). 웹 평가액과 같은 값 */
 object MarFeed {   // ios: Data/Market.swift:541
     @Serializable data class Prev(var rate: Double, var date: String)   // ios: Data/Market.swift:542
-    /** prev = 바로 앞 날짜 고시 (새 고시는 전날 오후에 나오지만 토스는 그날 오전 8시 59분부터 쓴다) */
+    /** prev = 바로 앞 날짜 고시 (새 고시는 전날 오후에 나오지만 토스는 그날 주간거래가 열릴 때부터 쓴다) */
     @Serializable data class File(var rate: Double, var date: String, var got: Double, var prev: Prev? = null)   // ios: Data/Market.swift:544
     const val name = "site_mar.json"   // ios: Data/Market.swift:545
-    /** 그 날짜 고시를 쓰기 시작했는지: 한국 시간 그날 오전 8시 59분부터 */
-    fun started(date: String): Boolean {   // ios: Data/Market.swift:547
-        val f = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", posix("en_US_POSIX")).withZone(ZoneId.of("Asia/Seoul"))   // ios: Data/Market.swift:548
-        return f.format(Instant.now()) >= date + " 08:59"   // ios: Data/Market.swift:549
+    /** 그 날짜 고시를 쓰기 시작했는지: 토스 주간거래가 열리기 1분 전부터 = 뉴욕 시각 전날 19시 59분 (한국 서머타임 8시 59분, 아니면 9시 59분) */
+    fun started(date: String): Boolean {   // ios: Data/Market.swift:759
+        val d = runCatching { LocalDate.parse(date) }.getOrNull() ?: return false   // ios: Data/Market.swift:760,761
+        val t = d.minusDays(1).atTime(19, 59).atZone(ZoneId.of("America/New_York")).toInstant()   // ios: Data/Market.swift:762,763
+        return !Instant.now().isBefore(t)   // ios: Data/Market.swift:764
     }
     fun cached(): File? = Store.read(File.serializer(), name)   // ios: Data/Market.swift:551
 

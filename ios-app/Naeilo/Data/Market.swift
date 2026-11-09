@@ -37,7 +37,7 @@ final class Market {
     /// 평가 환율: 매매기준율 먼저 (토스 총자산이 이걸로 센다). 없으면 토스 원/달러, 그다음 지금 환율
     var valFx: Double { marRate ?? tossFx?.rate ?? fx.last }
     var marRate: Double? { marUse?.rate }
-    /// 지금 쓰는 매매기준율 (값, 고시 날짜). 토스처럼 새 날짜 고시는 그날 오전 8시 59분(한국)부터, 그 전엔 앞 고시. 5일 넘게 묵었으면 nil
+    /// 지금 쓰는 매매기준율 (값, 고시 날짜). 토스처럼 새 날짜 고시는 그날 주간거래 열리기 1분 전(한국 8시 59분·겨울 9시 59분)부터, 그 전엔 앞 고시. 5일 넘게 묵었으면 nil
     var marUse: (rate: Double, date: String)? {
         guard let m = mar, m.rate > 0 else { return nil }
         let u = MarFeed.started(m.date) ? (m.rate, m.date) : (m.prev.map { ($0.rate, $0.date) } ?? (m.rate, m.date))
@@ -140,7 +140,11 @@ final class Market {
     /// 공개 베타·출시에서 내 키 시세가 없는 실제 미국 종목: 가격 칸에 키 안내를 띄우고 평가액에서 뺀다 (가짜 값·0원으로 세지 않는다)
     func needsKey(_ s: Symbol) -> Bool {
         guard !Config.usesCollectedData, !Sample.isVirtual(s.id), s.currency == .usd else { return false }
-        return toss?.q[s.id] == nil && alpaca?.q[s.id] == nil && longbridge?.q[s.id] == nil
+        if toss?.q[s.id] != nil || alpaca?.q[s.id] != nil || longbridge?.q[s.id] != nil { return false }
+        // 다시 열 때 시세 파일이 15분 지나 비었어도 키가 있으면 마지막 좋은 값으로 센다 (평가액이 0으로 먼저 뜨지 않게)
+        guard TossKeys.on || AlpacaKeys.on || LongbridgeKeys.on else { return true }
+        goodLock.lock(); defer { goodLock.unlock() }
+        return good[s.id] == nil
     }
     /// Alpaca 값을 쓰는 종목 (종목 화면에 "Alpaca(IEX) 시세" 표시)
     func isAlpaca(_ s: Symbol) -> Bool { tossLast(s) == nil && alpacaQ(s) != nil }
@@ -748,13 +752,16 @@ struct CalcSnap: Codable {
 /// 매매기준율: 사이트가 하루 한 번 저장하는 data/mar.json ({"USD": {"rate", "date"}}). 웹 평가액과 같은 값
 enum MarFeed {
     struct Prev: Codable { var rate: Double; var date: String }
-    /// prev = 바로 앞 날짜 고시 (새 고시는 전날 오후에 나오지만 토스는 그날 오전 8시 59분부터 쓴다)
+    /// prev = 바로 앞 날짜 고시 (새 고시는 전날 오후에 나오지만 토스는 그날 주간거래가 열릴 때부터 쓴다)
     struct File: Codable { var rate: Double; var date: String; var got: Double; var prev: Prev? = nil }
     static let name = "site_mar.json"
-    /// 그 날짜 고시를 쓰기 시작했는지: 한국 시간 그날 오전 8시 59분부터
+    /// 그 날짜 고시를 쓰기 시작했는지: 토스 주간거래가 열리기 1분 전부터 = 뉴욕 시각 전날 19시 59분 (한국 서머타임 8시 59분, 아니면 9시 59분)
     static func started(_ date: String) -> Bool {
-        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = TimeZone(identifier: "Asia/Seoul"); f.dateFormat = "yyyy-MM-dd HH:mm"
-        return f.string(from: Date()) >= date + " 08:59"
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "America/New_York")!
+        let p = date.split(separator: "-").compactMap { Int($0) }
+        guard p.count == 3, let d = cal.date(from: DateComponents(year: p[0], month: p[1], day: p[2], hour: 19, minute: 59)),
+              let t = cal.date(byAdding: .day, value: -1, to: d) else { return false }
+        return Date() >= t
     }
     static func cached() -> File? { Store.read(File.self, name) }
 
