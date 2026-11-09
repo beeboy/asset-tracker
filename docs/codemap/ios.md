@@ -2,15 +2,15 @@
 
 `python3 docs/codemap/gen.py`로 다시 만든다. 손으로 고치지 않는다.
 
-소스 104개 · 47308줄 · 뿌리: `ios-app/Naeilo`, `ios-app/WidgetShared`, `ios-app/Widgets`, `ios-app/Watch`
+소스 101개 · 46437줄 · 뿌리: `ios-app/Naeilo`, `ios-app/WidgetShared`, `ios-app/Widgets`, `ios-app/Watch`
 
 ## 폴더 (파일 줄수)
 
 - `./` (2): App 329, Theme 308
 - `Data/` (35): AppModel 885, Backup 85, BrickGame 943, Calm 552, Earnings 175, FlowData 601, ForecastEngine 236, GoalRoute 464, Industries 86, Invest 129, InvestEvents 82, Lines 106, Lots 91, Market 1000, Me 302, MonteCarlo 729, MyRecord 81, Notifier 232, Parallel 725, Progress 116, Recovery 349, Remind 653, SampleData 318, Services 126, SiteCalc 184, SiteStats 281, StockCatalog 134, StockSearch 542, StoreAPI 51, Story 196, Support 198, Sync 595, TossSum 158, WaveEngine 386, WidgetBridge 163
-- `Gyeol/` (4): GyeolBake 338, GyeolDraw 318, GyeolGlue 114, GyeolPip 531
-- `Mock/` (7): MockAI 280, MockDesk 2027, MockEngine 839, MockFeed 367, MockModels 686, MockOrderViews 1211, MockViews 2287
-- `Views/` (28): AnalysisDetail 2460, AnalysisView 972, BoardView 464, BrickGameView 816, CalmView 277, CharMotion 643, Charts 187, EarningsRiver 534, FlowView 870, ForecastParts 140, GoalViews 957, Guide 172, HoldingsView 2779, HomeView 938, InvestViews 222, MeViews 731, MissionViews 769, MyRecordCard 82, ParallelView 462, RemindViews 258, SettingsDetail 716, SettingsView 886, ShareCard 240, ShelterView 933, StartView 170, SupportView 131, ThemeScenes 1179, TownPanel 1037
+- `Gyeol/` (1): GyeolGlue 114
+- `Mock/` (7): MockAI 280, MockDesk 2056, MockEngine 840, MockFeed 621, MockModels 686, MockOrderViews 1232, MockViews 2286
+- `Views/` (28): AnalysisDetail 2460, AnalysisView 972, BoardView 464, BrickGameView 816, CalmView 277, CharMotion 643, Charts 187, EarningsRiver 534, FlowView 870, ForecastParts 140, GoalViews 957, Guide 172, HoldingsView 2779, HomeView 936, InvestViews 222, MeViews 731, MissionViews 769, MyRecordCard 82, ParallelView 462, RemindViews 258, SettingsDetail 716, SettingsView 900, ShareCard 240, ShelterView 933, StartView 170, SupportView 131, ThemeScenes 1179, TownPanel 1037
 - `Views/Wave/` (5): SurfCloset 265, WaveFeedback 154, WaveHomeView 368, WavePlayView 460, WaveResultPopup 109
 - `WidgetShared/` (7): Config 175, Engine 236, Flip 33, Format 147, Models 850, Reward 165, StoryWidgetData 22
 - `Widgets/` (6): CharWidgets 984, HomeWidgets 85, Intent 66, LockWidgets 87, Provider 34, StoryWidget 119
@@ -58,14 +58,11 @@
 - Data/TossSum.swift: enum TossSum, MarDaily; ext AppModel
 - Data/WaveEngine.swift: struct WaveEngine; ext AppModel
 - Data/WidgetBridge.swift: enum WidgetBridge
-- Gyeol/GyeolBake.swift: enum GyeolJV; class GyeolPart, GyeolFrame, GyeolBake, GyeolStage; struct GyeolFx, GyeolSeg, GyeolPlan
-- Gyeol/GyeolDraw.swift: struct GPath; enum GyeolOp, GyeolDraw
 - Gyeol/GyeolGlue.swift: enum GyeolFeed; struct GyeolHooks, GyeolSettings
-- Gyeol/GyeolPip.swift: class GyeolPip, GyeolPipDelegate, GyeolPipHost, GyeolLink, GyeolEngine; struct GyeolPipSettings, GyeolPipPreview
 - Mock/MockAI.swift: struct MockAISettings, MockAIWallet, MockAIView; enum MockAI
 - Mock/MockDesk.swift: struct MockState; class MockDesk, MockPaperBroker, MockTossBroker; ext MockDesk; proto MockBroker
 - Mock/MockEngine.swift: enum MockClock, MockCalc
-- Mock/MockFeed.swift: enum MockFeed, TossOrderAPI; actor MockGate
+- Mock/MockFeed.swift: enum MockFeed, TossOrderAPI, MockToss; actor MockGate
 - Mock/MockModels.swift: enum MockMarket, MockWho, MockBook, MockSide, MockOrderState, MockOrderType, MockFmt, MockLive; struct MockBar, MockPiece, MockBundle, MockStock, MockHit, MockSeen, MockCurve, MockScan, MockCond, MockRuleCond, MockSellCond, MockMark, MockExceptions, MockSelectRule, MockSellRule, MockGuards, MockFees, MockPosition, MockOrder, MockSettle, MockLedger, MockEvent, MockBuyNote, MockFollow, MockAfter, MockFlowRead, MockAIUse, MockRun
 - Mock/MockOrderViews.swift: struct MockStockPnl, MockDay, MockJournalView, MockAccountView, MockSettingsView, MockTabs, MockEntry, MockTabsHooks; ext MockDesk
 - Mock/MockViews.swift: func mt; enum MockTab, MockNum, MockCutTone; ext MockFmt, MockDesk, MockStockRow, View; struct MockBox, MockShareBar, MockTabBox, MockSegPill, MockAIPill, MockStatePill, MockGoPill, MockCondPill, MockAddPill, MockKindChip, MockNumField, MockFormButtons, MockPieceDraft, MockPieceForm, MockRuleDraft, MockRuleForm, MockSellDraft, MockSellForm, MockRunLine, MockTag, MockListCard, MockMove, MockSortToggle, MockEmptyRow, MockStockRow, MockQtyPill, MockSheetBar, MockScreen, MockLiveSheet, MockObserveView, MockCurveCard, MockPickRow, MockSelectView, MockCycleLine, MockRowEdit, MockConfirmCard, MockStockFinder, MockStockRef, MockStockSheet, MockStockChart, MockChainSheet, MockBookCard, MockSeenLog, MockSwipe, MockFlow, MockTradeLog, MockFillLog, MockFlipBoard, MockFlipCell, MockSeenPill
@@ -162,17 +159,14 @@
 - TossSum -> AppModel, Lots, Market, MonteCarlo, SampleData, Services, StockSearch, Sync, Config
 - WaveEngine -> AppModel, Market, StockSearch, Engine
 - WidgetBridge -> AppModel, Lines, Market, Remind, SampleData, StockSearch, Story, GyeolGlue, MeViews, WatchPayload, WatchSync, Config, Engine, Format, Models, Reward
-- GyeolBake -> SampleData, HomeViews
-- GyeolDraw -> SampleData, GyeolBake
 - GyeolGlue -> Support, Sync, Theme, Config, Engine, Format
-- GyeolPip -> Support, Sync, GyeolBake, GyeolDraw, Theme
 - MockAI -> Recovery, MockEngine, MockFeed, MockModels
-- MockDesk -> Notifier, StockSearch, Support, MockAI, MockEngine, MockFeed, MockModels
+- MockDesk -> Notifier, StockSearch, Support, MockAI, MockEngine, MockFeed, MockModels, Models
 - MockEngine -> MockModels
 - MockFeed -> MockEngine, MockModels, Config, Models
 - MockModels -> App, MockEngine
-- MockOrderViews -> App, Support, MockDesk, MockEngine, MockFeed, MockModels, MockViews, Theme, Views/Charts, HoldingsView, HomeView, ThemeScenes
-- MockViews -> App, StockSearch, MockDesk, MockEngine, MockFeed, MockModels, Theme, Views/Charts, HoldingsView, HomeView, ThemeScenes
+- MockOrderViews -> App, MockAI, MockDesk, MockEngine, MockFeed, MockModels, MockViews, Theme, Views/Charts, HoldingsView, HomeView, ThemeScenes
+- MockViews -> App, StockSearch, MockAI, MockDesk, MockEngine, MockFeed, MockModels, Theme, Views/Charts, HoldingsView, HomeView, ThemeScenes
 - AnalysisDetail -> AppModel, GoalRoute, Lots, Market, MonteCarlo, Notifier, Parallel, Remind, SampleData, Services, SiteCalc, SiteStats, StockSearch, Sync, Theme, AnalysisView, HoldingsView, HomeView, SettingsDetail, Config, Engine, Models
 - AnalysisView -> App, AppModel, Calm, GoalRoute, Market, Remind, SiteCalc, SiteStats, Support, Theme, AnalysisDetail, CalmView, ForecastParts, GoalViews, HoldingsView, HomeView, SupportView, ThemeScenes, Engine
 - BoardView -> App, AppModel, BrickGame, GoalRoute, Recovery, Remind, SampleData, Theme, AnalysisView, GoalViews, Guide, HoldingsView, HomeView, MissionViews, ThemeScenes, WaveHomeView
@@ -194,7 +188,7 @@
 - ParallelView -> App, AppModel, Market, Parallel, SampleData, Theme, Engine
 - RemindViews -> App, AppModel, Remind, SampleData, Theme, WaveHomeView, Engine
 - SettingsDetail -> AppModel, Backup, GoalRoute, Lines, Market, Notifier, SampleData, Sync, Theme, MeViews, RemindViews, SettingsView, StartView, WaveHomeView, Config, Models, Reward, CharWidgets, Catalog
-- SettingsView -> App, AppModel, FlowData, Market, Sync, GyeolGlue, GyeolPip, Theme, GoalViews, Guide, HomeView, SettingsDetail, SupportView, ThemeScenes, WaveFeedback, WaveHomeView, Config, Models
+- SettingsView -> App, AppModel, FlowData, Market, Support, Sync, GyeolGlue, MockDesk, Theme, GoalViews, Guide, HomeView, SettingsDetail, SupportView, ThemeScenes, WaveFeedback, WaveHomeView, Config, Models
 - ShareCard -> AppModel, SampleData, Theme, MeViews, Config, Reward, CharWidgets
 - ShelterView -> App, AppModel, Calm, Lines, SampleData, Story, Support, Theme, CharMotion, InvestViews, MeViews, SupportView, Reward
 - StartView -> AppModel, GoalRoute, Lines, Theme, SettingsDetail

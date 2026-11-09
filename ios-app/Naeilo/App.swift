@@ -122,6 +122,15 @@ struct RootView: View {
                     Task { await TrustedClock.shared.sync(); model.fixStarts(); Support.shared.tick() }   // 7일 무료·캐릭터 상품 열림 날짜도
                     if model.persists { Task { await Sync.shared.pull(model) } }
                 }
+                // 켜 둔 동안에도 다른 기기 값 받기: 앞에 있을 때만 30초마다 (뒤로 가면 멈춘다)
+                .task(id: phase) {
+                    guard phase == .active else { return }
+                    while !Task.isCancelled {
+                        try? await Task.sleep(for: .seconds(30))
+                        guard !Task.isCancelled, phase == .active, model.persists else { break }
+                        await Sync.shared.poll(model)
+                    }
+                }
                 // 알림: 설정이 바뀌면 다시 예약
                 .onChange(of: model.alerts) { _, _ in Task { await Notifier.reschedule(model) } }
                 .onChange(of: model.alertHr) { _, _ in Task { await Notifier.reschedule(model) } }

@@ -84,9 +84,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.naeilo.widget
         # 모의투자(Naeilo/Mock/): 모든 채널에 MOCK. 공개판은 토스 키 사용자에게 모의만 열고, 실전·AI 는 개발자 기기(Support.dev)만 (2026-11-05)
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(NAEILO_MOCK_$(NAEILO_CHANNEL)) $(NAEILO_GYEOL) $(NAEILO_GYEOL_PIP)"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(NAEILO_MOCK_$(NAEILO_CHANNEL)) $(NAEILO_GYEOL)"
         NAEILO_GYEOL: ""   # 결: 보류(2026-10-31). 다시 붙이려면 GYEOL (Gyeol/README.md)
-        NAEILO_GYEOL_PIP: GYEOLPIP   # 결 작은 창(PiP). 빼려면 비우고 Naeilo/Gyeol/GyeolPip·GyeolBake·GyeolDraw·gyeol-bake.json
         NAEILO_MOCK_internalBeta: MOCK
         NAEILO_MOCK_publicBeta: MOCK
         NAEILO_MOCK_release: MOCK

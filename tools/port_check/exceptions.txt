@@ -52,11 +52,13 @@ Data/StockSearch.swift:86 검사기 한계: 보간 속 따옴표 (옮김, StockS
 Data/StockSearch.swift:222 플랫폼: applicationSupportDirectory 대신 앱 내부 폴더 filesDir (StockSearch.kt CustomSymbols.file)
 Data/StockSearch.swift:386 검사기 한계: 보간 속 따옴표 ?? "" (옮김, StockSearch.kt krStamp)
 Data/SiteStats.swift:7-10 플랫폼: Kotlin 은 object 안에 typealias 를 둘 수 없다. MC.Stats.Ticker·Defaults·Corr·MC.Stats 를 그대로 쓴다
-Data/Sync.swift:217 플랫폼: CryptoKit SealedBox 는 암호문·태그(16바이트)를 나눠 받고, javax.crypto GCM 은 붙인 채로 받는다 (Sync.kt open)
-Data/Sync.swift:493 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, Sync.kt apply skipped)
-Data/Sync.swift:530-532 검사기 한계: 보간 속 따옴표 ?? "" (옮김, Sync.kt signature)
-Data/Sync.swift:523 검사기 한계: 보간 속 따옴표 ?? "" (옮김, Sync.kt townStamp)
-Data/Sync.swift:553 키체인 접근성: KeyVault(Keystore) 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
+Data/Sync.swift:222 플랫폼: FeedReq 응답 코드는 Int 라 ?? 0 이 없다 (Sync.kt call)
+Data/Sync.swift:345 플랫폼: @MainActor 는 Kotlin에 없어 MainScope().launch 로 (Sync.kt pushSoon)
+Data/Sync.swift:232 플랫폼: CryptoKit SealedBox 는 암호문·태그(16바이트)를 나눠 받고, javax.crypto GCM 은 붙인 채로 받는다 (Sync.kt open)
+Data/Sync.swift:565 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, Sync.kt apply skipped)
+Data/Sync.swift:602-604 검사기 한계: 보간 속 따옴표 ?? "" (옮김, Sync.kt signature)
+Data/Sync.swift:595 검사기 한계: 보간 속 따옴표 ?? "" (옮김, Sync.kt townStamp)
+Data/Sync.swift:625 키체인 접근성: KeyVault(Keystore) 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
 Data/Backup.swift:67 플랫폼: SwiftUI FileDocument 의 읽을 형식(.json). 안드로이드는 파일 고르기(SAF) 화면이 application/json 으로 연다 (설정 화면 단계)
 Data/Backup.swift:73-74 플랫폼: SwiftUI FileDocument 읽기·쓰기 틀. 안드로이드는 BackupFile.data·read 가 바이트를 주고받는다
 Data/Backup.swift:77-78 플랫폼: iOS 보안 범위 파일 접근. 안드로이드 SAF 는 받은 Uri 로 바로 읽는다
@@ -244,9 +246,9 @@ Views/EarningsRiver.swift:479 플랫폼: 282 과 같음 (지난 분기 눈금 �
 Views/EarningsRiver.swift:531-532 플랫폼: Xcode #Preview (안드로이드는 미리보기 없음)
 Views/ParallelView.swift:432 플랫폼: .lineLimit(1).minimumScaleFactor(0.8) = FitRow(0.8f) (한 줄 고정)
 Views/ParallelView.swift:439 플랫폼: 432 과 같음 (FitRow 한 줄 고정)
-Data/Sync.swift:304-305 플랫폼: beginBackgroundTask·번호 상자는 안드로이드에 없음 (Sync.kt flush 는 MainScope 로만)
-Data/Sync.swift:308 플랫폼: 288 과 같음 (endBackgroundTask)
-Data/Sync.swift:568 플랫폼: BGTaskBox(UIBackgroundTaskIdentifier 상자)는 안드로이드에 없음
+Data/Sync.swift:370-371 플랫폼: beginBackgroundTask·번호 상자는 안드로이드에 없음 (Sync.kt flush 는 MainScope 로만)
+Data/Sync.swift:374 플랫폼: 338 과 같음 (endBackgroundTask)
+Data/Sync.swift:640 플랫폼: BGTaskBox 는 beginBackgroundTask 번호 상자 (안드로이드에 없음)
 Views/HomeView.swift:291 검사기 한계: 보간 속 따옴표 ? "done" : "fresh" (옮김, HomeView.kt HomeSay.home chat)
 Views/HomeView.swift:84 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, HomeView.kt sceneOf status "본전까지 +…%")
 Views/SettingsDetail.swift:383 플랫폼: 안드로이드 런처는 길게 누르면 '위젯' 단추 (SettingsDetail.kt AddStep 2 '"위젯" 누르기')
@@ -272,6 +274,75 @@ Views/FlowView.swift:538 플랫폼: .transition(.opacity) 는 애니메이션 �
 Data/TossSum.swift:72-73 플랫폼: java.time ZonedDateTime 은 연·월·일·시가 늘 있어 Calendar 기본값(1970·1·0)이 없다 (TossSum.kt lastLine)
 Data/TossSum.swift:136 플랫폼: 날짜 글자는 Locale.ROOT 로 (en_US_POSIX 와 같은 숫자 꼴)
 Views/HomeView.swift:21 실기기 맞춤: 안드로이드는 padding(end = 6.5.dp) (아이폰 20줄 주석 "안드로이드 실기기 재서 +4.5")
-Views/HomeView.swift:464-472 안드로이드에 없음: FlowRow tail 은 Mock/MockViews.swift 만 쓴다 (안드로이드엔 Mock 화면 없음)
 Views/HomeView.swift:725 검사기 한계: 같은 색 둘을 halo 변수 하나로 씀 (옮김, HomeView.kt HorizonScene 불빛)
 Views/HomeView.swift:917 이름만 다름: 안드로이드는 NavPage 를 돌려주는 homePage(m, route) (App.kt PathSheet)
+# 모의투자 (Mock/ → mock/)
+Mock/MockModels.swift:1 빌드 플래그 MOCK: 안드로이드는 모든 채널에 넣는다 (아이폰도 모든 채널 켬)
+Mock/MockModels.swift:685 #endif (1 과 같음)
+Mock/MockModels.swift:604 en_US_POSIX: java.time 은 Locale.US 로 숫자·달력이 고정된다 (플랫폼 차이)
+Mock/MockModels.swift:608 en_US_POSIX (604 와 같음)
+Mock/MockModels.swift:612 en_US_POSIX (604 와 같음)
+Mock/MockEngine.swift:1 빌드 플래그 MOCK (MockModels.swift:1 과 같음)
+Mock/MockEngine.swift:839 #endif
+Mock/MockEngine.swift:41 플랫폼: dateComponents 선택값(?? 0) → ZonedDateTime.hour·minute 는 늘 있다
+Mock/MockEngine.swift:224 플랫폼 (40 과 같음)
+Mock/MockEngine.swift:465 플랫폼: reduce(0) → sumOf
+Mock/MockEngine.swift:643 플랫폼: Calendar weekday 1·7(일·토) → DayOfWeek.SUNDAY·SATURDAY (MockCalc.weekend)
+Mock/MockEngine.swift:700 플랫폼 (642 와 같음)
+Mock/MockEngine.swift:693 플랫폼: DateFormatter yyyy-MM-dd → LocalDate.parse (ISO 날짜)
+Mock/MockFeed.swift:1 빌드 플래그 MOCK
+Mock/MockFeed.swift:620 #endif
+Mock/MockFeed.swift:234 플랫폼: actor 싱글턴(shared) → Kotlin object MockGate
+Mock/MockFeed.swift:426 플랫폼: actor 싱글턴(shared) → Kotlin object MockToss.Cache
+Mock/MockFeed.swift:459 플랫폼: Calendar(kst) → ZonedDateTime(kst) (krBusy·minutes 에서 바로)
+Mock/MockFeed.swift:513 플랫폼 (459 와 같음)
+Mock/MockFeed.swift:461 플랫폼: DateFormatter en_US_POSIX yyyy-MM-dd → MockFmt.day
+Mock/MockFeed.swift:521 플랫폼: en_US_POSIX → Locale.US
+Mock/MockFeed.swift:467 플랫폼: Calendar weekday 2...6 → DayOfWeek 토·일 빼기
+Mock/MockAI.swift:1 빌드 플래그 MOCK
+Mock/MockAI.swift:279 #endif
+# 검사기 한계: 여러 줄 글(""") 속 숫자·따옴표, 보간 속 함수 호출·따옴표를 조각으로 읽는다. 줄은 옮겼다 (MockAI.kt 같은 함수)
+Mock/MockAI.swift:81 검사기 한계: 여러 줄 글 속 숫자 (옮김, ledgerPrompt)
+Mock/MockAI.swift:84 여러 줄 글 끝 (Kotlin listOf().joinToString)
+Mock/MockAI.swift:92 검사기 한계: 보간 속 String(format:) (옮김, reviewPrompt)
+Mock/MockAI.swift:108 검사기 한계: 여러 줄 글 속 숫자 (옮김, wordsPrompt)
+Mock/MockAI.swift:112 검사기 한계: 여러 줄 글 속 숫자 (옮김, wordsPrompt)
+Mock/MockAI.swift:127 검사기 한계: 보간 속 따옴표 (옮김, flowHead)
+Mock/MockAI.swift:135 검사기 한계: 여러 줄 글 속 따옴표 (옮김, flowAsk)
+Mock/MockAI.swift:148 플랫폼: reduce(0, +) → sum()
+Mock/MockAI.swift:150 검사기 한계: 보간 속 키 경로 (옮김, followPrompt)
+Mock/MockAI.swift:157 검사기 한계: 보간 속 따옴표 (옮김, followPrompt)
+Mock/MockAI.swift:183 검사기 한계: 보간 속 닫는 괄호 (옮김, afterPrompt)
+Mock/MockAI.swift:80 검사기 한계: 여러 줄 글 속 숫자 (옮김, ledgerPrompt)
+Mock/MockDesk.swift:1 #if MOCK 플래그: 안드로이드는 모든 채널에 넣는다
+Mock/MockDesk.swift:2055 #if MOCK 끝
+Mock/MockDesk.swift:92 @MainActor @Observable: 안드로이드는 object + Compose 상태(rev)로 다시 그린다
+Mock/MockDesk.swift:171 @discardableResult: 코틀린은 반환값을 버려도 된다
+Mock/MockDesk.swift:381 @discardableResult: 코틀린은 반환값을 버려도 된다
+Mock/MockDesk.swift:911 @discardableResult: 코틀린은 반환값을 버려도 된다
+Mock/MockDesk.swift:926 @discardableResult: 코틀린은 반환값을 버려도 된다
+Mock/MockDesk.swift:1038 @discardableResult: 코틀린은 반환값을 버려도 된다
+Mock/MockDesk.swift:1215 @discardableResult: 코틀린은 반환값을 버려도 된다
+Mock/MockDesk.swift:1570 @discardableResult: 코틀린은 반환값을 버려도 된다
+Mock/MockDesk.swift:440-448 iOS 백그라운드 작업(UIApplication.beginBackgroundTask): 안드로이드는 앱 밖에서 이어 받지 않고 돌아오면 resume 으로 잇는다
+Mock/MockDesk.swift:474 검사기 한계: 글자 안 \( ) 사이 삼항의 따옴표를 문구로 읽는다
+Mock/MockDesk.swift:1635 [0] 첫 폴더 고르기: 안드로이드는 filesDir 하나
+Mock/MockDesk.swift:1639-1640 JSONEncoder·Decoder 날짜 꼴: 안드로이드는 NJson, 날짜는 이미 유닉스 초
+Mock/MockDesk.swift:1682 extension MockDesk: 안드로이드는 같은 object 안에 둔다
+Mock/MockDesk.swift:1756 검사기 한계: 글자 안 \(c("agree")) 따옴표를 문구로 읽는다
+Mock/MockDesk.swift:1871 검사기 한계: 글자 안 \(e.who?.name ?? "") 따옴표를 문구로 읽는다
+Mock/MockDesk.swift:1403 userInfo mock 표시: 안드로이드 알림은 앱을 보는 중 띠로 바꾸는 구분이 없다
+Mock/MockViews.swift:1 플랫폼: #if MOCK 컴파일 구역 (안드로이드는 파일 전체가 모의투자)
+Mock/MockViews.swift:2198 플랫폼: #endif 컴파일 구역 끝
+Mock/MockViews.swift:929 Kotlin 기본 인자로 같은 값 (MockStockRow band·seen 0, 따로 init 없음)
+Mock/MockViews.swift:1282 플랫폼: ZonedDateTime 시·분은 null 이 아니라 ?? 0 이 없다 (옮김, MockCurveCard.nowX)
+Mock/MockViews.swift:1504 검사기 한계: 보간 속 따옴표 (옮김, MockRowEdit 대기 줄 "팔기"/"사기")
+Mock/MockViews.swift:1666 플랫폼: 닫기 단추는 공용 SheetTitleBar 안에 있다 (옮김, MockStockFinder)
+Mock/MockViews.swift:1832 플랫폼: 자바 DateTimeFormatter 는 Locale.US 로 같은 고정 형식 (en_US_POSIX 없음)
+Mock/MockViews.swift:1995 플랫폼: detectHorizontalDragGestures 가 터치 슬롭으로 시작 거리를 정한다 (minimumDistance 없음)
+Mock/MockViews.swift:1997 플랫폼: detectHorizontalDragGestures 가 가로 끌기만 받아 세로 스크롤과 갈린다 (1.5배 비교 없음)
+Mock/MockViews.swift:2252 플랫폼: graphicsLayer rotationX·cameraDistance 로 같은 접힘 (rotation3DEffect 축·원근 없음)
+Mock/MockOrderViews.swift:1 플랫폼: #if MOCK 컴파일 구역 (안드로이드는 파일 전체가 모의투자)
+Mock/MockOrderViews.swift:1231 플랫폼: #endif (#if MOCK 끝)
+Mock/MockOrderViews.swift:436 플랫폼: 취소 단추는 ConfirmSheet 가 cancel 글로 만들고 누르면 onDismiss (clearAsk = null)
+Mock/MockOrderViews.swift:972 플랫폼: 취소 단추는 ConfirmSheet 가 cancel 글로 만들고 누르면 onDismiss (resetAsk = false)

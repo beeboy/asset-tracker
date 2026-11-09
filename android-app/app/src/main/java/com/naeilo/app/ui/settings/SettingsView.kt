@@ -681,6 +681,18 @@ fun TossKeyView(m: AppModel) {
             }
             msg?.let { T(it, style = appFont(13f), color = Theme.up) }   // ios: Views/SettingsView.swift:452
         }
+        if (on || Support.shared.dev) MockSwitchCard()   // ios: Views/SettingsView.swift:462,463 개발자는 키 없이도 허용 스위치를 본다
+    }
+}
+
+/** 모의투자 켜기 (토스 키 사용자, 2026-11-05). 가상 돈으로만 사고판다. 실전은 개발자 기기만 */
+@Composable
+private fun MockSwitchCard() {   // ios: Views/SettingsView.swift:892,894
+    var on by remember { mutableStateOf(com.naeilo.app.mock.MockDesk.shared.allowed) }   // ios: Views/SettingsView.swift:893 허용만. 탭 전환은 홈 평가액 박스 (끄면 투자 모드도 꺼진다)
+    Card {   // ios: Views/SettingsView.swift:895
+        ToggleRow(checked = on, onChange = { v -> on = v; com.naeilo.app.mock.MockDesk.shared.allowed = v }, tint = Theme.teal) { T("모의투자 켜기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:896
+        T("가상 돈으로 내 규칙을 연습해요. 실제 주문은 나가지 않아요. 켜고 홈 탭의 평가액을 누르면 아래 탭이 관찰·선정·일지·계좌로 바뀌고, 한 번 더 평가액을 누르면 원래 탭으로 돌아와요.",   // ios: Views/SettingsView.swift:897
+            style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:898
     }
 }
 

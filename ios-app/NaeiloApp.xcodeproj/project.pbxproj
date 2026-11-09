@@ -50,10 +50,6 @@
 		6BDC5AA10D896E497C9C4B75 /* LockWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7582FC7C75EA724D55C6EBB8 /* LockWidgets.swift */; };
 		6C9D1F140CD85EDFEC2071E0 /* earnings_seed.json in Resources */ = {isa = PBXBuildFile; fileRef = 0A564AA0AC3E636A11DD0F48 /* earnings_seed.json */; };
 		6DFACFBD23E55E894B20C82A /* MyRecordCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D39858B0C46891A9724D7B8 /* MyRecordCard.swift */; };
-		6E0A11CE00000000000000B1 /* GyeolBake.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E0A11CE00000000000000A1 /* GyeolBake.swift */; };
-		6E0A11CE00000000000000B2 /* GyeolDraw.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E0A11CE00000000000000A2 /* GyeolDraw.swift */; };
-		6E0A11CE00000000000000B3 /* GyeolPip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E0A11CE00000000000000A3 /* GyeolPip.swift */; };
-		6E0A11CE00000000000000B4 /* gyeol-bake.json in Resources */ = {isa = PBXBuildFile; fileRef = 6E0A11CE00000000000000A4 /* gyeol-bake.json */; };
 		7055A0000000000000000A01 /* TossSum.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7055A0000000000000000A02 /* TossSum.swift */; };
 		7107A43B79E31316CBE1B701 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CB3081436E1A6F74D763B5 /* Config.swift */; };
 		7479B774E98602DE2E0479CA /* Catalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A824AF1DB8AF8410F855C8 /* Catalog.swift */; };
@@ -245,10 +241,6 @@
 		5F2905AA73F54471654DDD97 /* BrickGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrickGame.swift; sourceTree = "<group>"; };
 		68521199848D8FCA256D8B7B /* GoalViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalViews.swift; sourceTree = "<group>"; };
 		6B116C077153565363572A59 /* Reward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reward.swift; sourceTree = "<group>"; };
-		6E0A11CE00000000000000A1 /* GyeolBake.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GyeolBake.swift; sourceTree = "<group>"; };
-		6E0A11CE00000000000000A2 /* GyeolDraw.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GyeolDraw.swift; sourceTree = "<group>"; };
-		6E0A11CE00000000000000A3 /* GyeolPip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GyeolPip.swift; sourceTree = "<group>"; };
-		6E0A11CE00000000000000A4 /* gyeol-bake.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "gyeol-bake.json"; sourceTree = "<group>"; };
 		6F1940F858D5A23BC23F8818 /* GyeolWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GyeolWidgets.swift; sourceTree = "<group>"; };
 		7055A0000000000000000A02 /* TossSum.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TossSum.swift; sourceTree = "<group>"; };
 		73C006A8DED4674A51D6CDF7 /* Recovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recovery.swift; sourceTree = "<group>"; };
@@ -622,10 +614,6 @@
 			isa = PBXGroup;
 			children = (
 				4E1AD03CAAF36D68F0A16D9E /* GyeolGlue.swift */,
-				6E0A11CE00000000000000A1 /* GyeolBake.swift */,
-				6E0A11CE00000000000000A2 /* GyeolDraw.swift */,
-				6E0A11CE00000000000000A3 /* GyeolPip.swift */,
-				6E0A11CE00000000000000A4 /* gyeol-bake.json */,
 			);
 			path = Gyeol;
 			sourceTree = "<group>";
@@ -828,7 +816,6 @@
 				E7A1C0DE00000000000000B9 /* krx_stocks.json in Resources */,
 				B8D4F3A26CAE5F7B9D1C2E3F /* PrivacyInfo.xcprivacy in Resources */,
 				E7A1C0DE00000000000000C2 /* Localizable.xcstrings in Resources */,
-				6E0A11CE00000000000000B4 /* gyeol-bake.json in Resources */,
 				B0B4ECE25E732570255D1BE4 /* lines_ko.json in Resources */,
 				6C9D1F140CD85EDFEC2071E0 /* earnings_seed.json in Resources */,
 				E7A1C0DE00000000000000D4 /* data_en.json in Resources */,
@@ -1055,9 +1042,6 @@
 				2984BA32200FEDDF49E697E0 /* Theme.swift in Sources */,
 				4DFD154A9BAEBE833A30B3A1 /* WidgetBridge.swift in Sources */,
 				54187B69E8342D0559809272 /* GyeolGlue.swift in Sources */,
-				6E0A11CE00000000000000B1 /* GyeolBake.swift in Sources */,
-				6E0A11CE00000000000000B2 /* GyeolDraw.swift in Sources */,
-				6E0A11CE00000000000000B3 /* GyeolPip.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1111,13 +1095,12 @@
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				NAEILO_GYEOL = "";
-				NAEILO_GYEOL_PIP = GYEOLPIP;
 				NAEILO_MOCK_internalBeta = MOCK;
 				NAEILO_MOCK_publicBeta = MOCK;
 				NAEILO_MOCK_release = MOCK;
 				PRODUCT_BUNDLE_IDENTIFIER = com.naeilo.widget;
 				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) $(NAEILO_MOCK_$(NAEILO_CHANNEL)) $(NAEILO_GYEOL) $(NAEILO_GYEOL_PIP)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) $(NAEILO_MOCK_$(NAEILO_CHANNEL)) $(NAEILO_GYEOL)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1157,13 +1140,12 @@
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				NAEILO_GYEOL = "";
-				NAEILO_GYEOL_PIP = GYEOLPIP;
 				NAEILO_MOCK_internalBeta = MOCK;
 				NAEILO_MOCK_publicBeta = MOCK;
 				NAEILO_MOCK_release = MOCK;
 				PRODUCT_BUNDLE_IDENTIFIER = com.naeilo.widget;
 				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) $(NAEILO_MOCK_$(NAEILO_CHANNEL)) $(NAEILO_GYEOL) $(NAEILO_GYEOL_PIP)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) $(NAEILO_MOCK_$(NAEILO_CHANNEL)) $(NAEILO_GYEOL)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
