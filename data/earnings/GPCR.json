@@ -6,20 +6,6 @@
  "pending": null,
  "quarters": [
   {
-   "start": "2024-07-01",
-   "end": "2024-09-30",
-   "months": "7~9",
-   "label": "24.7~9",
-   "filed": "2024-11-13",
-   "announced": "2024-11-13",
-   "shares": 171782018,
-   "revenue": null,
-   "cogs": null,
-   "rnd": 32598000,
-   "sga": null,
-   "net": -33977000
-  },
-  {
    "start": "2024-10-01",
    "end": "2024-12-31",
    "months": "10~12",
@@ -116,6 +102,20 @@
    "rnd": 100057000,
    "sga": null,
    "net": -106159000
+  },
+  {
+   "start": "2026-07-01",
+   "end": "2026-09-30",
+   "months": "7~9",
+   "label": "26.7~9",
+   "filed": "2026-11-09",
+   "announced": "2026-11-09",
+   "shares": 214771065,
+   "revenue": null,
+   "cogs": null,
+   "rnd": 134552000,
+   "sga": null,
+   "net": -144757000
   }
  ]
 }
