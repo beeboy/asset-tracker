@@ -77,9 +77,9 @@ class FlowSeries(   // ios: Data/FlowData.swift:34
     val trends: List<List<FlowTrend>>      // 0 = 일(작은 흐름), 1 = 주, 2 = 월(큰 흐름)   // ios: Data/FlowData.swift:39
     val levels: List<FlowLevel>   // ios: Data/FlowData.swift:40
     val patterns: List<FlowPattern>   // ios: Data/FlowData.swift:41
-    val base: Double get() = candles.firstOrNull()?.c ?: 1.0   // ios: Data/FlowData.swift:43
+
     /** '+x% 시작 대비' */
-    fun pct(v: Double): Double = (v / base - 1) * 100   // ios: Data/FlowData.swift:45
+    fun pct(v: Double, from: Int): Double = (v / candles[from].c - 1) * 100   // ios: Data/FlowData.swift:45
 
     init {
         val c = candles.map { it.c }   // ios: Data/FlowData.swift:51

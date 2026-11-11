@@ -108,6 +108,7 @@ import com.naeilo.app.ui.Screen
 import com.naeilo.app.ui.Sheet
 import com.naeilo.app.ui.SheetBar
 import com.naeilo.app.ui.Sym
+import com.naeilo.app.ui.FitText
 import com.naeilo.app.ui.T
 import com.naeilo.app.ui.Theme
 import com.naeilo.app.ui.appFont
@@ -596,7 +597,7 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, term: F
             // 머리: ▲44% 테슬라 · 시작 대비 (세모는 숫자의 70%) + 지금 단위
             // ios: Views/FlowView.swift:397,398
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                val v = series.pct(last.c)   // ios: Views/FlowView.swift:399
+                val v = series.pct(last.c, lo)   // ios: Views/FlowView.swift:399
                 // ios: Views/FlowView.swift:400
                 Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     // ios: Views/FlowView.swift:401,402,403
@@ -619,7 +620,7 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, term: F
             Canvas(Modifier.fillMaxSize()) { ticks.forEach { v -> drawLine(line, Offset(0f, y(v) * dens), Offset(W * dens, y(v) * dens), 1.dp.toPx()) } }   // ios: Views/FlowView.swift:329,330
             ticks.forEach { v ->
                 // ios: Views/FlowView.swift:331,332,333
-                T(cformat("%+.0f%%", series.pct(v)), Modifier.width((axisW - 4).dp).centerAt(W + axisW / 2 + 2, y(v)), style = appFont(10f).copy(fontFeatureSettings = "tnum"), color = Theme.muted, maxLines = 1)
+                FitText(cformat("%+.0f%%", series.pct(v, lo)), appFont(10f).copy(fontFeatureSettings = "tnum"), 0.6f, Modifier.width((axisW - 4).dp).centerAt(W + axisW / 2 + 2, y(v)), color = Theme.muted)
             }
 
             // 캔들 (늘 보임)
