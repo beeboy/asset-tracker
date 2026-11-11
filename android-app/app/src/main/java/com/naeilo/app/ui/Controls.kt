@@ -178,6 +178,8 @@ val SF: Map<String, Int> = mapOf(
     "pause.fill" to R.drawable.ms_pause_fill, "trophy" to R.drawable.ms_trophy, "star" to R.drawable.ms_star, "heart" to R.drawable.ms_favorite,
     "heart.fill" to R.drawable.ms_favorite_fill, "cloud.fill" to R.drawable.ms_cloud_fill, "circle.fill" to R.drawable.ms_circle_fill,
     "scope" to R.drawable.ms_my_location,
+    "binoculars" to R.drawable.ms_visibility, "checklist" to R.drawable.ms_checklist, "book.closed" to R.drawable.ms_book,
+    "creditcard" to R.drawable.ms_credit_card, "checkmark.shield" to R.drawable.ms_verified_user, "power" to R.drawable.ms_power_settings_new,
 )
 
 /** Image(systemName:) 자리. size = 글자 크기(pt), 기호 칸은 글자 크기의 1.25배. scaled = 큰 글자 설정을 따를지 (.font(.system(size:)) 도 따른다) */
@@ -433,7 +435,7 @@ fun DropMenu(items: List<MenuItem>, label: @Composable () -> Unit) {
 // ── 화면 쌓기 (NavigationStack) ──
 
 /** 팝업 안인가 (팝업 안 링크는 그 자리에서 넘기고, 탭 화면 링크는 팝업을 연다). 팝업 안이면 이동 막대가 오른쪽 위 X 자리를 비운다 */
-// ios: App.swift:211,212,213
+// ios: App.swift:220,221,222
 val LocalInPopup = androidx.compose.runtime.staticCompositionLocalOf { false }
 
 /** iOS 이동 막대 (.inlineLarge): 왼쪽 '‹', 그 옆 제목 20 굵게. 높이 48. onBack 이 없으면 팝업 첫 화면 (‹ 없이 제목만) */
@@ -757,9 +759,13 @@ fun FitsOr(modifier: Modifier = Modifier, first: @Composable () -> Unit, second:
     androidx.compose.ui.layout.SubcomposeLayout(modifier) { c ->
         val a = subcompose("a", first).map { it.measure(androidx.compose.ui.unit.Constraints()) }
         val w = a.maxOfOrNull { it.width } ?: 0
-        if (!c.hasBoundedWidth || w <= c.maxWidth) {
+        if (!c.hasBoundedWidth) {
             val h = a.maxOfOrNull { it.height } ?: 0
             layout(w, h) { a.forEach { it.place(0, 0) } }
+        } else if (w <= c.maxWidth) {
+            // 맞으면 실제 폭으로 다시 잰다 (ViewThatFits 처럼 고른 줄이 제자리 폭을 받는다: weight·fillMaxWidth 가 산다)
+            val r = subcompose("a2", first).map { it.measure(c.copy(minWidth = 0)) }
+            layout(r.maxOfOrNull { it.width } ?: 0, r.maxOfOrNull { it.height } ?: 0) { r.forEach { it.place(0, 0) } }
         } else {
             val b = subcompose("b", second).map { it.measure(c.copy(minWidth = 0)) }
             layout(b.maxOfOrNull { it.width } ?: 0, b.maxOfOrNull { it.height } ?: 0) { b.forEach { it.place(0, 0) } }

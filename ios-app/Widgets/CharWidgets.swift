@@ -263,6 +263,25 @@ private func poseOr(_ c: WChar, _ p: String, else fallback: String) -> String {
     return UIImage(named: n) != nil ? n : fallback
 }
 /// 확정 포즈는 28×34 그림을 64pt로 그릴 때와 같은 배율(1px = 64/34pt), 발은 아래 맞춤. 그 밖은 64pt
+/// 내 캐릭터 그림 오른쪽 투명 여백(pt). 앱이 그린 포즈 그림은 좌우 여백을 두니, 오른쪽 끝에 붙일 때 그만큼 민다. 기본 인물은 0
+private func meRightPad(_ name: String, height: CGFloat) -> CGFloat {
+    guard name.hasPrefix("w_me"), let cg = WMe.image(name)?.cgImage else { return 0 }
+    let w = cg.width, h = cg.height
+    var buf = [UInt8](repeating: 0, count: w * h * 4)
+    let ok = buf.withUnsafeMutableBytes { b -> Bool in
+        guard let ctx = CGContext(data: b.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        return true
+    }
+    guard ok else { return 0 }
+    var pad = 0
+    cols: for x in stride(from: w - 1, through: 0, by: -1) {
+        for y in 0..<h where buf[(y * w + x) * 4 + 3] != 0 { break cols }
+        pad += 1
+    }
+    return pad == w ? 0 : CGFloat(pad) * height / CGFloat(h)
+}
 private func poseH(_ name: String) -> CGFloat {
     guard name.contains("_pose_"), let i = UIImage(named: name) else { return 64 }
     return i.size.height * 64 / 34
@@ -363,7 +382,8 @@ struct HillCharView: View {
                 Rectangle().fill(.white.opacity(0.35)).frame(height: 1).charPin(.bottomLeading, y: 15)
                 // 오른 날 trend_up, 내린 날 trend_down, 갱신 중엔 trend_up 으로 1pt 뛴다
                 let hn = poseOr(e.c, !Store.isReloading && r.dayChg < 0 ? "pose_trend_down" : "pose_trend_up")
-                CharSprite(name: hn, locked: e.locked, height: poseH(hn), shake: false).charHop(-1).charPin(.bottomTrailing)
+                CharSprite(name: hn, locked: e.locked, height: poseH(hn), shake: false).charHop(-1)
+                    .offset(x: meRightPad(hn, height: poseH(hn))).charPin(.bottomTrailing)
                 cornerB(e)
             }
         }

@@ -1078,14 +1078,9 @@ struct MockObserveView: View {
                                  edit: { draft = MockPieceDraft(c.piece); adding = true },
                                  delete: { remove(d, c) })
                 }
-                // 새 배수: 곡선이 하루라도 있으면 손으로 켠다 (모의라 미리 본다, 2026-10-30). 다 쌓이기 전엔 쌓인 날 수를 붙이고, 다 쌓이면 저절로 켜진다
-                if d.curveDays < 1 {
-                    MockCondPill(text: "새 배수 · 곡선 0/\(MockClock.newVolDays)일", on: false)
-                        .opacity(0.6)
-                } else {
-                    MockCondPill(text: "새 배수" + (d.curveDays < MockClock.newVolDays ? " · 곡선 \(d.curveDays)/\(MockClock.newVolDays)일" : ""),
-                                 on: d.s.newVol == true, tap: { d.setNewVol(d.s.newVol != true) })
-                }
+                // 새 배수: 곡선이 없어도 기본 U자 곡선으로 바로 손으로 켠다 (2026-11-05). 다 쌓이기 전엔 쌓인 날 수를 붙이고, 다 쌓이면 저절로 켜진다
+                MockCondPill(text: "새 배수" + (d.curveDays < MockClock.newVolDays ? " · 곡선 \(d.curveDays)/\(MockClock.newVolDays)일" : ""),
+                             on: d.s.newVol == true, tap: { d.setNewVol(d.s.newVol != true) })
                 MockAddPill { draft = MockPieceDraft(); adding = true }
                 if d.nearOnly { MockGoPill(title: "전체 훑기") { await d.runObserve(full: true) } }
                 MockGoPill(title: "지금 훑기") { await d.runObserve() }
@@ -1235,9 +1230,9 @@ struct MockCurveCard: View {
                 }
                 mt(Self.marks.map { k in "\(Self.time(k)) \(Int((mid[k] * 100).rounded()))%" }.joined(separator: " · "))
                     .appFont(11).foregroundStyle(Theme.muted).monospacedDigit()
-            } else {
-                // 비어 있을 때: 언제 쌓이는지 · 마지막 실패 이유
-                mt("아직 곡선이 없어요").appFont(13, .semibold).foregroundStyle(Theme.sub)
+            }
+            if cs.isEmpty {   // 비어 있을 때: 기본 곡선으로 나눈다는 것 · 언제 쌓이는지 · 마지막 실패 이유
+                mt("아직 곡선이 없어요 · 기본 U자로 나눠요").appFont(13, .semibold).foregroundStyle(Theme.sub)
                 mt("장 밖(8:30 전·15:45 뒤)에 투자 모드로 앱을 열어 두면 하루 하나씩 쌓여요 · " + Self.next())
                     .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                 if let note { mt(note).appFont(12).foregroundStyle(Theme.orange) }

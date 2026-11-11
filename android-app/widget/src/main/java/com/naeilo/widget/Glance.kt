@@ -14,6 +14,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
+import androidx.glance.LocalGlanceId
 import androidx.glance.LocalSize
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
@@ -26,6 +27,7 @@ import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.currentState
+import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.ContentScale
 import androidx.glance.layout.fillMaxSize
@@ -37,6 +39,7 @@ import com.naeilo.app.core.Store
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.min
 
 // 안드로이드 홈 위젯 틀 (Glance): 위젯 한 장을 비트맵 한 장으로 그려 놓고, 누르는 자리(↻·금액)에 투명 버튼을 얹는다.
 // 아이폰 WidgetKit 의 타임라인 대신, 다시 그릴 때마다 지금 값으로 새로 그린다 (Provider.kt 가 다시 그릴 때를 정한다)
@@ -49,9 +52,6 @@ private val tick = intPreferencesKey("tick")
 /** 인물 위젯이 고른 인물 (WhoEnum raw), 전광판 포즈 차례 */
 val whoKey = androidx.datastore.preferences.core.stringPreferencesKey("who")
 
-/** 칸 안쪽 여백 (dp) */
-private const val padX = 7.5f
-private const val padY = 14.5f
 
 abstract class FaceWidget(val kind: String) : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
@@ -76,11 +76,20 @@ abstract class FaceWidget(val kind: String) : GlanceAppWidget() {
         val size = LocalSize.current
         // 상태가 바뀌면(다시 그리기) IO 에서 새로 만들고, 그동안은 앞 장을 그린다
         val f by produceState(f0, state) { if (state != st0) value = withContext(Dispatchers.IO) { face(ctx, state) } }
-        // 삼성 기본 위젯처럼 칸 안쪽으로 들여 그린다 (칸을 꽉 채우면 더 크고 길어 보인다)
-        val r = render(ctx, size.width.value - padX * 2, size.height.value - padY * 2, isDark(ctx), designW = guideW(ctx), draw = f.draw)
+        // 결 위젯처럼: 정사각 그림 판 비율 그대로 칸에 꽉 맞춘 카드 한 장을 칸 가운데에 둔다.
+        // 칸 크기를 런처가 다르게 알려 줘도 늘어나지 않게 Fit, 카드 밖은 비워 둔다 (바탕을 칸 끝까지 늘이지 않는다)
+        // 칸 크기는 결 위젯처럼 위젯 옵션에서 다시 읽고 Glance 값과 작은 쪽을 쓴다 (런처가 Glance 에 칸보다 큰 크기를 줘서 양옆이 잘렸다, 11-05 Y700)
+        val (ow, oh) = optionSize(ctx, LocalGlanceId.current)
+        val sw = if (ow > 0f) min(size.width.value, ow) else size.width.value
+        val sh = if (oh > 0f) min(size.height.value, oh) else size.height.value
+        // 판은 정사각 (아이폰 작은 위젯 158 × 158, 결 위젯도 정사각). guideW 는 설정 안내 그림 폭이라 태블릿에서 넓어진다
+        val gw = designH
+        val k = min(sw / gw, sh / designH)
+        val cw = gw * k; val ch = designH * k
+        val r = render(ctx, cw, ch, isDark(ctx), designW = gw, draw = f.draw)
         val open = actionStartActivity(Intent(Intent.ACTION_VIEW, Uri.parse(f.url)).setPackage(ctx.packageName))
-        Box(GlanceModifier.fillMaxSize().padding(horizontal = padX.dp, vertical = padY.dp).clickable(open)) {
-            Image(ImageProvider(r.bitmap), contentDescription = f.speech, modifier = GlanceModifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
+        Box(GlanceModifier.fillMaxSize(), contentAlignment = Alignment.Center) { Box(GlanceModifier.size(cw.dp, ch.dp).clickable(open)) {
+            Image(ImageProvider(r.bitmap), contentDescription = f.speech, modifier = GlanceModifier.fillMaxSize(), contentScale = ContentScale.Fit)
             for (h in r.hits.take(8)) {   // Glance 한 칸에 10개까지
                 val act = when (val a = h.act) {
                     Act.Reload -> actionRunCallback<ReloadIntent>()
@@ -91,8 +100,18 @@ abstract class FaceWidget(val kind: String) : GlanceAppWidget() {
                     Box(GlanceModifier.size(h.r.width.dp, h.r.height.dp).clickable(act)) {}
                 }
             }
-        }
+        } }
     }
+}
+
+/** 위젯 옵션의 지금 칸 크기 (dp). 세로 화면은 최소 폭 × 최대 높이, 가로 화면은 최대 폭 × 최소 높이. 못 읽으면 0 */
+private fun optionSize(ctx: Context, id: GlanceId): Pair<Float, Float> {
+    val wid = try { GlanceAppWidgetManager(ctx).getAppWidgetId(id) } catch (_: Exception) { return 0f to 0f }
+    val o = android.appwidget.AppWidgetManager.getInstance(ctx).getAppWidgetOptions(wid)
+    val land = ctx.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val w = o.getInt(if (land) android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH else android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
+    val h = o.getInt(if (land) android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT else android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0)
+    return w.toFloat() to h.toFloat()
 }
 
 /** 위젯 다시 그리기 (아이폰 WidgetCenter) */

@@ -40,6 +40,11 @@ final class Sync {
         get { d.double(forKey: "sync.localAt") }
         set { d.set(newValue, forKey: "sync.localAt") }
     }
+    /// 받기에 아직 성공하지 못한 동안 이 기기 값이 바뀐 때 (ms). 0 = 없음. 받기가 되면 서버 값과 견줘 더 늦으면 올린다
+    var pendingAt: Double {
+        get { d.double(forKey: "sync.pendingAt") }
+        set { d.set(newValue, forKey: "sync.pendingAt") }
+    }
     /// 사이트 쪽 전체 입력값 (앱이 안 쓰는 칸을 지키려고 받은 그대로 둔다)
     private var siteState: [String: Any] {
         get { (d.data(forKey: "sync.site")).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:] }
@@ -112,7 +117,7 @@ final class Sync {
         let c = await Task.detached { Self.derive(password) }.value
         Keychain.save(c)
         creds = c
-        localAt = 0
+        localAt = 0; pendingAt = 0
         lastSig = nil
         await pull(model)
     }
@@ -132,7 +137,7 @@ final class Sync {
             return
         }
         Keychain.save(creds!)
-        localAt = 0
+        localAt = 0; pendingAt = 0
         lastSig = nil
         await pull(model)
     }
@@ -145,7 +150,7 @@ final class Sync {
         pulledOnce = false
         dirty = false
         state = .off
-        localAt = 0
+        localAt = 0; pendingAt = 0
         lastSig = nil
     }
 
@@ -181,6 +186,8 @@ final class Sync {
 
     // MARK: 중계와 주고받기 (사이트 syncCall 과 같음)
 
+    /// 지난 받기 답 (주소·표·본문). 304면 이 본문을 다시 쓴다
+    @ObservationIgnored private var lastGet: (url: URL, tag: String, data: Data)? = nil
     private func call(post: [String: Any]? = nil) async throws -> (state: [String: Any]?, at: Double, stale: Bool) {
         guard let c = creds, let url = URL(string: c.token != nil ? Self.devRelay : Self.relay + c.id) else { throw SyncError.off }
         var req = URLRequest(url: url, timeoutInterval: 20)
@@ -202,9 +209,17 @@ final class Sync {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             req.httpBody = try JSONSerialization.data(withJSONObject: body)
         }
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        // 받기: 지난 답의 표(ETag)를 보내 값이 그대로면 본문 없이 304만 받는다 (켜 둔 동안 30초마다 받으니까)
+        // 클라우드플레어가 압축하며 붙이는 W/ 는 떼고 보낸다 (중계는 W/ 없는 표로 견준다)
+        let get = req.httpMethod == "GET"
+        if get, let g = lastGet, g.url == url { req.setValue(g.tag, forHTTPHeaderField: "If-None-Match"); req.cachePolicy = .reloadIgnoringLocalCacheData }
+        let (body, resp) = try await URLSession.shared.data(for: req)
+        var data = body
+        let http = resp as? HTTPURLResponse
+        if get, http?.statusCode == 304, let g = lastGet { data = g.data }
+        else if get, http?.statusCode == 200, let tag = http?.value(forHTTPHeaderField: "ETag") { lastGet = (url, tag.replacingOccurrences(of: "W/", with: ""), data) }
         let j = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
-        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw SyncError.server((j["error"] as? String) ?? String(localized: "중계 응답 \(String(describing: (resp as? HTTPURLResponse)?.statusCode ?? 0))")) }
+        guard [200, 304].contains(http?.statusCode ?? 0) else { throw SyncError.server((j["error"] as? String) ?? String(localized: "중계 응답 \(String(describing: (resp as? HTTPURLResponse)?.statusCode ?? 0))")) }
         let at = (j["at"] as? Double) ?? 0
         if c.token != nil, var st = j["state"] as? [String: Any] {
             st.removeValue(forKey: "_w")
@@ -233,8 +248,15 @@ final class Sync {
         state = .working
         do {
             let r = try await call()
+            // 받기가 안 되던 동안 고친 값: 서버 값보다 늦게 고쳤으면 이 기기가 더 새것 (덮지 않고 올린다)
+            var pendingWins = false
+            if pendingAt > 0 {
+                if localAt > 0, pendingAt > r.at { localAt = pendingAt; pendingWins = true }
+                pendingAt = 0
+            }
             // 지난 날 수량 기록은 언제나 사이트 값으로 (이 기기 값이 더 새로워 받지 않을 때도: 앱에만 남은 예전 줄이 내 길 시작값을 웹과 다르게 만든다)
-            if let st = r.state, !(localAt == 0 && hasLocalData(m)) {
+            // 받기 전에 고친 값이 이길 때는 그 고친 날 줄을 지킨다
+            if let st = r.state, !pendingWins, !(localAt == 0 && hasLocalData(m)) {
                 let L = Lots.withSite(Lots.fromJSON(st["lots"]), m.lots)
                 if L != m.lots { m.lots = L }
             }
@@ -265,7 +287,8 @@ final class Sync {
             }
             pulledOnce = true
             // 이 기기 계산 자료가 더 새면 바로 올린다 (다른 기기가 이 한 벌로 센다)
-            if sendCalc, conflict == nil { localAt = Date().timeIntervalSince1970 * 1000; try await push(m); return }
+            // 고친 시각(localAt)은 그대로: 계산 자료는 asOf로 따로 견주고, 시각을 당기면 다른 기기가 고치고 아직 안 올린 종목을 덮는다
+            if sendCalc, conflict == nil { try await push(m); return }
             state = .ok(Date())
         } catch { state = .failed(error.localizedDescription) }
     }
@@ -280,7 +303,7 @@ final class Sync {
     @MainActor
     func calcChanged(_ m: AppModel) {
         guard isOn, conflict == nil, pulledOnce, Self.ownCalcNewer(than: Market.shared.calcSnap?.asOf) else { return }
-        localAt = Date().timeIntervalSince1970 * 1000
+        // 고친 시각(localAt)은 그대로 (pull의 sendCalc와 같은 까닭). 서버가 더 새면 중계가 stale로 돌려주고 push가 받기로 간다
         Task { @MainActor in do { try await push(m) } catch { dirty = true; state = .failed(error.localizedDescription) } }
     }
 
@@ -301,17 +324,40 @@ final class Sync {
         } catch { state = .failed(error.localizedDescription) }
     }
 
-    /// 이 기기 값이 바뀌었을 때: 표시만 해 두고 올리기는 앱을 닫을 때 한 번 (flush)
+    /// 이 기기 값이 바뀌었을 때: 2초 모아 바로 올린다 (pushSoon). 못 올린 것은 앱을 닫을 때 한 번 더 (flush)
     private var dirty = false
     private var pulledOnce = false
     @MainActor
     func changed(_ m: AppModel) {
         // 이번에 앱을 켠 뒤 한 번은 받아 본 다음에만 보낸다 (먼저 보내면 다른 기기의 새 값을 덮을 수 있다)
-        guard isOn, conflict == nil, pulledOnce else { return }
+        guard isOn, conflict == nil else { return }
         let sig = signature(m)
         guard sig != lastSig else { return }
+        // 아직 못 받았으면(토큰 만료·오프라인) 고친 때만 적어 둔다. 받기가 되면 pull이 견줘 올린다
+        guard pulledOnce else { pendingAt = Date().timeIntervalSince1970 * 1000; return }
         localAt = Date().timeIntervalSince1970 * 1000
         dirty = true
+        pushSoon(m)
+    }
+
+    /// 고친 뒤 2초 동안 더 고치지 않으면 올린다 (연달아 고칠 때 한 번만)
+    @ObservationIgnored private var soon: Task<Void, Never>? = nil
+    @MainActor
+    private func pushSoon(_ m: AppModel) {
+        soon?.cancel()
+        soon = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled, dirty, isOn, conflict == nil, pulledOnce else { return }
+            dirty = false
+            do { try await push(m) } catch { dirty = true; state = .failed(error.localizedDescription) }
+        }
+    }
+
+    /// 앱이 앞에 있는 동안 30초마다 (App.swift): 다른 기기가 올린 값 받기. 안 올린 변경이 있거나 받는 중이면 건너뛴다
+    @MainActor
+    func poll(_ m: AppModel) async {
+        guard isOn, conflict == nil, !dirty, state != .working else { return }
+        await pull(m)
     }
 
     /// 앱이 백그라운드로 갈 때 (App.swift): 바뀐 값이 있으면 한 번만 올린다. iOS가 끝낼 시간을 조금 준다

@@ -288,6 +288,9 @@ class FeedReq(val url: String, val timeout: Double) {
     var httpBody: ByteArray? = null
     val headers = mutableMapOf<String, String>()
     fun setValue(value: String, field: String) { headers[field] = value }
+    /** 받은 답의 머리글 (이름은 대소문자 무시) */
+    private var resHeaders: Map<String, String> = emptyMap()
+    fun resHeader(name: String): String? = resHeaders[name.lowercase()]
 
     suspend fun send(): Pair<Int, ByteArray> = withContext(Dispatchers.IO) {
         val c = URL(url).openConnection() as HttpURLConnection
@@ -299,6 +302,7 @@ class FeedReq(val url: String, val timeout: Double) {
             for ((k, v) in headers) c.setRequestProperty(k, v)
             httpBody?.let { b -> c.doOutput = true; c.outputStream.use { it.write(b) } }
             val code = c.responseCode
+            resHeaders = c.headerFields.entries.mapNotNull { (k, v) -> k?.let { it.lowercase() to (v.firstOrNull() ?: "") } }.toMap()
             val s = if (code in 200..399) c.inputStream else c.errorStream
             code to (s?.use { it.readBytes() } ?: ByteArray(0))
         } finally {

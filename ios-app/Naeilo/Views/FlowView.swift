@@ -404,7 +404,7 @@ struct FlowChart: View {
             ZStack(alignment: .topLeading) {
                 // 머리: ▲44% 테슬라 · 시작 대비 (세모는 숫자의 70%) + 지금 단위
                 HStack(alignment: .center) {
-                    let v = series.pct(last.c)
+                    let v = series.pct(last.c, from: lo)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         (Text(v > 0 ? "▲" : v < 0 ? "▼" : "").font(.system(size: 15, weight: .heavy)).baselineOffset(2)
                          + Text(String(format: "%.0f%%", abs(v))).font(.system(size: 22, weight: .heavy)))
@@ -427,7 +427,7 @@ struct FlowChart: View {
                     let v = yMin + (yMax - yMin) * (0.1 + 0.8 * Double(t) / 3)
                     Path { p in p.move(to: CGPoint(x: 0, y: y(v))); p.addLine(to: CGPoint(x: W, y: y(v))) }
                         .stroke(Theme.line, lineWidth: 1)
-                    Text(String(format: "%+.0f%%", series.pct(v))).appFont(10).monospacedDigit().foregroundStyle(Theme.muted)
+                    Text(String(format: "%+.0f%%", series.pct(v, from: lo))).appFont(10).monospacedDigit().foregroundStyle(Theme.muted).lineLimit(1).minimumScaleFactor(0.6)
                         .frame(width: axisW - 4, alignment: .leading)
                         .position(x: W + axisW / 2 + 2, y: y(v))
                 }

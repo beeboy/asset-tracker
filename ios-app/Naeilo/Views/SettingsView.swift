@@ -272,9 +272,6 @@ struct SettingsGroupView: View {
                     #if GYEOL
                     GyeolSettings()   // 결 섬 (Gyeol/README.md)
                     #endif
-                    #if GYEOLPIP
-                    GyeolPipSettings()   // 결 작은 창 (Naeilo/Gyeol/GyeolPip.swift)
-                    #endif
                 case .screenGroup:
                     Text("화면").appFont(22, .bold)
                     Text("밝기 모드").appFont(13, .bold).foregroundStyle(Theme.sub)

@@ -15,6 +15,7 @@ enum MockClock {
     static let amountFloor = 10.0            // 거래대금 바닥 (억원, 지난 20일 하루 평균). 미만이면 고르지 않음
     static let recheck: TimeInterval = 15 * 60     // 처음 걸린 뒤 이만큼 지나 다시 걸려야 고름
     static let newVolDays = 5                // 거래량 곡선이 이만큼 쌓이면 새 배수 알약을 저절로 켠다
+    static let baseCurve: [Double] = [0.000, 0.120, 0.190, 0.245, 0.290, 0.318, 0.346, 0.374, 0.402, 0.429, 0.457, 0.485, 0.513, 0.541, 0.569, 0.597, 0.625, 0.653, 0.681, 0.708, 0.736, 0.764, 0.792, 0.820, 0.860, 0.910, 1.000]   // 곡선이 쌓이기 전 기본 U자 누적 비율 (15분 27칸. 첫 1시간 29%·막판 30분 14%, 가운데 고르게. 2026-11-05 가정값)
     static let curveUntil = 8 * 60 + 30      // 거래량 곡선은 이 전이나
     static let curveFrom = 15 * 60 + 45      // 이 뒤에 받는다
 
@@ -208,10 +209,10 @@ enum MockCalc {
         return cols.map(median)
     }
 
-    /// 최근 곡선들(27칸)의 칸별 가운데 값. 곡선이 없으면 nil
+    /// 최근 곡선들(27칸)의 칸별 가운데 값. 곡선이 없으면 기본 U자 곡선
     static func curveNow(_ curves: [MockCurve]) -> [Double]? {
         let cs = curves.filter { $0.cum.count == 27 }
-        guard !cs.isEmpty else { return nil }
+        guard !cs.isEmpty else { return MockClock.baseCurve }
         return (0...26).map { k in median(cs.map { $0.cum[k] }) }
     }
 

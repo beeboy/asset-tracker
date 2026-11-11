@@ -155,6 +155,8 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.min
+import androidx.compose.foundation.clickable
 import kotlin.math.roundToLong
 
 /** .animation(.snappy): 0.5초, 튐 0.15 */
@@ -833,6 +835,8 @@ fun TagChart(
     tags: List<TagChart.Tag>,   // ios: Views/HoldingsView.swift:522
     left: String = "", right: String = "",   // ios: Views/HoldingsView.swift:523
     scrub: Scrub? = null,   // ios: Views/HoldingsView.swift:524
+    marks: List<TagChart.Mark> = emptyList(),   // ios: Views/HoldingsView.swift:589
+    onMark: ((Int) -> Unit)? = null,   // ios: Views/HoldingsView.swift:590
 ) {
     val lo = points.minOrNull() ?: 0.0; val hi = points.maxOrNull() ?: 1.0   // ios: Views/HoldingsView.swift:527
     val hPx = with(LocalDensity.current) { height.toPx() }; val d = LocalDensity.current.density
@@ -852,6 +856,19 @@ fun TagChart(
                     Canvas(Modifier.fillMaxSize()) {
                         val c = Offset(0f, y(f)); val r = Size(8.dp.toPx(), 8.dp.toPx()).width / 2
                         drawCircle(card, r, c); drawCircle(ring, r - 1.dp.toPx(), c, style = Stroke(2.dp.toPx()))
+                    }
+                }
+                // 선 위 점 (x: 0~1 가로 자리, v: 값. 범위 밖이면 끝에 붙인다). 누르면 onMark(번호)
+                if (points.size > 1 && marks.isNotEmpty()) {   // ios: Views/HoldingsView.swift:597
+                    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {   // ios: Views/HoldingsView.swift:598
+                        val gw = constraints.maxWidth.toFloat()
+                        marks.forEachIndexed { i, mk ->   // ios: Views/HoldingsView.swift:599
+                            val px = gw * min(1.0, max(0.0, mk.x)).toFloat(); val py = y(min(hi, max(lo, mk.v)))   // ios: Views/HoldingsView.swift:602
+                            Box(Modifier.offset { androidx.compose.ui.unit.IntOffset((px - 14 * d).roundToInt(), (py - 14 * d).roundToInt()) }.size(28.dp)   // ios: Views/HoldingsView.swift:601
+                                .clickable(interactionSource = null, indication = null) { onMark?.invoke(i) }, contentAlignment = Alignment.Center) {   // ios: Views/HoldingsView.swift:603
+                                Box(Modifier.size(11.dp).background(card, CircleShape).padding(1.5.dp).background(mk.color, CircleShape))   // ios: Views/HoldingsView.swift:600,601
+                            }
+                        }
                     }
                 }
             }
@@ -875,6 +892,7 @@ fun TagChart(
 // ios: Views/HoldingsView.swift:517 (struct TagChart 의 static·Tag)
 object TagChart {
     data class Tag(val at: Double, val dy: Dp = 0.dp, val text: String, val bg: Color, val fg: Color = Color.Black)   // ios: Views/HoldingsView.swift:518
+    data class Mark(val x: Double, val v: Double, val color: Color)   // ios: Views/HoldingsView.swift:588
     val gray: Color @Composable get() = if (LocalPal.current.isDark) hex(0x8A949E) else hex(0xD3D9DF)   // ios: Views/HoldingsView.swift:578 (라이트 옅은 회색)
 
     /** 꼬리표 높이(px): 값 자리에서 시작해 가까우면 20씩 벌리고, 위·아래로 넘치면 안으로 민다 */

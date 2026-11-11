@@ -259,7 +259,8 @@ private fun Summary(m: AppModel, lookRaw: String, setLook: (String) -> Unit, hid
     val look = BoxLook.entries.firstOrNull { it.name == lookRaw } ?: BoxLook.jump   // ios: Views/HomeView.swift:47,48
     var menu by remember { mutableStateOf(false) }
     // ios: Views/HomeView.swift:59 (.contextMenu: 길게 누르면 메뉴)
-    Box(Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { menu = true }) }
+    com.naeilo.app.mock.MockEntry.Feedback()   // ios: Views/HomeView.swift:56,57
+    Box(Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { menu = true }, onTap = { com.naeilo.app.mock.MockEntry.tap() }) }   // ios: Views/HomeView.swift:57
         .semantics { onLongClick(label = tr("평가액 박스 모양")) { menu = true; true } }) {   // ios: Views/HomeView.swift:60,57
         // ios: Views/HomeView.swift:55,49,50,56,58 (.boxScheme(): 상단 박스만 고른 밝기 모드)
         BoxSchemeScope {
@@ -680,23 +681,36 @@ private fun Step(tag: String, c: @Composable () -> Unit) {
 }
 
 // 줄바꿈되는 가로 배치
+/** tail: 끝의 몇 개를 마지막 줄 오른쪽 끝에 붙인다. 앞 줄에 자리가 없으면 함께 다음 줄로 (0 이면 그냥 흐름) */
 @Composable
-// ios: Views/HomeView.swift:451,452
-fun FlowRow(spacing: Dp = 6.dp, content: @Composable () -> Unit) {
+// ios: Views/HomeView.swift:451,452,454
+fun FlowRow(spacing: Dp = 6.dp, tail: Int = 0, content: @Composable () -> Unit) {
     Layout(content) { ms, c ->
         val sp = spacing.roundToPx()
-        val w = if (c.hasBoundedWidth) c.maxWidth else Int.MAX_VALUE   // ios: Views/HomeView.swift:455,457
+        val w = if (c.hasBoundedWidth) c.maxWidth else Int.MAX_VALUE   // ios: Views/HomeView.swift:455,474,477
         val ps = ms.map { it.measure(Constraints()) }   // ios: Views/HomeView.swift:456 (.unspecified)
-        var x = 0; var y = 0; var rowH = 0; var maxX = 0   // ios: Views/HomeView.swift:454,458
-        val at = ps.map { s ->   // ios: Views/HomeView.swift:459
+        val n = ps.size; val k = min(tail, n)   // ios: Views/HomeView.swift:457
+        var x = 0; var y = 0; var rowH = 0; var maxX = 0   // ios: Views/HomeView.swift:458
+        val at = ArrayList<Pair<Int, Int>>()
+        for (s in ps.take(n - k)) {   // ios: Views/HomeView.swift:459
             if (x > 0 && x + s.width > w) { x = 0; y += rowH + sp; rowH = 0 }   // ios: Views/HomeView.swift:460
-            val o = Pair(x, y)   // ios: Views/HomeView.swift:461
-            x += s.width + sp; rowH = max(rowH, s.height); maxX = max(maxX, x - sp)   // ios: Views/HomeView.swift:462,477,480
-            o
+            at.add(Pair(x, y))   // ios: Views/HomeView.swift:461
+            x += s.width + sp; rowH = max(rowH, s.height); maxX = max(maxX, x - sp)   // ios: Views/HomeView.swift:462
         }
-        layout(min(w, maxX), y + rowH) { ps.forEachIndexed { i, p -> p.place(at[i].first, at[i].second) } }   // ios: Views/HomeView.swift:474,476,479,481
+        if (k > 0) {   // ios: Views/HomeView.swift:464
+            val tw = ps.takeLast(k).fold(0) { a, p -> a + p.width } + sp * (k - 1)   // ios: Views/HomeView.swift:465
+            if (x > 0 && x + tw > w) { x = 0; y += rowH + sp; rowH = 0 }   // ios: Views/HomeView.swift:466
+            var tx = max(x, if (w != Int.MAX_VALUE) w - tw else x)   // ios: Views/HomeView.swift:467
+            for (s in ps.takeLast(k)) {   // ios: Views/HomeView.swift:468
+                at.add(Pair(tx, y))   // ios: Views/HomeView.swift:469
+                tx += s.width + sp; rowH = max(rowH, s.height)   // ios: Views/HomeView.swift:470
+            }
+            maxX = max(maxX, tx - sp)   // ios: Views/HomeView.swift:472
+        }
+        layout(min(w, maxX), y + rowH) { ps.forEachIndexed { i, p -> p.place(at[i].first, at[i].second) } }   // ios: Views/HomeView.swift:474,476,479,480,481
     }
 }
+
 
 /** 샘플 종목 안내: 새 사용자는 가상 종목 DRNK·QQQ 샘플로 시작한다. 내 종목을 넣기 전까지 탭마다 보인다 */
 // ios: Views/HomeView.swift:482,488,489

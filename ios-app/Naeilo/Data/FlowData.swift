@@ -40,9 +40,9 @@ struct FlowSeries {
     let levels: [FlowLevel]
     let patterns: [FlowPattern]
     let live: Bool                 // 마지막 칸이 장중 오늘 캔들 (흐리게 그리고, 거기 닿은 패턴은 흐린 점선)
-    var base: Double { candles.first?.c ?? 1 }
     /// '+x% 시작 대비'
-    func pct(_ v: Double) -> Double { (v / base - 1) * 100 }
+    /// 시작은 화면 맨 왼쪽 캔들 종가: 밀거나 넓히면 따라 바뀐다 (2026-11-11 드링커님 결정)
+    func pct(_ v: Double, from i: Int) -> Double { (v / candles[i].c - 1) * 100 }
 
     init(candles: [Candle], dates: [String]? = nil, live: Bool = false) {
         self.candles = candles
