@@ -202,11 +202,11 @@ Views/SupportView.swift:39 플랫폼 차이: Apple ID·iPhone 설정 안내 → 
 Views/SupportView.swift:41 플랫폼 차이: Apple 표준 EULA → Google Play 이용약관 링크 (옮김, ui/support/SupportView.kt 약관 링크)
 # L 단계 (위젯): 잠금화면 위젯·아이폰에서 안 쓰는 CharItem·CharTop, 위젯 애니메이션, #if WIDGET_EXT, 갤러리 추천
 Widgets/CharWidgets.swift:234-243 아이폰에서 안 쓰는 View라 옮기지 않음 (L 브리프) — CharItem
-Widgets/CharWidgets.swift:300-311 아이폰에서 안 쓰는 View라 옮기지 않음 (L 브리프) — CharTop
+Widgets/CharWidgets.swift:319-330 아이폰에서 안 쓰는 View라 옮기지 않음 (L 브리프) — CharTop
 Widgets/CharWidgets.swift:199 애니메이션(interpolatingSpring): 위젯은 움직이지 못해 받는 중 끝 모습만 그린다
 Widgets/CharWidgets.swift:206 애니메이션(interpolatingSpring): 그림자 작아짐은 끝 모습(0.7)만 그린다
-Widgets/CharWidgets.swift:282 애니메이션(interpolatingSpring): charHop 의 offset 은 280-281 구역에서 그린다
-Widgets/CharWidgets.swift:413 애니메이션(interpolatingSpring): offset(x: 1) 은 414 구역 pinSprite(dx) 로 그린다
+Widgets/CharWidgets.swift:301 애니메이션(interpolatingSpring): charHop 의 offset 은 280-281 구역에서 그린다
+Widgets/CharWidgets.swift:433 애니메이션(interpolatingSpring): offset(x: 1) 은 414 구역 pinSprite(dx) 로 그린다
 # L 단계 홈 위젯 (HomeViews·Charts·StoryWidgetView·Locked)
 Widgets/Views/HomeViews.swift:139 검사기 한계: 보간 속 따옴표("+" : "")를 ' : ' 문구로 읽음 (옮김, HomeViews.kt blockSmallView dTxt)
 Widgets/Views/HomeViews.swift:287 검사기 한계: 보간 속 따옴표(String(format: "%.1f"))를 문구 조각으로 읽음 (옮김, HomeViews.kt tile pct)
@@ -346,3 +346,6 @@ Mock/MockOrderViews.swift:1 플랫폼: #if MOCK 컴파일 구역 (안드로이�
 Mock/MockOrderViews.swift:1231 플랫폼: #endif (#if MOCK 끝)
 Mock/MockOrderViews.swift:436 플랫폼: 취소 단추는 ConfirmSheet 가 cancel 글로 만들고 누르면 onDismiss (clearAsk = null)
 Mock/MockOrderViews.swift:972 플랫폼: 취소 단추는 ConfirmSheet 가 cancel 글로 만들고 누르면 onDismiss (resetAsk = false)
+Widgets/CharWidgets.swift:270 안드로이드는 readPixels로 ARGB IntArray를 바로 읽어 바이트 버퍼·CGContext가 없다
+Widgets/CharWidgets.swift:272 같은 이유 (CGContext 인자)
+Widgets/CharWidgets.swift:279-280 같은 이유 (바이트 칸 계산, 역순 범위 표기)
