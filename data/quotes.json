@@ -3,295 +3,295 @@
   "symbol": "NVDA",
   "currency": "USD",
   "name": "NVIDIA Corporation",
-  "regular": 156.14,
-  "regular_time": 1794862801,
-  "prev_close": 162.85,
-  "pre": null,
+  "regular": 154.843,
+  "regular_time": 1794936348,
+  "prev_close": 156.14,
+  "pre": 156.92,
   "post": null,
-  "last": 156.14,
-  "last_time": 1794862801,
+  "last": 154.8433,
+  "last_time": 1794936348,
   "last_session": "regular",
-  "fetched": 1794901703
+  "fetched": 1794936349
  },
  "SGOV": {
   "symbol": "SGOV",
   "currency": "USD",
   "name": "iShares 0-3 Month Treasury Bond ETF",
-  "regular": 100.58,
-  "regular_time": 1794862821,
-  "prev_close": 100.56,
-  "pre": null,
+  "regular": 100.581,
+  "regular_time": 1794936347,
+  "prev_close": 100.58,
+  "pre": 100.58,
   "post": null,
-  "last": 100.58,
-  "last_time": 1794862821,
+  "last": 100.581,
+  "last_time": 1794936347,
   "last_session": "regular",
-  "fetched": 1794901704
+  "fetched": 1794936350
  },
  "SPCX": {
   "symbol": "SPCX",
   "currency": "USD",
   "name": "Space Exploration Technologies Corp.",
-  "regular": 137.36,
-  "regular_time": 1794862800,
-  "prev_close": 139.11,
-  "pre": null,
+  "regular": 141.18,
+  "regular_time": 1794936348,
+  "prev_close": 137.36,
+  "pre": 138.56,
   "post": null,
-  "last": 137.36,
-  "last_time": 1794862800,
+  "last": 141.18,
+  "last_time": 1794936348,
   "last_session": "regular",
-  "fetched": 1794901704
+  "fetched": 1794936349
  },
  "TSLA": {
   "symbol": "TSLA",
   "currency": "USD",
   "name": "Tesla, Inc.",
-  "regular": 379.74,
-  "regular_time": 1794862800,
-  "prev_close": 390.22,
-  "pre": null,
+  "regular": 381.78,
+  "regular_time": 1794936339,
+  "prev_close": 379.74,
+  "pre": 382.25,
   "post": null,
-  "last": 379.74,
-  "last_time": 1794862800,
+  "last": 381.78,
+  "last_time": 1794936339,
   "last_session": "regular",
-  "fetched": 1794901703
+  "fetched": 1794936349
  },
  "KRW=X": {
   "symbol": "KRW=X",
   "currency": "KRW",
   "name": "USD/KRW",
-  "regular": 1337.47,
-  "regular_time": 1794901705,
+  "regular": 1334.28,
+  "regular_time": 1794936350,
   "prev_close": 1335.82,
   "pre": null,
   "post": null,
-  "last": 1337.47,
-  "last_time": 1794901705,
+  "last": 1334.28,
+  "last_time": 1794936350,
   "last_session": "regular",
-  "fetched": 1794901707
+  "fetched": 1794936352
  },
  "QQQ": {
   "symbol": "QQQ",
   "currency": "USD",
   "name": "Invesco QQQ Trust",
-  "regular": 661.75,
-  "regular_time": 1794862800,
-  "prev_close": 679.89,
-  "pre": null,
+  "regular": 657.2,
+  "regular_time": 1794936349,
+  "prev_close": 661.75,
+  "pre": 663.15,
   "post": null,
-  "last": 661.75,
-  "last_time": 1794862800,
+  "last": 657.2,
+  "last_time": 1794936349,
   "last_session": "regular",
-  "fetched": 1794901704
+  "fetched": 1794936350
  },
  "SPY": {
   "symbol": "SPY",
   "currency": "USD",
   "name": "State Street SPDR S&P 500 ETF Trust",
-  "regular": 739.95,
-  "regular_time": 1794862800,
-  "prev_close": 754.37,
-  "pre": null,
+  "regular": 734.28,
+  "regular_time": 1794936349,
+  "prev_close": 739.95,
+  "pre": 739.07,
   "post": null,
-  "last": 739.95,
-  "last_time": 1794862800,
+  "last": 734.28,
+  "last_time": 1794936349,
   "last_session": "regular",
-  "fetched": 1794901705
+  "fetched": 1794936350
  },
  "^TNX": {
   "symbol": "^TNX",
   "currency": "USD",
   "name": "CBOE Interest Rate 10 Year T Note",
-  "regular": 5.121,
-  "regular_time": 1794859193,
-  "prev_close": 5.1540003,
+  "regular": 5.099,
+  "regular_time": 1794935443,
+  "prev_close": 5.121,
   "pre": null,
   "post": null,
-  "last": 5.121,
-  "last_time": 1794859193,
+  "last": 5.099,
+  "last_time": 1794935443,
   "last_session": "regular",
-  "fetched": 1794901707
+  "fetched": 1794936352
  },
  "CL=F": {
   "symbol": "CL=F",
   "currency": "USD",
   "name": "Crude Oil Dec 26",
-  "regular": 85.27,
-  "regular_time": 1794901107,
+  "regular": 86.18,
+  "regular_time": 1794935751,
   "prev_close": 85.72,
   "pre": null,
   "post": null,
-  "last": 85.27,
-  "last_time": 1794901107,
+  "last": 86.18,
+  "last_time": 1794935751,
   "last_session": "regular",
-  "fetched": 1794901708
+  "fetched": 1794936352
  },
  "GC=F": {
   "symbol": "GC=F",
   "currency": "USD",
   "name": "Gold Dec 26",
-  "regular": 3877.5,
-  "regular_time": 1794901089,
+  "regular": 3872.8,
+  "regular_time": 1794935747,
   "prev_close": 3853.0,
   "pre": null,
   "post": null,
-  "last": 3877.5,
-  "last_time": 1794901089,
+  "last": 3872.8,
+  "last_time": 1794935747,
   "last_session": "regular",
-  "fetched": 1794901708
+  "fetched": 1794936352
  },
  "DBC": {
   "symbol": "DBC",
   "currency": "USD",
   "name": "Invesco DB Commodity Index Tracking Fund",
-  "regular": 30.25,
-  "regular_time": 1794862800,
-  "prev_close": 30.79,
-  "pre": null,
+  "regular": 30.28,
+  "regular_time": 1794936321,
+  "prev_close": 30.25,
+  "pre": 30.25,
   "post": null,
-  "last": 30.25,
-  "last_time": 1794862800,
+  "last": 30.28,
+  "last_time": 1794936321,
   "last_session": "regular",
-  "fetched": 1794901708
+  "fetched": 1794936353
  },
  "MANA": {
   "symbol": "MANA",
   "currency": "USD",
   "name": "Grayscale Decentraland Trust",
-  "regular": 0.48,
-  "regular_time": 1794862800,
-  "prev_close": 0.45,
+  "regular": 0.49,
+  "regular_time": 1794935246,
+  "prev_close": 0.48495,
   "pre": null,
   "post": null,
-  "last": 0.48,
-  "last_time": 1794862800,
+  "last": 0.49,
+  "last_time": 1794935246,
   "last_session": "regular",
-  "fetched": 1794901705
+  "fetched": 1794936350
  },
  "AAPL": {
   "symbol": "AAPL",
   "currency": "USD",
   "name": "Apple Inc.",
-  "regular": 352.78,
-  "regular_time": 1794862801,
-  "prev_close": 356.27,
-  "pre": null,
+  "regular": 352.241,
+  "regular_time": 1794936349,
+  "prev_close": 352.78,
+  "pre": 352.89,
   "post": null,
-  "last": 352.78,
-  "last_time": 1794862801,
+  "last": 352.2415,
+  "last_time": 1794936349,
   "last_session": "regular",
-  "fetched": 1794901705
+  "fetched": 1794936350
  },
  "SMH": {
   "symbol": "SMH",
   "currency": "USD",
   "name": "VanEck Semiconductor ETF",
-  "regular": 461.9,
-  "regular_time": 1794862801,
-  "prev_close": 486.75,
-  "pre": null,
+  "regular": 459.49,
+  "regular_time": 1794936347,
+  "prev_close": 461.9,
+  "pre": 465.71,
   "post": null,
-  "last": 461.9,
-  "last_time": 1794862801,
+  "last": 459.49,
+  "last_time": 1794936347,
   "last_session": "regular",
-  "fetched": 1794901705
+  "fetched": 1794936351
  },
  "GLD": {
   "symbol": "GLD",
   "currency": "USD",
   "name": "SPDR Gold Shares",
-  "regular": 352.93,
-  "regular_time": 1794862800,
-  "prev_close": 355.45,
-  "pre": null,
+  "regular": 354.5,
+  "regular_time": 1794936349,
+  "prev_close": 352.93,
+  "pre": 353.6,
   "post": null,
-  "last": 352.93,
-  "last_time": 1794862800,
+  "last": 354.5,
+  "last_time": 1794936349,
   "last_session": "regular",
-  "fetched": 1794901706
+  "fetched": 1794936351
  },
  "EWY": {
   "symbol": "EWY",
   "currency": "USD",
   "name": "iShares MSCI South Korea ETF",
-  "regular": 136.55,
-  "regular_time": 1794862800,
-  "prev_close": 142.78,
-  "pre": null,
+  "regular": 135.24,
+  "regular_time": 1794936348,
+  "prev_close": 136.55,
+  "pre": 136.32,
   "post": null,
-  "last": 136.55,
-  "last_time": 1794862800,
+  "last": 135.24,
+  "last_time": 1794936348,
   "last_session": "regular",
-  "fetched": 1794901706
+  "fetched": 1794936351
  },
  "SCHD": {
   "symbol": "SCHD",
   "currency": "USD",
   "name": "Schwab U.S. Dividend Equity ETF",
-  "regular": 35.86,
-  "regular_time": 1794862800,
-  "prev_close": 36.12,
-  "pre": null,
+  "regular": 35.585,
+  "regular_time": 1794936349,
+  "prev_close": 35.86,
+  "pre": 35.67,
   "post": null,
-  "last": 35.86,
-  "last_time": 1794862800,
+  "last": 35.585,
+  "last_time": 1794936349,
   "last_session": "regular",
-  "fetched": 1794901706
+  "fetched": 1794936351
  },
  "SOXX": {
   "symbol": "SOXX",
   "currency": "USD",
   "name": "iShares Semiconductor ETF",
-  "regular": 141.22,
-  "regular_time": 1794862800,
-  "prev_close": 149.3,
-  "pre": null,
+  "regular": 141.21,
+  "regular_time": 1794936351,
+  "prev_close": 141.22,
+  "pre": 142.91,
   "post": null,
-  "last": 141.22,
-  "last_time": 1794862800,
+  "last": 141.21,
+  "last_time": 1794936351,
   "last_session": "regular",
-  "fetched": 1794901707
+  "fetched": 1794936351
  },
  "VTV": {
   "symbol": "VTV",
   "currency": "USD",
   "name": "Vanguard Morningstar Value ETF",
-  "regular": 227.07,
-  "regular_time": 1794862800,
-  "prev_close": 229.51,
-  "pre": null,
+  "regular": 225.345,
+  "regular_time": 1794936330,
+  "prev_close": 227.07,
+  "pre": 225.6862,
   "post": null,
-  "last": 227.07,
-  "last_time": 1794862800,
+  "last": 225.345,
+  "last_time": 1794936330,
   "last_session": "regular",
-  "fetched": 1794901708
+  "fetched": 1794936353
  },
  "USMV": {
   "symbol": "USMV",
   "currency": "USD",
   "name": "iShares MSCI USA Min Vol Factor ETF",
-  "regular": 103.27,
-  "regular_time": 1794862800,
-  "prev_close": 104.1,
-  "pre": null,
+  "regular": 102.32,
+  "regular_time": 1794936338,
+  "prev_close": 103.27,
+  "pre": 102.99,
   "post": null,
-  "last": 103.27,
-  "last_time": 1794862800,
+  "last": 102.32,
+  "last_time": 1794936338,
   "last_session": "regular",
-  "fetched": 1794901709
+  "fetched": 1794936353
  },
  "GPCR": {
   "symbol": "GPCR",
   "currency": "USD",
   "name": "Structure Therapeutics Inc.",
-  "regular": 18.57,
-  "regular_time": 1794862801,
-  "prev_close": 20.0,
+  "regular": 18.32,
+  "regular_time": 1794936277,
+  "prev_close": 18.57,
   "pre": null,
   "post": null,
-  "last": 18.57,
-  "last_time": 1794862801,
+  "last": 18.32,
+  "last_time": 1794936277,
   "last_session": "regular",
-  "fetched": 1794901707
+  "fetched": 1794936352
  },
  "005930.KS": {
   "symbol": "005930.KS",
@@ -301,11 +301,11 @@
   "regular_time": 1794897012,
   "prev_close": 196800.0,
   "pre": null,
-  "post": 190300.0,
+  "post": null,
   "last": 190300.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901711
+  "last_time": 1794897012,
+  "last_session": "regular",
+  "fetched": 1794936354
  },
  "000660.KS": {
   "symbol": "000660.KS",
@@ -315,11 +315,11 @@
   "regular_time": 1794897003,
   "prev_close": 1120000.0,
   "pre": null,
-  "post": 1098000.0,
+  "post": null,
   "last": 1098000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901711
+  "last_time": 1794897003,
+  "last_session": "regular",
+  "fetched": 1794936354
  },
  "373220.KS": {
   "symbol": "373220.KS",
@@ -329,11 +329,11 @@
   "regular_time": 1794897003,
   "prev_close": 318500.0,
   "pre": null,
-  "post": 305500.0,
+  "post": null,
   "last": 305500.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901711
+  "last_time": 1794897003,
+  "last_session": "regular",
+  "fetched": 1794936354
  },
  "207940.KS": {
   "symbol": "207940.KS",
@@ -343,11 +343,11 @@
   "regular_time": 1794897030,
   "prev_close": 1423000.0,
   "pre": null,
-  "post": 1414000.0,
+  "post": null,
   "last": 1414000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901711
+  "last_time": 1794897030,
+  "last_session": "regular",
+  "fetched": 1794936354
  },
  "005380.KS": {
   "symbol": "005380.KS",
@@ -357,11 +357,11 @@
   "regular_time": 1794897001,
   "prev_close": 265500.0,
   "pre": null,
-  "post": 259000.0,
+  "post": null,
   "last": 259000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901711
+  "last_time": 1794897001,
+  "last_session": "regular",
+  "fetched": 1794936355
  },
  "000270.KS": {
   "symbol": "000270.KS",
@@ -371,11 +371,11 @@
   "regular_time": 1794897003,
   "prev_close": 95000.0,
   "pre": null,
-  "post": 92100.0,
+  "post": null,
   "last": 92100.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901711
+  "last_time": 1794897003,
+  "last_session": "regular",
+  "fetched": 1794936355
  },
  "068270.KS": {
   "symbol": "068270.KS",
@@ -385,11 +385,11 @@
   "regular_time": 1794897018,
   "prev_close": 214500.0,
   "pre": null,
-  "post": 213000.0,
+  "post": null,
   "last": 213000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901711
+  "last_time": 1794897018,
+  "last_session": "regular",
+  "fetched": 1794936355
  },
  "005490.KS": {
   "symbol": "005490.KS",
@@ -399,11 +399,11 @@
   "regular_time": 1794897024,
   "prev_close": 268500.0,
   "pre": null,
-  "post": 261500.0,
+  "post": null,
   "last": 261500.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901712
+  "last_time": 1794897024,
+  "last_session": "regular",
+  "fetched": 1794936355
  },
  "035420.KS": {
   "symbol": "035420.KS",
@@ -413,11 +413,11 @@
   "regular_time": 1794897008,
   "prev_close": 172900.0,
   "pre": null,
-  "post": 170000.0,
+  "post": null,
   "last": 170000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901712
+  "last_time": 1794897008,
+  "last_session": "regular",
+  "fetched": 1794936355
  },
  "035720.KS": {
   "symbol": "035720.KS",
@@ -427,11 +427,11 @@
   "regular_time": 1794897029,
   "prev_close": 32450.0,
   "pre": null,
-  "post": 31700.0,
+  "post": null,
   "last": 31700.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901712
+  "last_time": 1794897029,
+  "last_session": "regular",
+  "fetched": 1794936355
  },
  "051910.KS": {
   "symbol": "051910.KS",
@@ -441,11 +441,11 @@
   "regular_time": 1794897029,
   "prev_close": 227000.0,
   "pre": null,
-  "post": 214500.0,
+  "post": null,
   "last": 214500.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901712
+  "last_time": 1794897029,
+  "last_session": "regular",
+  "fetched": 1794936355
  },
  "006400.KS": {
   "symbol": "006400.KS",
@@ -455,11 +455,11 @@
   "regular_time": 1794897013,
   "prev_close": 462500.0,
   "pre": null,
-  "post": 445000.0,
+  "post": null,
   "last": 445000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901712
+  "last_time": 1794897013,
+  "last_session": "regular",
+  "fetched": 1794936355
  },
  "105560.KS": {
   "symbol": "105560.KS",
@@ -469,11 +469,11 @@
   "regular_time": 1794897010,
   "prev_close": 161600.0,
   "pre": null,
-  "post": 156800.0,
+  "post": null,
   "last": 156800.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901712
+  "last_time": 1794897010,
+  "last_session": "regular",
+  "fetched": 1794936355
  },
  "055550.KS": {
   "symbol": "055550.KS",
@@ -483,11 +483,11 @@
   "regular_time": 1794897009,
   "prev_close": 90700.0,
   "pre": null,
-  "post": 87500.0,
+  "post": null,
   "last": 87500.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901712
+  "last_time": 1794897009,
+  "last_session": "regular",
+  "fetched": 1794936355
  },
  "086790.KS": {
   "symbol": "086790.KS",
@@ -497,11 +497,11 @@
   "regular_time": 1794897005,
   "prev_close": 126800.0,
   "pre": null,
-  "post": 125100.0,
+  "post": null,
   "last": 125100.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901713
+  "last_time": 1794897005,
+  "last_session": "regular",
+  "fetched": 1794936356
  },
  "316140.KS": {
   "symbol": "316140.KS",
@@ -511,11 +511,11 @@
   "regular_time": 1794897017,
   "prev_close": 33000.0,
   "pre": null,
-  "post": 32600.0,
+  "post": null,
   "last": 32600.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901713
+  "last_time": 1794897017,
+  "last_session": "regular",
+  "fetched": 1794936356
  },
  "024110.KS": {
   "symbol": "024110.KS",
@@ -525,11 +525,11 @@
   "regular_time": 1794897030,
   "prev_close": 19200.0,
   "pre": null,
-  "post": 19160.0,
+  "post": null,
   "last": 19160.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901713
+  "last_time": 1794897030,
+  "last_session": "regular",
+  "fetched": 1794936356
  },
  "012330.KS": {
   "symbol": "012330.KS",
@@ -539,11 +539,11 @@
   "regular_time": 1794897018,
   "prev_close": 356000.0,
   "pre": null,
-  "post": 346000.0,
+  "post": null,
   "last": 346000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901713
+  "last_time": 1794897018,
+  "last_session": "regular",
+  "fetched": 1794936356
  },
  "028260.KS": {
   "symbol": "028260.KS",
@@ -553,11 +553,11 @@
   "regular_time": 1794897026,
   "prev_close": 276500.0,
   "pre": null,
-  "post": 265500.0,
+  "post": null,
   "last": 265500.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901713
+  "last_time": 1794897026,
+  "last_session": "regular",
+  "fetched": 1794936356
  },
  "066570.KS": {
   "symbol": "066570.KS",
@@ -567,11 +567,11 @@
   "regular_time": 1794897005,
   "prev_close": 131700.0,
   "pre": null,
-  "post": 129300.0,
+  "post": null,
   "last": 129300.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901713
+  "last_time": 1794897005,
+  "last_session": "regular",
+  "fetched": 1794936356
  },
  "003550.KS": {
   "symbol": "003550.KS",
@@ -581,11 +581,11 @@
   "regular_time": 1794897028,
   "prev_close": 88300.0,
   "pre": null,
-  "post": 87000.0,
+  "post": null,
   "last": 87000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901713
+  "last_time": 1794897028,
+  "last_session": "regular",
+  "fetched": 1794936356
  },
  "032830.KS": {
   "symbol": "032830.KS",
@@ -595,11 +595,11 @@
   "regular_time": 1794897002,
   "prev_close": 253500.0,
   "pre": null,
-  "post": 242000.0,
+  "post": null,
   "last": 242000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901714
+  "last_time": 1794897002,
+  "last_session": "regular",
+  "fetched": 1794936356
  },
  "000810.KS": {
   "symbol": "000810.KS",
@@ -609,11 +609,11 @@
   "regular_time": 1794897007,
   "prev_close": 542000.0,
   "pre": null,
-  "post": 527000.0,
+  "post": null,
   "last": 527000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901714
+  "last_time": 1794897007,
+  "last_session": "regular",
+  "fetched": 1794936356
  },
  "015760.KS": {
   "symbol": "015760.KS",
@@ -623,11 +623,11 @@
   "regular_time": 1794897007,
   "prev_close": 26800.0,
   "pre": null,
-  "post": 25100.0,
+  "post": null,
   "last": 25100.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901714
+  "last_time": 1794897007,
+  "last_session": "regular",
+  "fetched": 1794936356
  },
  "017670.KS": {
   "symbol": "017670.KS",
@@ -637,11 +637,11 @@
   "regular_time": 1794897030,
   "prev_close": 83900.0,
   "pre": null,
-  "post": 82900.0,
+  "post": null,
   "last": 82900.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901714
+  "last_time": 1794897030,
+  "last_session": "regular",
+  "fetched": 1794936356
  },
  "030200.KS": {
   "symbol": "030200.KS",
@@ -651,11 +651,11 @@
   "regular_time": 1794897023,
   "prev_close": 51400.0,
   "pre": null,
-  "post": 51000.0,
+  "post": null,
   "last": 51000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901714
+  "last_time": 1794897023,
+  "last_session": "regular",
+  "fetched": 1794936356
  },
  "034730.KS": {
   "symbol": "034730.KS",
@@ -665,11 +665,11 @@
   "regular_time": 1794897030,
   "prev_close": 475500.0,
   "pre": null,
-  "post": 466000.0,
+  "post": null,
   "last": 466000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901714
+  "last_time": 1794897030,
+  "last_session": "regular",
+  "fetched": 1794936357
  },
  "096770.KS": {
   "symbol": "096770.KS",
@@ -679,11 +679,11 @@
   "regular_time": 1794897021,
   "prev_close": 106900.0,
   "pre": null,
-  "post": 103000.0,
+  "post": null,
   "last": 103000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901714
+  "last_time": 1794897021,
+  "last_session": "regular",
+  "fetched": 1794936357
  },
  "009150.KS": {
   "symbol": "009150.KS",
@@ -693,11 +693,11 @@
   "regular_time": 1794897009,
   "prev_close": 785000.0,
   "pre": null,
-  "post": 754000.0,
+  "post": null,
   "last": 754000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901715
+  "last_time": 1794897009,
+  "last_session": "regular",
+  "fetched": 1794936357
  },
  "018260.KS": {
   "symbol": "018260.KS",
@@ -707,11 +707,11 @@
   "regular_time": 1794897006,
   "prev_close": 229000.0,
   "pre": null,
-  "post": 226000.0,
+  "post": null,
   "last": 226000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901715
+  "last_time": 1794897006,
+  "last_session": "regular",
+  "fetched": 1794936357
  },
  "012450.KS": {
   "symbol": "012450.KS",
@@ -721,11 +721,11 @@
   "regular_time": 1794897012,
   "prev_close": 649000.0,
   "pre": null,
-  "post": 623000.0,
+  "post": null,
   "last": 623000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901715
+  "last_time": 1794897012,
+  "last_session": "regular",
+  "fetched": 1794936357
  },
  "329180.KS": {
   "symbol": "329180.KS",
@@ -735,11 +735,11 @@
   "regular_time": 1794897014,
   "prev_close": 270000.0,
   "pre": null,
-  "post": 256500.0,
+  "post": null,
   "last": 256500.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901715
+  "last_time": 1794897014,
+  "last_session": "regular",
+  "fetched": 1794936357
  },
  "009540.KS": {
   "symbol": "009540.KS",
@@ -749,11 +749,11 @@
   "regular_time": 1794897010,
   "prev_close": 239000.0,
   "pre": null,
-  "post": 233000.0,
+  "post": null,
   "last": 233000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901715
+  "last_time": 1794897010,
+  "last_session": "regular",
+  "fetched": 1794936357
  },
  "011200.KS": {
   "symbol": "011200.KS",
@@ -763,11 +763,11 @@
   "regular_time": 1794897022,
   "prev_close": 22150.0,
   "pre": null,
-  "post": 21650.0,
+  "post": null,
   "last": 21650.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901715
+  "last_time": 1794897022,
+  "last_session": "regular",
+  "fetched": 1794936357
  },
  "003670.KS": {
   "symbol": "003670.KS",
@@ -777,11 +777,11 @@
   "regular_time": 1794897021,
   "prev_close": 170400.0,
   "pre": null,
-  "post": 165700.0,
+  "post": null,
   "last": 165700.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901715
+  "last_time": 1794897021,
+  "last_session": "regular",
+  "fetched": 1794936357
  },
  "247540.KS": {
   "symbol": "247540.KS",
@@ -795,7 +795,7 @@
   "last": 194000.0,
   "last_time": 1721419200,
   "last_session": "regular",
-  "fetched": 1794901716
+  "fetched": 1794936358
  },
  "086520.KQ": {
   "symbol": "086520.KQ",
@@ -805,11 +805,11 @@
   "regular_time": 1794897019,
   "prev_close": 69800.0,
   "pre": null,
-  "post": 67600.0,
+  "post": null,
   "last": 67600.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901716
+  "last_time": 1794897019,
+  "last_session": "regular",
+  "fetched": 1794936358
  },
  "042700.KS": {
   "symbol": "042700.KS",
@@ -819,11 +819,11 @@
   "regular_time": 1794897015,
   "prev_close": 169700.0,
   "pre": null,
-  "post": 165300.0,
+  "post": null,
   "last": 165300.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901716
+  "last_time": 1794897015,
+  "last_session": "regular",
+  "fetched": 1794936358
  },
  "259960.KS": {
   "symbol": "259960.KS",
@@ -833,11 +833,11 @@
   "regular_time": 1794897030,
   "prev_close": 199100.0,
   "pre": null,
-  "post": 191200.0,
+  "post": null,
   "last": 191200.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901716
+  "last_time": 1794897030,
+  "last_session": "regular",
+  "fetched": 1794936358
  },
  "036570.KS": {
   "symbol": "036570.KS",
@@ -847,11 +847,11 @@
   "regular_time": 1794897027,
   "prev_close": 181700.0,
   "pre": null,
-  "post": 177800.0,
+  "post": null,
   "last": 177800.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901716
+  "last_time": 1794897027,
+  "last_session": "regular",
+  "fetched": 1794936358
  },
  "251270.KS": {
   "symbol": "251270.KS",
@@ -861,11 +861,11 @@
   "regular_time": 1794897020,
   "prev_close": 32400.0,
   "pre": null,
-  "post": 31200.0,
+  "post": null,
   "last": 31200.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901716
+  "last_time": 1794897020,
+  "last_session": "regular",
+  "fetched": 1794936358
  },
  "352820.KS": {
   "symbol": "352820.KS",
@@ -875,11 +875,11 @@
   "regular_time": 1794897027,
   "prev_close": 158400.0,
   "pre": null,
-  "post": 154800.0,
+  "post": null,
   "last": 154800.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901716
+  "last_time": 1794897027,
+  "last_session": "regular",
+  "fetched": 1794936358
  },
  "090430.KS": {
   "symbol": "090430.KS",
@@ -889,11 +889,11 @@
   "regular_time": 1794897030,
   "prev_close": 129600.0,
   "pre": null,
-  "post": 130000.0,
+  "post": null,
   "last": 130000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901717
+  "last_time": 1794897030,
+  "last_session": "regular",
+  "fetched": 1794936358
  },
  "097950.KS": {
   "symbol": "097950.KS",
@@ -903,11 +903,11 @@
   "regular_time": 1794897010,
   "prev_close": 179900.0,
   "pre": null,
-  "post": 182300.0,
+  "post": null,
   "last": 182300.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901717
+  "last_time": 1794897010,
+  "last_session": "regular",
+  "fetched": 1794936358
  },
  "010130.KS": {
   "symbol": "010130.KS",
@@ -917,11 +917,11 @@
   "regular_time": 1794897020,
   "prev_close": 857000.0,
   "pre": null,
-  "post": 815000.0,
+  "post": null,
   "last": 815000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901717
+  "last_time": 1794897020,
+  "last_session": "regular",
+  "fetched": 1794936358
  },
  "011170.KS": {
   "symbol": "011170.KS",
@@ -931,11 +931,11 @@
   "regular_time": 1794897028,
   "prev_close": 45600.0,
   "pre": null,
-  "post": 45150.0,
+  "post": null,
   "last": 45150.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901717
+  "last_time": 1794897028,
+  "last_session": "regular",
+  "fetched": 1794936359
  },
  "010950.KS": {
   "symbol": "010950.KS",
@@ -945,11 +945,11 @@
   "regular_time": 1794897006,
   "prev_close": 106500.0,
   "pre": null,
-  "post": 103700.0,
+  "post": null,
   "last": 103700.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901717
+  "last_time": 1794897006,
+  "last_session": "regular",
+  "fetched": 1794936359
  },
  "034020.KS": {
   "symbol": "034020.KS",
@@ -959,11 +959,11 @@
   "regular_time": 1794897003,
   "prev_close": 44900.0,
   "pre": null,
-  "post": 42600.0,
+  "post": null,
   "last": 42600.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901717
+  "last_time": 1794897003,
+  "last_session": "regular",
+  "fetched": 1794936359
  },
  "064350.KS": {
   "symbol": "064350.KS",
@@ -973,11 +973,11 @@
   "regular_time": 1794897020,
   "prev_close": 70000.0,
   "pre": null,
-  "post": 66600.0,
+  "post": null,
   "last": 66600.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901717
+  "last_time": 1794897020,
+  "last_session": "regular",
+  "fetched": 1794936359
  },
  "047810.KS": {
   "symbol": "047810.KS",
@@ -987,11 +987,11 @@
   "regular_time": 1794897015,
   "prev_close": 107300.0,
   "pre": null,
-  "post": 102000.0,
+  "post": null,
   "last": 102000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901718
+  "last_time": 1794897015,
+  "last_session": "regular",
+  "fetched": 1794936359
  },
  "033780.KS": {
   "symbol": "033780.KS",
@@ -1001,11 +1001,11 @@
   "regular_time": 1794897013,
   "prev_close": 180900.0,
   "pre": null,
-  "post": 181700.0,
+  "post": null,
   "last": 181700.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901718
+  "last_time": 1794897013,
+  "last_session": "regular",
+  "fetched": 1794936359
  },
  "323410.KS": {
   "symbol": "323410.KS",
@@ -1015,11 +1015,11 @@
   "regular_time": 1794897016,
   "prev_close": 21200.0,
   "pre": null,
-  "post": 21050.0,
+  "post": null,
   "last": 21050.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901718
+  "last_time": 1794897016,
+  "last_session": "regular",
+  "fetched": 1794936359
  },
  "377300.KS": {
   "symbol": "377300.KS",
@@ -1029,11 +1029,11 @@
   "regular_time": 1794897030,
   "prev_close": 32650.0,
   "pre": null,
-  "post": 32200.0,
+  "post": null,
   "last": 32200.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901718
+  "last_time": 1794897030,
+  "last_session": "regular",
+  "fetched": 1794936359
  },
  "302440.KS": {
   "symbol": "302440.KS",
@@ -1043,11 +1043,11 @@
   "regular_time": 1794897022,
   "prev_close": 39300.0,
   "pre": null,
-  "post": 39900.0,
+  "post": null,
   "last": 39900.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901718
+  "last_time": 1794897022,
+  "last_session": "regular",
+  "fetched": 1794936359
  },
  "196170.KQ": {
   "symbol": "196170.KQ",
@@ -1057,11 +1057,11 @@
   "regular_time": 1794897008,
   "prev_close": 171700.0,
   "pre": null,
-  "post": 173000.0,
+  "post": null,
   "last": 173000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901718
+  "last_time": 1794897008,
+  "last_session": "regular",
+  "fetched": 1794936359
  },
  "028300.KQ": {
   "symbol": "028300.KQ",
@@ -1071,11 +1071,11 @@
   "regular_time": 1794897023,
   "prev_close": 28100.0,
   "pre": null,
-  "post": 28300.0,
+  "post": null,
   "last": 28300.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901718
+  "last_time": 1794897023,
+  "last_session": "regular",
+  "fetched": 1794936359
  },
  "005935.KS": {
   "symbol": "005935.KS",
@@ -1085,11 +1085,11 @@
   "regular_time": 1794897001,
   "prev_close": 161300.0,
   "pre": null,
-  "post": 152000.0,
+  "post": null,
   "last": 152000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901719
+  "last_time": 1794897001,
+  "last_session": "regular",
+  "fetched": 1794936360
  },
  "000100.KS": {
   "symbol": "000100.KS",
@@ -1099,11 +1099,11 @@
   "regular_time": 1794897021,
   "prev_close": 81100.0,
   "pre": null,
-  "post": 83200.0,
+  "post": null,
   "last": 83200.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901719
+  "last_time": 1794897021,
+  "last_session": "regular",
+  "fetched": 1794936360
  },
  "128940.KS": {
   "symbol": "128940.KS",
@@ -1113,11 +1113,11 @@
   "regular_time": 1794897026,
   "prev_close": 446500.0,
   "pre": null,
-  "post": 448500.0,
+  "post": null,
   "last": 448500.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901719
+  "last_time": 1794897026,
+  "last_session": "regular",
+  "fetched": 1794936360
  },
  "042660.KS": {
   "symbol": "042660.KS",
@@ -1127,11 +1127,11 @@
   "regular_time": 1794897002,
   "prev_close": 46800.0,
   "pre": null,
-  "post": 44850.0,
+  "post": null,
   "last": 44850.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901719
+  "last_time": 1794897002,
+  "last_session": "regular",
+  "fetched": 1794936360
  },
  "267260.KS": {
   "symbol": "267260.KS",
@@ -1141,11 +1141,11 @@
   "regular_time": 1794897004,
   "prev_close": 401000.0,
   "pre": null,
-  "post": 378500.0,
+  "post": null,
   "last": 378500.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901719
+  "last_time": 1794897004,
+  "last_session": "regular",
+  "fetched": 1794936360
  },
  "010140.KS": {
   "symbol": "010140.KS",
@@ -1155,11 +1155,11 @@
   "regular_time": 1794897014,
   "prev_close": 16700.0,
   "pre": null,
-  "post": 16000.0,
+  "post": null,
   "last": 16000.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901719
+  "last_time": 1794897014,
+  "last_session": "regular",
+  "fetched": 1794936360
  },
  "010170.KQ": {
   "symbol": "010170.KQ",
@@ -1169,11 +1169,11 @@
   "regular_time": 1794897003,
   "prev_close": 12910.0,
   "pre": null,
-  "post": 12930.0,
+  "post": null,
   "last": 12930.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901719
+  "last_time": 1794897003,
+  "last_session": "regular",
+  "fetched": 1794936360
  },
  "073490.KQ": {
   "symbol": "073490.KQ",
@@ -1183,11 +1183,11 @@
   "regular_time": 1794897030,
   "prev_close": 31400.0,
   "pre": null,
-  "post": 31950.0,
+  "post": null,
   "last": 31950.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901720
+  "last_time": 1794897030,
+  "last_session": "regular",
+  "fetched": 1794936360
  },
  "081180.KQ": {
   "symbol": "081180.KQ",
@@ -1197,11 +1197,11 @@
   "regular_time": 1794897030,
   "prev_close": 4385.0,
   "pre": null,
-  "post": 4315.0,
+  "post": null,
   "last": 4315.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901720
+  "last_time": 1794897030,
+  "last_session": "regular",
+  "fetched": 1794936360
  },
  "001440.KS": {
   "symbol": "001440.KS",
@@ -1211,11 +1211,11 @@
   "regular_time": 1794897029,
   "prev_close": 18010.0,
   "pre": null,
-  "post": 17450.0,
+  "post": null,
   "last": 17450.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901720
+  "last_time": 1794897029,
+  "last_session": "regular",
+  "fetched": 1794936361
  },
  "298380.KQ": {
   "symbol": "298380.KQ",
@@ -1225,10 +1225,10 @@
   "regular_time": 1794897029,
   "prev_close": 38400.0,
   "pre": null,
-  "post": 37850.0,
+  "post": null,
   "last": 37850.0,
-  "last_time": 1794895200,
-  "last_session": "post",
-  "fetched": 1794901720
+  "last_time": 1794897029,
+  "last_session": "regular",
+  "fetched": 1794936361
  }
 }
