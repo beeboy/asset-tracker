@@ -3,7 +3,9 @@
  "name": "NVIDIA CORP",
  "cik": 1045810,
  "currency": "USD",
- "pending": null,
+ "pending": {
+  "announced": "2026-11-17"
+ },
  "quarters": [
   {
    "start": "2024-07-29",
