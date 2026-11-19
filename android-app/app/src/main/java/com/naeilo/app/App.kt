@@ -126,7 +126,7 @@ import com.naeilo.app.ui.Theme
 import com.naeilo.app.ui.hex
 import com.naeilo.app.ui.stiffness
 
-// ios: App.swift:23,33,35,37,39,43 (label·SF Symbol 이름·아이콘). 탭 순서는 여기 한 곳 (아래 막대도 이 순서). 설정은 탭이 아니라 홈 위 팝업 (2026-10-21)
+// ios: App.swift:23,33,35,37,40 (label·SF Symbol 이름·아이콘). 탭 순서는 여기 한 곳 (아래 막대도 이 순서). 설정은 탭이 아니라 홈 위 팝업 (2026-10-21)
 enum class Tab(val label: String, val sf: String, @param:DrawableRes val icon: Int) {
     home("홈", "house", R.drawable.tab_home),
     hold("종목", "chart.bar", R.drawable.tab_hold),
@@ -175,47 +175,47 @@ fun RootView(model: AppModel) {
                 .windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.navigationBars).exclude(WindowInsets(bottom = 49.dp)).only(WindowInsetsSides.Bottom))) { t ->
                 // 종목·분석·미션 탭 안 화면은 다음 단계에서 채운다 (지금은 머리글만 있는 빈 자리)
                 // 개발자·토스 키 모의투자 모드: 홈은 그대로, 나머지가 관찰·선정·일지·계좌로 바뀐다 (미션 자리에 계좌. 홈 평가액 박스의 금액 밖을 눌러 켜고 끈다)
-                val mock = if (com.naeilo.app.mock.MockDesk.shared.active) com.naeilo.app.mock.MockTabs.tab(t) else null   // ios: App.swift:57
+                val mock = if (com.naeilo.app.mock.MockDesk.shared.active) com.naeilo.app.mock.MockTabs.tab(t) else null   // ios: App.swift:54
                 if (mock != null) com.naeilo.app.mock.MockTabs.page(mock) else when (t) {
-                    Tab.home -> DetailSheet(model) { HomeView(model) }       // ios: App.swift:50, Views/HomeView.swift:41 (넘어가는 화면은 PathSheet 팝업, 많이 움직인 종목은 종목 상세 팝업)
+                    Tab.home -> DetailSheet(model) { HomeView(model) }       // ios: App.swift:47, Views/HomeView.swift:41 (넘어가는 화면은 PathSheet 팝업, 많이 움직인 종목은 종목 상세 팝업)
                     Tab.hold -> HoldingsView(model)       // ios: App.swift:34 (HoldingsView·holdPath)
                     Tab.flow -> com.naeilo.app.ui.flow.FlowView(model)   // ios: App.swift:36 (FlowView)
-                    Tab.analysis -> DetailSheet(model, Period.y1) { AnalysisView(model) }   // ios: Views/AnalysisView.swift:93 · ios: App.swift:72 (분석은 분석 팝업이 연다: AnalysisView openPath)
-                    // ios: App.swift:40,41 (목표·회복 루트 같은 미션 판)
-                    Tab.board -> BoardView(model)   // ios: App.swift:74 (넘어가는 화면은 PathSheet 팝업)
+                    Tab.analysis -> DetailSheet(model, Period.y1) { AnalysisView(model) }   // ios: Views/AnalysisView.swift:93 · ios: App.swift:69 (분석은 분석 팝업이 연다: AnalysisView openPath)
+                    // ios: App.swift:38 (목표·회복 루트 같은 미션 판)
+                    Tab.board -> BoardView(model)   // ios: App.swift:71 (넘어가는 화면은 PathSheet 팝업)
                 }
             }
-            TabBar(model.tab, tint = Theme.teal) { model.tab = it }   // ios: App.swift:45
+            TabBar(model.tab, tint = Theme.teal) { model.tab = it }   // ios: App.swift:42
         }
         // 처음 실행이면 첫 질문을 탭 화면 위에 덮는다
         StartOverlay(model, showStart)
     }
-    HomeSheets(model)   // ios: App.swift:46
+    HomeSheets(model)   // ios: App.swift:43
     // 홈(쉼터·서재·인물·다른 방식·목표)과 미션 판에서 넘어가던 화면은 팝업으로
-    // ios: App.swift:61,62,63
+    // ios: App.swift:58,59,60
     PathSheet(model.homePath, { model.homePath = it }) { homePage(model, it) }
     PathSheet(model.boardPath, { model.boardPath = it }) { boardPage(model, it) }
     AppHooks(model)
-    com.naeilo.app.mock.MockTabsHooks(mine = model.holdings.map { it.symbol }.toSet(), phase = model.active)   // ios: App.swift:42
+    com.naeilo.app.mock.MockTabsHooks(mine = model.holdings.map { it.symbol }.toSet(), phase = model.active)   // ios: App.swift:39
 }
 
 /** 설정·위젯 팝업: 다른 팝업처럼 시트, 맨 위 줄 제목 + X로 닫는다. 어느 탭에서든 뜬다 */
-// ios: App.swift:190,191,192,193,194
+// ios: App.swift:187,188,189,190,191
 @Composable
 private fun HomeSheets(model: AppModel) {
     val closeSettings = { model.settingsOpen = false; model.settingsPath = emptyList() }
-    // ios: App.swift:197,198 (닫으면 settingsPath 비우기)
+    // ios: App.swift:194,195 (닫으면 settingsPath 비우기)
     Sheet(model.settingsOpen, onDismiss = closeSettings) {
-        CompositionLocalProvider(LocalNavBack provides NavBack(null, closeSettings), LocalInPopup provides true) {   // ios: App.swift:295
+        CompositionLocalProvider(LocalNavBack provides NavBack(null, closeSettings), LocalInPopup provides true) {   // ios: App.swift:292
             Box(Modifier.fillMaxSize()) {
                 NavStack(model.settingsPath, { model.settingsPath = it }, { SettingsView(model, cover = true) }) { settingsPage(model, it) }
                 // 깊이 들어간 화면에도 오른쪽 위 X (첫 화면은 GameHeader 에 X가 있다)
-                // ios: App.swift:294
+                // ios: App.swift:291
                 if (model.settingsPath.isNotEmpty()) PopupX(Modifier.align(Alignment.TopEnd), closeSettings)
             }
         }
     }
-    // ios: App.swift:200,201
+    // ios: App.swift:197,198
     Sheet(model.widgetsOpen, onDismiss = { model.widgetsOpen = false }) {
         CompositionLocalProvider(LocalNavBack provides NavBack(null, { model.widgetsOpen = false })) {
             Column(Modifier.fillMaxSize().background(Theme.bg)) { WidgetPickView(model, cover = true) }
@@ -224,7 +224,7 @@ private fun HomeSheets(model: AppModel) {
 }
 
 /** 팝업 오른쪽 위 X: 몇 단계 들어갔어도 팝업을 한 번에 닫는다 (설정 팝업과 같은 자리·모양) */
-// ios: App.swift:225,226,227,228,229,230,231,232,233,234
+// ios: App.swift:222,223,224,225,226,227,228,229,230,231
 @Composable
 fun PopupX(modifier: Modifier = Modifier, close: () -> Unit) {
     Box(modifier.padding(end = 8.dp, top = 2.dp).size(44.dp).plainClickable(close).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {
@@ -236,7 +236,7 @@ fun PopupX(modifier: Modifier = Modifier, close: () -> Unit) {
  * 탭에서 옆으로 넘어가던 화면을 팝업으로 (2026-10-25 드링커님: 앱 화면을 모두 팝업 모양으로).
  * path 가 차면 시트를 띄운다. 첫 칸이 팝업 첫 화면(‹ 없이 제목만), 나머지는 팝업 안에서 넘긴다. 알림·위젯 길(homePath = [...])은 그대로 쓴다
  */
-// ios: App.swift:257,258,259,260,261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278
+// ios: App.swift:254,255,256,257,258,259,260,261,262,263,264,265,266,267,268,269,270,271,272,273,274,275
 @Composable
 fun <T> PathSheet(path: List<T>, onPath: (List<T>) -> Unit, page: @Composable (T) -> NavPage) {
     val close = { onPath(emptyList()) }
@@ -268,14 +268,14 @@ fun <T> PathSheet(path: List<T>, onPath: (List<T>) -> Unit, page: @Composable (T
 private fun AppHooks(model: AppModel) {
     val phase = model.active   // ios: App.swift:27 scenePhase (앞 = onStart, 뒤 = onStop)
     // 보유·루트가 바뀌면 위젯도 바로. 홈 인물을 바꾸면 위젯 인물도 같이 ('홈 인물 따라가기' 위젯)
-    // ios: App.swift:48,49,50,52,53,54
+    // ios: App.swift:45,46,47,49,50,51
     LaunchedEffect(Unit) {
         snapshotFlow { listOf<Any?>(model.holdings, model.route, model.nxStep, model.homeFriend, Sync.shared.isOn, Sync.shared.isDev) }.drop(1).collect { WidgetBridge.write(model) }
     }
     // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로.
     // 전망 몬테카를로: 앱이 뒤로 가면 돌던 계산도 멈추고, 다시 앞으로 오면 이어 간다 (뒤에서 폰이 뜨거워지지 않게)
     val first = remember { booleanArrayOf(true) }
-    // ios: App.swift:59,60,62
+    // ios: App.swift:56,57,59
     LaunchedEffect(phase) {
         if (first[0]) { first[0] = false } else {
             Compute.setActive(phase)
@@ -283,72 +283,72 @@ private fun AppHooks(model: AppModel) {
         }
     }
     // 미션 진행: 바뀔 때마다 저장, 동기화가 켜져 있으면 다른 기기로도
-    // ios: App.swift:65
+    // ios: App.swift:62
     LaunchedEffect(Unit) {
         snapshotFlow { model.progress }.drop(1).collect { model.saveProgress(); Remind.shared.refresh(model); if (model.persists) Sync.shared.changed(model) }
     }
-    // ios: App.swift:66
+    // ios: App.swift:63
     LaunchedEffect(Unit) { snapshotFlow { model.holdings }.drop(1).collect { if (model.persists) Sync.shared.changed(model) } }
-    LaunchedEffect(Unit) { snapshotFlow { Market.shared.ownAsOf }.drop(1).collect { if (model.persists) Sync.shared.calcChanged(model) } }   // ios: App.swift:111
+    LaunchedEffect(Unit) { snapshotFlow { Market.shared.ownAsOf }.drop(1).collect { if (model.persists) Sync.shared.calcChanged(model) } }   // ios: App.swift:108
     // 내 기록: 새 날 줄이 생기면 다른 기기로도 (같은 날 값 고침은 다음 변경 때 같이)
-    // ios: App.swift:69
+    // ios: App.swift:66
     LaunchedEffect(Unit) { snapshotFlow { model.myRecord.size }.drop(1).collect { if (model.persists) Sync.shared.changed(model) } }
     // 앱을 열거나 앞으로 올 때 다른 기기 값 받기. 서버 시각도 같이 받는다 (인터미션 날짜·내 캐릭터 조건, Me)
-    // ios: App.swift:72,73,74,75
+    // ios: App.swift:69,70,71,72
     LaunchedEffect(phase) {
         if (!phase) return@LaunchedEffect
         launch { TrustedClock.shared.sync(); model.fixStarts(); Support.shared.tick() }   // 7일 무료·캐릭터 상품 열림 날짜도
         if (model.persists) launch { Sync.shared.pull(model) }
         // 켜 둔 동안에도 다른 기기 값 받기: 앞에 있을 때만 30초마다 (뒤로 가면 phase가 바뀌어 멈춘다)
         // .task(id: phase) 는 LaunchedEffect(phase) 로: phase가 바뀌면 이 루프도 끝난다
-        while (true) {   // ios: App.swift:126,127,128
-            kotlinx.coroutines.delay(30000)   // ios: App.swift:129
-            if (!model.persists) break   // ios: App.swift:130
-            Sync.shared.poll(model)   // ios: App.swift:131
+        while (true) {   // ios: App.swift:123,124,125
+            kotlinx.coroutines.delay(30000)   // ios: App.swift:126
+            if (!model.persists) break   // ios: App.swift:127
+            Sync.shared.poll(model)   // ios: App.swift:128
         }
     }
     // 알림: 설정이 바뀌면 다시 예약
-    // ios: App.swift:78,79
+    // ios: App.swift:75,76
     LaunchedEffect(Unit) { snapshotFlow { model.alerts to model.alertHr }.drop(1).collect { Notifier.reschedule(model) } }
     // 지금 시세: 화면이 켜져 있는 동안만 1분마다 갱신 (뒤로 가면 멈춰 배터리·데이터를 아낀다)
-    // ios: App.swift:104,105
+    // ios: App.swift:101,102
     LaunchedEffect(phase) {
         if (!phase) return@LaunchedEffect
-        var lastResched = Instant.EPOCH   // ios: App.swift:106
-        var lastKey = ""   // ios: App.swift:107 날짜·평가액이 그대로면 뒤 계산은 건너뛴다 (장 닫힌 동안 매분 화면이 멈칫하지 않게)
-        // ios: App.swift:108
+        var lastResched = Instant.EPOCH   // ios: App.swift:103
+        var lastKey = ""   // ios: App.swift:104 날짜·평가액이 그대로면 뒤 계산은 건너뛴다 (장 닫힌 동안 매분 화면이 멈칫하지 않게)
+        // ios: App.swift:105
         while (isActive) {
             // 미니 게임 중엔 갱신을 미뤄 화면이 멈칫하지 않게 (끝나면 곧 다시 받는다)
-            while (GamePause.on && isActive) delay(2000)   // ios: App.swift:110
-            Market.shared.refresh(held = model.holdings.map { it.symbol }.toSet())   // ios: App.swift:111
-            val key = "${Day.today}|${model.total}"   // ios: App.swift:112
-            // ios: App.swift:113
+            while (GamePause.on && isActive) delay(2000)   // ios: App.swift:107
+            Market.shared.refresh(held = model.holdings.map { it.symbol }.toSet())   // ios: App.swift:108
+            val key = "${Day.today}|${model.total}"   // ios: App.swift:109
+            // ios: App.swift:110
             if (key != lastKey) {
-                lastKey = key   // ios: App.swift:114
-                if (model.persists) model.recordDay()   // ios: App.swift:115 내 기록: 시세를 받은 뒤 오늘 줄을 지금 값으로
-                Remind.shared.refresh(model)     // ios: App.swift:116 홈 리마인드 (위젯 말풍선·다음 일정도 여기서)
-                WidgetBridge.write(model)        // ios: App.swift:117 위젯에 지금 숫자를 넘긴다
-                Notifier.check(model)       // ios: App.swift:118 본전 도달 · 비중 이탈
+                lastKey = key   // ios: App.swift:111
+                if (model.persists) model.recordDay()   // ios: App.swift:112 내 기록: 시세를 받은 뒤 오늘 줄을 지금 값으로
+                Remind.shared.refresh(model)     // ios: App.swift:113 홈 리마인드 (위젯 말풍선·다음 일정도 여기서)
+                WidgetBridge.write(model)        // ios: App.swift:114 위젯에 지금 숫자를 넘긴다
+                Notifier.check(model)       // ios: App.swift:115 본전 도달 · 비중 이탈
             }
-            // ios: App.swift:120,121 아침 한 줄은 10분마다 지금 숫자로 (매분 지우고 다시 넣지 않게)
+            // ios: App.swift:117,118 아침 한 줄은 10분마다 지금 숫자로 (매분 지우고 다시 넣지 않게)
             if (Duration.between(lastResched, Instant.now()).seconds >= 600) {
                 lastResched = Instant.now(); Notifier.reschedule(model)
             }
-            delay(60000)   // ios: App.swift:123
+            delay(60000)   // ios: App.swift:120
         }
     }
-    LineTurns(model, phase)   // ios: App.swift:56
-    KoreaSumHooks(model)   // ios: App.swift:67
+    LineTurns(model, phase)   // ios: App.swift:53
+    KoreaSumHooks(model)   // ios: App.swift:64
 }
 
 /** 한국 종목 가격·국내 주식 합계를 고치면 다른 기기로도 보내고, 리마인드 '오늘 국내 주식 합계'를 누르면 입력 칸을 한 번 띄운다 */
-// ios: App.swift:197,198,199,200
+// ios: App.swift:194,195,196,197
 @Composable
 private fun KoreaSumHooks(model: AppModel) {
-    // ios: App.swift:201
+    // ios: App.swift:198
     LaunchedEffect(Unit) { snapshotFlow { CustomSymbols.shared.krStamp }.drop(1).collect { if (model.persists) Sync.shared.changed(model) } }
     // 키보드 '완료'는 자판의 완료 키로 (NavigationStack 은 필요 없다)
-    // ios: App.swift:202,204,205,206,207,209 (화면 절반 높이 시트)
+    // ios: App.swift:199,201,202,203,204,206 (화면 절반 높이 시트)
     Sheet(model.krSumAsk, onDismiss = { model.krSumAsk = false }, medium = true) {
         Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp)) {
             KoreaSumCard(model, done = { model.krSumAsk = false })
@@ -357,17 +357,17 @@ private fun KoreaSumHooks(model: AppModel) {
 }
 
 /** 인물 대사 차례 올리기: 탭·화면 이동, 앱을 앞으로 가져올 때 (1분 자동 갱신으로는 안 바뀐다) */
-// ios: App.swift:180,181,182,183,184
+// ios: App.swift:177,178,179,180,181
 @Composable
 private fun LineTurns(model: AppModel, phase: Boolean) {
-    LaunchedEffect(phase) { if (phase) LineClock.shared.next() }   // ios: App.swift:185
-    // ios: App.swift:186,187,188,189,190,191 (탭·홈·미션·설정 경로, 분석·종목 경로 길이)
+    LaunchedEffect(phase) { if (phase) LineClock.shared.next() }   // ios: App.swift:182
+    // ios: App.swift:183,184,185,186,187,188 (탭·홈·미션·설정 경로, 분석·종목 경로 길이)
     LaunchedEffect(Unit) {
         snapshotFlow { listOf<Any>(model.tab, model.homePath, model.boardPath, model.settingsPath, model.analysisPath.size, model.holdPath.size) }.drop(1).collect { LineClock.shared.next() }
     }
 }
 
-// ios: App.swift:136,137 .transition(.opacity) + .animation(.default): iOS 17 기본 = 감쇠 1 · 0.55초 스프링
+// ios: App.swift:133,134 .transition(.opacity) + .animation(.default): iOS 17 기본 = 감쇠 1 · 0.55초 스프링
 @Composable
 private fun StartOverlay(model: AppModel, show: Boolean) {
     val a = animateFloatAsState(if (show) 1f else 0f, spring(dampingRatio = 1f, stiffness = stiffness(response = 0.55f)), label = "start")
@@ -441,31 +441,31 @@ fun openIntent(model: AppModel, intent: android.content.Intent?) {
     if (u.scheme == "naeilo") { intent.data = null; openUrl(model, u) }
 }
 
-// ios: App.swift:80,81,82
+// ios: App.swift:77,78,79
 fun openNotification(model: AppModel, o: String) {
     when (o) {
-        "home" -> model.tab = Tab.home   // ios: App.swift:83
-        "tax" -> model.openSettings(com.naeilo.app.ui.settings.SettingsRoute.tax)   // ios: App.swift:84
-        "rate" -> model.go(com.naeilo.app.data.RemindGo.rateScen)   // ios: App.swift:85
-        "ext" -> model.go(com.naeilo.app.data.RemindGo.external)   // ios: App.swift:86
-        else -> model.tab = Tab.board   // ios: App.swift:87
+        "home" -> model.tab = Tab.home   // ios: App.swift:80
+        "tax" -> model.openSettings(com.naeilo.app.ui.settings.SettingsRoute.tax)   // ios: App.swift:81
+        "rate" -> model.go(com.naeilo.app.data.RemindGo.rateScen)   // ios: App.swift:82
+        "ext" -> model.go(com.naeilo.app.data.RemindGo.external)   // ios: App.swift:83
+        else -> model.tab = Tab.board   // ios: App.swift:84
     }
 }
 
 // 잠긴 위젯을 누르면 앱 시작 3단계로
-// ios: App.swift:92
+// ios: App.swift:89
 fun openUrl(model: AppModel, url: android.net.Uri) {
-    // ios: App.swift:93 개발자: 토스 시세 주소
+    // ios: App.swift:90 개발자: 토스 시세 주소
     if (url.host == "toss") { com.naeilo.app.core.TossFeed.setBase(from = url); kotlinx.coroutines.MainScope().launch { com.naeilo.app.net.Market.shared.refresh(held = model.holdings.map { it.symbol }.toSet(), force = true) }; return }
-    if (url.host == "mock") { com.naeilo.app.mock.MockFeed.setToken(from = url); return }   // ios: App.swift:161 개발자: 모의투자 서버 열쇠
-    if (url.host == "shelter") { model.tab = Tab.home; model.homePath = listOf("shelter"); return }   // ios: App.swift:94 인물 위젯 (못 만난 인물)
+    if (url.host == "mock") { com.naeilo.app.mock.MockFeed.setToken(from = url); return }   // ios: App.swift:158 개발자: 모의투자 서버 열쇠
+    if (url.host == "shelter") { model.tab = Tab.home; model.homePath = listOf("shelter"); return }   // ios: App.swift:91 인물 위젯 (못 만난 인물)
     val i = url.lastPathSegment?.toIntOrNull()
-    // ios: App.swift:95 서재 위젯
+    // ios: App.swift:92 서재 위젯
     if (url.host == "read" && i != null && i in 0 until 6 && model.chapterOn(i)) {
-        model.tab = Tab.home; model.homePath = listOf("shelter", "read:$i"); return   // ios: App.swift:96
+        model.tab = Tab.home; model.homePath = listOf("shelter", "read:$i"); return   // ios: App.swift:93
     }
-    if (url.host == "subscribe") { model.openSettings(com.naeilo.app.ui.settings.SettingsRoute.support); return }   // ios: App.swift:98 7일 무료가 끝나 잠긴 위젯
-    if (url.host != "unlock") return   // ios: App.swift:99
-    model.tab = Tab.board   // ios: App.swift:100
-    model.boardPath = if (model.playOn) emptyList() else listOf(com.naeilo.app.core.calc.MissionRoute.nx)   // ios: App.swift:101
+    if (url.host == "subscribe") { model.openSettings(com.naeilo.app.ui.settings.SettingsRoute.support); return }   // ios: App.swift:95 7일 무료가 끝나 잠긴 위젯
+    if (url.host != "unlock") return   // ios: App.swift:96
+    model.tab = Tab.board   // ios: App.swift:97
+    model.boardPath = if (model.playOn) emptyList() else listOf(com.naeilo.app.core.calc.MissionRoute.nx)   // ios: App.swift:98
 }

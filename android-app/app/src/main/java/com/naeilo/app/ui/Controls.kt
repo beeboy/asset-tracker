@@ -435,7 +435,7 @@ fun DropMenu(items: List<MenuItem>, label: @Composable () -> Unit) {
 // ── 화면 쌓기 (NavigationStack) ──
 
 /** 팝업 안인가 (팝업 안 링크는 그 자리에서 넘기고, 탭 화면 링크는 팝업을 연다). 팝업 안이면 이동 막대가 오른쪽 위 X 자리를 비운다 */
-// ios: App.swift:220,221,222
+// ios: App.swift:217,218,219
 val LocalInPopup = androidx.compose.runtime.staticCompositionLocalOf { false }
 
 /** iOS 이동 막대 (.inlineLarge): 왼쪽 '‹', 그 옆 제목 20 굵게. 높이 48. onBack 이 없으면 팝업 첫 화면 (‹ 없이 제목만) */

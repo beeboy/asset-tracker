@@ -35,7 +35,7 @@ Yahoo·smbs.biz·Shiller → GitHub Actions(server.py --collect 등) → data/*.
 - `ios.yml`·`usage.yml`: 수동만.
 
 ## 워커 (`proxy/cloudflare-worker.js`)
-- 경로: `?url=`, `/ai`, `/mar`, `/collect`, `/cu`, `/esync`, `/notify`, `/store/*`, `/heads`, `/gyeol` 등.
+- 경로: `?url=`, `/ai`, `/mar`, `/collect`, `/cu`, `/esync`, `/notify`, `/store/*`, `/heads` 등.
 - KV `VIEWS`: 조회·댓글·동기화·상점·알림 신청.
 - 공개판은 `?url=`·`/mar`를 안 쓴다.
 

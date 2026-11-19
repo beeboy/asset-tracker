@@ -610,8 +610,8 @@ val AppModel.pathStartDate: Instant get() {   // ios: Views/AnalysisDetail.swift
     if (isGoal) return minOf(Instant.now(), goalFromDate)   // ios: Views/AnalysisDetail.swift:13
     val rs = interStartAt?.let { Instant.ofEpochMilli((it * 1000).toLong()) }   // ios: Views/AnalysisDetail.swift:14
     val d = listOfNotNull(rs, rec).minOrNull()   // ios: Views/AnalysisDetail.swift:15
-    return minOf(Instant.now(), d ?: Instant.now())   // ios: Views/AnalysisDetail.swift:16
+    return minOf(Instant.now(), d ?: Instant.now())
 }
 /** x 시점(0 = 3년 전, 1 = 어제)의 전체 평가액 (원화) */
-fun AppModel.totalAt(x: Double): Double =   // ios: Views/AnalysisDetail.swift:100
-    rows.fold(0.0) { a, r -> a + krw(r.sym, r.h.qty * prices.price(r.sym, at = x)) }   // ios: Views/AnalysisDetail.swift:101
+fun AppModel.totalAt(x: Double): Double =   // ios: Views/AnalysisDetail.swift:101
+    rows.fold(0.0) { a, r -> a + krw(r.sym, r.h.qty * prices.price(r.sym, at = x)) }   // ios: Views/AnalysisDetail.swift:102
