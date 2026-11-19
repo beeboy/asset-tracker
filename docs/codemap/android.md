@@ -2,29 +2,30 @@
 
 `python3 docs/codemap/gen.py`로 다시 만든다. 손으로 고치지 않는다.
 
-소스 111개 · 50958줄 · 뿌리: `android-app/app/src/main`, `android-app/widget/src/main`
+소스 118개 · 59200줄 · 뿌리: `android-app/app/src/main`, `android-app/widget/src/main`
 
 ## 폴더 (파일 줄수)
 
-- `./` (4): App 460, AppModel 1028, MainActivity 66, RestartActivity 20
+- `./` (4): App 465, AppModel 1028, MainActivity 66, RestartActivity 20
 - `core/` (2): Flip 75, L10n 201
 - `core/calc/` (11): Calm 622, ForecastEngine 358, GoalRoute 618, Industries 93, Invest 154, InvestEvents 124, MonteCarlo 894, Parallel 850, Recovery 404, SiteCalc 288, WaveEngine 672
 - `core/game/` (1): BrickGame 1211
 - `data/` (14): Earnings 263, FlowData 674, Lines 151, Lots 96, Me 413, MyRecord 102, Notifier 461, Progress 149, Remind 829, SampleData 362, Services 175, Story 284, Support 338, WidgetBridge 271
+- `mock/` (7): MockAI 294, MockDesk 2107, MockEngine 865, MockFeed 688, MockModels 713, MockOrderViews 1329, MockViews 2193
 - `net/` (8): Backup 137, Market 1072, SiteStats 324, StockCatalog 136, StockSearch 601, StoreAPI 57, Sync 686, TossSum 188
 - `pending/` (1): Pending 25
-- `ui/` (9): AppHeader 27, CharMotion 869, Charts 380, Controls 833, Guide 202, MyRecordCard 125, ShareCard 356, Theme 501, WaveFeedbackToggles 45
+- `ui/` (9): AppHeader 27, CharMotion 869, Charts 380, Controls 839, Guide 202, MyRecordCard 125, ShareCard 356, Theme 501, WaveFeedbackToggles 45
 - `ui/analysis/` (10): AnalysisCommon 277, AnalysisView 1124, DividendViews 506, ExternalViews 724, ForecastParts 192, FxGlanceViews 696, InvestViews 299, MyPathViews 486, ParallelViews 600, RateViews 646
 - `ui/board/` (2): BoardView 749, MissionViews 1178
 - `ui/calm/` (1): CalmView 366
 - `ui/flow/` (1): FlowView 1018
 - `ui/game/` (1): BrickGameView 1278
 - `ui/goal/` (1): GoalViews 1239
-- `ui/hold/` (3): EarningsRiver 563, HoldingDetail 712, HoldingsView 1142
-- `ui/home/` (2): HomeView 1215, ThemeScenes 996
+- `ui/hold/` (3): EarningsRiver 563, HoldingDetail 712, HoldingsView 1160
+- `ui/home/` (2): HomeView 1227, ThemeScenes 996
 - `ui/me/` (1): MeViews 1014
 - `ui/remind/` (1): RemindViews 367
-- `ui/settings/` (2): SettingsDetail 893, SettingsView 1063
+- `ui/settings/` (2): SettingsDetail 893, SettingsView 1075
 - `ui/shelter/` (1): ShelterView 1253
 - `ui/start/` (1): StartView 269
 - `ui/support/` (1): SupportView 207
@@ -66,6 +67,13 @@
 - data/Story.kt: class StoryBlock, StoryChapter, StoryFile, StoryLang, StoryBook, Story
 - data/Support.kt: class SubPlan, Support
 - data/WidgetBridge.kt: object WidgetBridge
+- mock/MockAI.kt: class MockAISettings, MockAIWallet, MockAIView; object MockAI
+- mock/MockDesk.kt: class MockState, MockPaperBroker, MockTossBroker; object MockDesk; iface MockBroker
+- mock/MockEngine.kt: object MockClock, MockCalc
+- mock/MockFeed.kt: class MockReq; fun jsonBody; object MockFeed, MockGate, TossOrderAPI, MockToss
+- mock/MockModels.kt: alias MockDate; fun mockNow, newId, Double.swRound, Int.fmtInt, Long.fmtInt; class MockMarket, MockWho, MockBook, MockBar, MockPiece, MockBundle, MockStock, MockHit, MockSeen, MockCurve, MockScan, MockCond, MockRuleCond, MockSellCond, MockMark, MockExceptions, MockSelectRule, MockSellRule, MockGuards, MockFees, MockSide, MockOrderState, MockOrderType, MockPosition, MockOrder, MockSettle, MockLedger, MockEvent, MockBuyNote, MockFollow, MockAfter, MockFlowRead, MockAIUse, MockRun; object MockFmt, MockLive
+- mock/MockOrderViews.kt: class MockStockPnl, MockDay, MockSold, Held, MockAccountCtx; fun MockDesk.perStock, MockDesk.soldToday, MockDesk.pastDays, MockJournalView, MockAccountView, MockSeg, MockMark, MockSettingsView, MockTabsHooks; object MockAccount, MockTabs, MockEntry
+- mock/MockViews.kt: fun mt, TextStyle.tnum, everyMinute, Modifier.capsuleLine, MockFmt.man, MockFmt.small, MockFmt.signedWon, MockFmt.md, MockDesk.busyName, MockDesk.dayBase, MockBox, MockShareBar, MockTabBox, MockSegPill, MockAIPill, MockStatePill, MockGoPill, MockCondPill, MockAddPill, Modifier.dashedCapsule, MockKindChip, MockNumField, MockFormButtons, MockPieceForm, MockRuleForm, MockSellForm, MockRunLine, MockTag, MockListCard, MockMove, MockSortToggle, MockEmptyRow, Modifier.holdCol, MockStockRow, MockQtyPill, MockSheetBar, MockScreen, MockLiveSheet, MockObserveView, MockCurveCard, MockSelectView, MockCycleLine, MockRowEdit, MockConfirmCard, MockStockFinder, MockStockSheet, MockStockChart, MockChainSheet, MockBookCard, MockSeenLog, MockSwipe, MockDesk.flows, MockTradeLog, MockFillLog, MockFlipBoard, MockFlipCell, MockSeenPill; class MockTab, MockPieceDraft, MockRuleDraft, MockSellDraft, MockPickRow, MockStockRef, MockFlow; object MockNum, MockTagWho, MockCurveCard, MockStockChart, MockCutTone
 - net/Backup.kt: object B64, BackupFile; class Backup
 - net/Market.kt: fun posix, zoneOr; class Quote, MarUse, Market, CalcSnap; object YahooSample, SitePrices, TossHistory, MarFeed, AlpacaHistory, TossMinutes, AlpacaMinutes, LongbridgeMinutes
 - net/SiteStats.kt: object SiteStats; class ExtraStats
@@ -147,7 +155,7 @@
 
 ## 파일 관계 (A -> A가 쓰는 타입을 선언한 파일, 확장자 뺌)
 
-- App -> AppModel, ForecastEngine, Recovery, FlowData, Lines, Me, Notifier, Remind, SampleData, Services, Support, WidgetBridge, Market, StockSearch, Sync, Controls, ui/Theme, AnalysisView, ExternalViews, RateViews, BrickGameView, HoldingsView, SettingsView, Engine, Feeds
+- App -> AppModel, ForecastEngine, Recovery, FlowData, Lines, Me, Notifier, Remind, SampleData, Services, Support, WidgetBridge, MockDesk, MockFeed, MockOrderViews, Market, StockSearch, Sync, Controls, ui/Theme, AnalysisView, ExternalViews, RateViews, BrickGameView, HoldingsView, SettingsView, Engine, Feeds
 - AppModel -> Calm, ForecastEngine, GoalRoute, MonteCarlo, Parallel, Recovery, Lines, Lots, Me, MyRecord, Progress, Remind, SampleData, Services, Story, Support, Market, SiteStats, StockSearch, Sync, AnalysisView, SettingsView, TownViews, Config, Engine, Reward
 - MainActivity -> AppModel, RestartActivity, Notifier, Progress, SampleData, Support, Market, StockSearch, Sync, Config, Previews
 - RestartActivity -> MainActivity
@@ -177,6 +185,13 @@
 - Story -> AppModel, Progress, SampleData, Support, StoreAPI, Config, Format, StoryWidgetData, Glance
 - Support -> Me, Progress, Story, Sync, Config, Glance
 - WidgetBridge -> AppModel, Lines, Remind, SampleData, Story, Market, StockSearch, AnalysisCommon, MeViews, Config, Engine, Format, Models, Reward, StoryWidgetData, Draw, Glance
+- MockAI -> Recovery, MockEngine, MockFeed, MockModels
+- MockDesk -> Notifier, Progress, Support, MockAI, MockEngine, MockFeed, MockModels, StockSearch, Feeds, Draw
+- MockEngine -> MockDesk, MockModels, Draw
+- MockFeed -> Progress, MockEngine, MockModels, Config, Feeds
+- MockModels -> MockEngine
+- MockOrderViews -> Progress, MockAI, MockDesk, MockEngine, MockFeed, MockModels, MockViews, ui/Charts, Controls, HoldingsView
+- MockViews -> MockAI, MockDesk, MockEngine, MockFeed, MockModels, StockSearch, ui/Charts, Controls, HoldingsView, HomeView, Draw
 - Backup -> AppModel, Calm, MonteCarlo, Parallel, Lots, MyRecord, Progress, SampleData, Market, StockSearch, Sync, TownViews, SurfCloset, Json
 - Market -> AppModel, ForecastEngine, MonteCarlo, Parallel, Earnings, FlowData, Lines, Progress, SampleData, WidgetBridge, SiteStats, StockSearch, Config, Engine, Feeds, Models
 - SiteStats -> MonteCarlo, Progress, SampleData, Market, StockSearch, Config, Engine, Json, Models
@@ -211,12 +226,12 @@
 - EarningsRiver -> AppModel, Earnings, SampleData, Market, TownViews, Config
 - HoldingDetail -> AppModel, Progress, SampleData, Services, Market, StockSearch, ui/Charts, Controls, HoldingsView, Engine
 - HoldingsView -> AppModel, Calm, Earnings, SampleData, Services, Market, StockSearch, Sync, TossSum, ui/Charts, Controls, FxGlanceViews, EarningsRiver, HoldingDetail, HomeView, ThemeScenes, TownViews
-- HomeView -> AppModel, GoalRoute, Earnings, Lines, Progress, Remind, SampleData, Story, Market, CharMotion, Controls, AnalysisView, ParallelViews, EarningsRiver, ThemeScenes, RemindViews, TownViews, Engine, Reward
+- HomeView -> AppModel, GoalRoute, Earnings, Lines, Progress, Remind, SampleData, Story, MockOrderViews, Market, CharMotion, Controls, AnalysisView, ParallelViews, EarningsRiver, ThemeScenes, RemindViews, TownViews, Engine, Reward
 - ThemeScenes -> AppModel, Me, Progress, CharMotion, HomeView, MeViews
 - MeViews -> AppModel, Calm, Me, SampleData, WidgetBridge, CharMotion, Controls, Config, Reward
 - RemindViews -> AppModel, Remind, SampleData, Engine
 - SettingsDetail -> AppModel, GoalRoute, Lines, Notifier, Progress, SampleData, Backup, Market, Sync, Controls, SettingsView, Config, Feeds, Reward, Catalog, CharWidgets, Glance
-- SettingsView -> AppModel, ForecastEngine, GoalRoute, FlowData, Progress, SampleData, Support, Market, Sync, Controls, HomeView, ThemeScenes, Config, Feeds, Models, Draw
+- SettingsView -> AppModel, ForecastEngine, GoalRoute, FlowData, Progress, SampleData, Support, MockDesk, Market, Sync, Controls, HomeView, ThemeScenes, Config, Feeds, Models, Draw
 - ShelterView -> AppModel, Calm, Recovery, Lines, SampleData, Story, Support, CharMotion, Controls, Reward, Catalog
 - StartView -> AppModel, GoalRoute, Lines
 - SupportView -> AppModel, Support, Controls, SettingsView
