@@ -31,4 +31,4 @@
 
 ## 보류
 - `docs/todo/pending.md`
-- 11-05 · PiP 결은 결 앱(Gyeol)으로 옮기고 naeilo에서 뺀다. 중계 15번(/gyeol/live·/gyeol/mcp)은 쓰지 않는다 · naeilo와 관계없고 동작이 두 벌이었다
+- 2026-11-12 평가액은 매도 세금·수수료를 뺀 값(토스 평가금과 같게). 2026-11-13: 해외는 빼지 않는다(토스 화면 대조). 상수는 `WidgetShared/Engine.swift` SellCost 한 곳. 들어간 돈은 그대로.

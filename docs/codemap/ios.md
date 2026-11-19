@@ -8,7 +8,6 @@
 
 - `./` (2): App 329, Theme 308
 - `Data/` (35): AppModel 885, Backup 85, BrickGame 943, Calm 552, Earnings 175, FlowData 601, ForecastEngine 236, GoalRoute 464, Industries 86, Invest 129, InvestEvents 82, Lines 106, Lots 91, Market 1000, Me 302, MonteCarlo 729, MyRecord 81, Notifier 232, Parallel 725, Progress 116, Recovery 349, Remind 653, SampleData 318, Services 126, SiteCalc 184, SiteStats 281, StockCatalog 134, StockSearch 542, StoreAPI 51, Story 196, Support 198, Sync 595, TossSum 158, WaveEngine 386, WidgetBridge 163
-- `Gyeol/` (1): GyeolGlue 114
 - `Mock/` (7): MockAI 280, MockDesk 2056, MockEngine 840, MockFeed 621, MockModels 686, MockOrderViews 1232, MockViews 2286
 - `Views/` (28): AnalysisDetail 2460, AnalysisView 972, BoardView 464, BrickGameView 816, CalmView 277, CharMotion 643, Charts 187, EarningsRiver 534, FlowView 870, ForecastParts 140, GoalViews 957, Guide 172, HoldingsView 2779, HomeView 936, InvestViews 222, MeViews 731, MissionViews 769, MyRecordCard 82, ParallelView 462, RemindViews 258, SettingsDetail 716, SettingsView 900, ShareCard 240, ShelterView 933, StartView 170, SupportView 131, ThemeScenes 1179, TownPanel 1037
 - `Views/Wave/` (5): SurfCloset 265, WaveFeedback 154, WaveHomeView 368, WavePlayView 460, WaveResultPopup 109
@@ -58,7 +57,6 @@
 - Data/TossSum.swift: enum TossSum, MarDaily; ext AppModel
 - Data/WaveEngine.swift: struct WaveEngine; ext AppModel
 - Data/WidgetBridge.swift: enum WidgetBridge
-- Gyeol/GyeolGlue.swift: enum GyeolFeed; struct GyeolHooks, GyeolSettings
 - Mock/MockAI.swift: struct MockAISettings, MockAIWallet, MockAIView; enum MockAI
 - Mock/MockDesk.swift: struct MockState; class MockDesk, MockPaperBroker, MockTossBroker; ext MockDesk; proto MockBroker
 - Mock/MockEngine.swift: enum MockClock, MockCalc
@@ -125,7 +123,7 @@
 
 ## 파일 관계 (A -> A가 쓰는 타입을 선언한 파일, 확장자 뺌)
 
-- App -> AppModel, FlowData, ForecastEngine, Lines, Market, Me, Notifier, Remind, StockSearch, Support, Sync, WidgetBridge, GyeolGlue, MockDesk, MockFeed, MockOrderViews, Theme, AnalysisView, BoardView, BrickGameView, FlowView, HoldingsView, HomeView, MissionViews, SettingsDetail, SettingsView, StartView, Models
+- App -> AppModel, FlowData, ForecastEngine, Lines, Market, Me, Notifier, Remind, StockSearch, Support, Sync, WidgetBridge, MockDesk, MockFeed, MockOrderViews, Theme, AnalysisView, BoardView, BrickGameView, FlowView, HoldingsView, HomeView, MissionViews, SettingsDetail, SettingsView, StartView, Models
 - AppModel -> App, Calm, ForecastEngine, GoalRoute, Lines, Lots, Market, Me, MonteCarlo, MyRecord, Parallel, Progress, Recovery, Remind, SampleData, Services, SiteStats, StockSearch, Story, Support, Sync, Theme, AnalysisView, HoldingsView, SettingsView, Config, Engine
 - Backup -> AppModel, Calm, Lots, Market, MonteCarlo, MyRecord, Parallel, Progress, SampleData, StockSearch, Sync, HoldingsView, SurfCloset
 - BrickGame -> Lines, Me, SampleData, HomeViews
@@ -158,8 +156,7 @@
 - Sync -> AppModel, Calm, Lots, Market, MonteCarlo, MyRecord, Parallel, Progress, SampleData, StockCatalog, StockSearch, HoldingsView, Engine
 - TossSum -> AppModel, Lots, Market, MonteCarlo, SampleData, Services, StockSearch, Sync, Config
 - WaveEngine -> AppModel, Market, StockSearch, Engine
-- WidgetBridge -> AppModel, Lines, Market, Remind, SampleData, StockSearch, Story, GyeolGlue, MeViews, WatchPayload, WatchSync, Config, Engine, Format, Models, Reward
-- GyeolGlue -> Support, Sync, Theme, Config, Engine, Format
+- WidgetBridge -> AppModel, Lines, Market, Remind, SampleData, StockSearch, Story, MeViews, WatchPayload, WatchSync, Config, Engine, Format, Models, Reward
 - MockAI -> Recovery, MockEngine, MockFeed, MockModels
 - MockDesk -> Notifier, StockSearch, Support, MockAI, MockEngine, MockFeed, MockModels, Models
 - MockEngine -> MockModels
@@ -188,7 +185,7 @@
 - ParallelView -> App, AppModel, Market, Parallel, SampleData, Theme, Engine
 - RemindViews -> App, AppModel, Remind, SampleData, Theme, WaveHomeView, Engine
 - SettingsDetail -> AppModel, Backup, GoalRoute, Lines, Market, Notifier, SampleData, Sync, Theme, MeViews, RemindViews, SettingsView, StartView, WaveHomeView, Config, Models, Reward, CharWidgets, Catalog
-- SettingsView -> App, AppModel, FlowData, Market, Support, Sync, GyeolGlue, MockDesk, Theme, GoalViews, Guide, HomeView, SettingsDetail, SupportView, ThemeScenes, WaveFeedback, WaveHomeView, Config, Models
+- SettingsView -> App, AppModel, FlowData, Market, Support, Sync, MockDesk, Theme, GoalViews, Guide, HomeView, SettingsDetail, SupportView, ThemeScenes, WaveFeedback, WaveHomeView, Config, Models
 - ShareCard -> AppModel, SampleData, Theme, MeViews, Config, Reward, CharWidgets
 - ShelterView -> App, AppModel, Calm, Lines, SampleData, Story, Support, Theme, CharMotion, InvestViews, MeViews, SupportView, Reward
 - StartView -> AppModel, GoalRoute, Lines, Theme, SettingsDetail

@@ -41,11 +41,12 @@ Data/GoalRoute.swift:411 검사기 한계: 보간 속 따옴표 replacingOccurre
 Data/Parallel.swift:611 보간 안에 따옴표("")가 겹쳐 검사기가 조각(")")을 문구로 읽음. Parallel.kt parallelRun 의 key 줄에 같은 동작으로 옮김
 Data/Parallel.swift:678 보간 안에 따옴표("%.1f")가 겹쳐 검사기가 조각(", need * 100)))%")을 문구로 읽음. Parallel.kt parallelDistance 에 같은 동작으로 옮김
 # C 단계 (calm) Data/Calm.swift → core/calc/Calm.kt
-Data/Calm.swift:219 문자열 보간 안에 따옴표("+"·"–")가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt why() 의 "sua" 줄에 같은 문구로 옮김
-Data/Calm.swift:221 보간 안의 String(format: "%.1f") 따옴표가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt why() 의 "sio" 줄에 같은 문구로 옮김
-Data/Calm.swift:372 보간 안에 따옴표("+"·"")가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt progress() 의 ir 3 걸음 줄에 같은 문구로 옮김
-Data/Calm.swift:519 검사기 한계: 보간 안 삼항의 따옴표("b"·"s"·"w")가 겹쳐 조각을 문구로 읽음. Calm.kt calmSlot 에 같은 값으로 옮김
-Data/Calm.swift:446 보간 안의 ?? "" 따옴표가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt stepLine() 에 같은 문구로 옮김
+Data/Calm.swift:124 ms는 System.currentTimeMillis()로 바로 얻어 ×1000이 없음. Calm.kt mark()
+Data/Calm.swift:252 문자열 보간 안에 따옴표("+"·"–")가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt why() 의 "sua" 줄에 같은 문구로 옮김
+Data/Calm.swift:254 보간 안의 String(format: "%.1f") 따옴표가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt why() 의 "sio" 줄에 같은 문구로 옮김
+Data/Calm.swift:405 보간 안에 따옴표("+"·"")가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt progress() 의 ir 3 걸음 줄에 같은 문구로 옮김
+Data/Calm.swift:552 검사기 한계: 보간 안 삼항의 따옴표("b"·"s"·"w")가 겹쳐 조각을 문구로 읽음. Calm.kt calmSlot 에 같은 값으로 옮김
+Data/Calm.swift:479 보간 안의 ?? "" 따옴표가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt stepLine() 에 같은 문구로 옮김
 # D 단계 (시세·동기화): Data/Market·StockSearch·StockCatalog·SiteStats·Sync·Backup·StoreAPI → net/
 Data/StockSearch.swift:26 검사기 한계: 정규식 글자 \\( 를 보간 \( 으로 읽음 (옮김, StockSearch.kt KoreaEstimate.hedged 같은 글자)
 Data/StockSearch.swift:86 검사기 한계: 보간 속 따옴표 (옮김, StockSearch.kt KoreaEstimate.note)
@@ -66,8 +67,8 @@ Data/Backup.swift:77-78 플랫폼: iOS 보안 범위 파일 접근. 안드로이
 Views/HomeView.swift:162 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, HomeView.kt RecoverSummary 어제→오늘 줄)
 Views/HomeView.swift:250 검사기 한계: 보간 속 따옴표 ?? "" (옮김, HomeView.kt Reminder 일정 띠)
 Views/SettingsView.swift:84 키체인 접근성: KeyVault(Keystore) 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
-Views/SettingsView.swift:314 검사기 한계: 보간 속 따옴표 String(describing:) (옮김, SettingsView.kt PriceBasisView 원/달러 줄)
-Views/SettingsView.swift:315 검사기 한계: 보간 속 따옴표 String(format: "%.2f") (옮김, SettingsView.kt PriceBasisView 평가 환율 줄)
+Views/SettingsView.swift:311 검사기 한계: 보간 속 따옴표 String(describing:) (옮김, SettingsView.kt PriceBasisView 원/달러 줄)
+Views/SettingsView.swift:312 검사기 한계: 보간 속 따옴표 String(format: "%.2f") (옮김, SettingsView.kt PriceBasisView 평가 환율 줄)
 Views/SettingsDetail.swift:149-150 플랫폼 이름: '아이폰 알림·아이폰 설정' → '폰' (안드로이드에선 아이폰이 아님. SettingsDetail.kt AlertsView PermCard)
 Views/SettingsDetail.swift:152 플랫폼 이름: '아이폰 설정 열기' → '폰 설정 열기' (같은 버튼, 앱 알림 설정 화면을 연다)
 Views/SettingsDetail.swift:241 플랫폼 이름: '키체인' → '보관함' (Keystore 로 감싼 보관함. SettingsDetail.kt SyncView 개발자 칸)
@@ -76,18 +77,18 @@ Views/ShareCard.swift:75 플랫폼 이름: '아이폰 설정' → '폰 설정' (
 Views/ShareCard.swift:232 플랫폼: sheet(item:) 에 쓰려고 URL 을 Identifiable 로. 안드로이드는 공유 고르기 Intent 라 필요 없음
 # F1 단계 (종목 목록·그래프): Views/HoldingsView 목록 쪽 · Views/Charts → ui/hold · ui/Charts
 Views/Charts.swift:121 검사기 한계: TimelineView(.animation(minimumInterval: 1 / 30)) 는 프레임 시계 withFrameNanos 를 1/30초마다 받는 것으로 옮김 (애니메이션 낱말이 없음. Charts.kt pulseClock)
-Views/HoldingsView.swift:1129 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingsView.kt HoldingEdit.compute 판 부분 글)
-Views/HoldingsView.swift:1160 검사기 한계: 보간 속 따옴표 (옮김, HoldingsView.kt HoldingEdit.save 인물 한 줄)
-Views/HoldingsView.swift:1230 검사기 한계: 보간 속 따옴표 String(format:) (옮김, HoldingsView.kt CompareCard 시장보다 글)
-Views/HoldingsView.swift:1271 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 고점까지 글)
-Views/HoldingsView.swift:1274 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 저점 위 글)
+Views/HoldingsView.swift:1130 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingsView.kt HoldingEdit.compute 판 부분 글)
+Views/HoldingsView.swift:1161 검사기 한계: 보간 속 따옴표 (옮김, HoldingsView.kt HoldingEdit.save 인물 한 줄)
+Views/HoldingsView.swift:1231 검사기 한계: 보간 속 따옴표 String(format:) (옮김, HoldingsView.kt CompareCard 시장보다 글)
+Views/HoldingsView.swift:1272 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 고점까지 글)
+Views/HoldingsView.swift:1275 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 저점 위 글)
 Views/HoldingsView.swift:141 검사기 한계: 보간 속 따옴표 separator: ", " (옮김, HoldingsView.kt TotalChart 과거 시세 없음 글)
 # F2 단계 (종목 상세·추가): Views/HoldingsView@262-726 → ui/hold/HoldingDetail.kt
 Views/HoldingsView.swift:774 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt KoreaSumCard 안내 글)
-Views/HoldingsView.swift:979 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt AddHoldingView 평균 단가 칸 이름)
-Views/HoldingsView.swift:791 플랫폼: 숫자 자판에 닫기 키가 없어 iOS 는 자판 위 '완료' 막대를 둔다. 안드로이드 숫자 자판은 완료 키가 있어 그 키로 닫는다 (InputField onSubmit → clearFocus)
-Views/HoldingsView.swift:816 플랫폼: 자판 위 '완료' 막대 (428 과 같음)
-Views/HoldingsView.swift:850 플랫폼: 자판 위 '완료' 막대 (428 과 같음)
+Views/HoldingsView.swift:980 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt AddHoldingView 평균 단가 칸 이름)
+Views/HoldingsView.swift:792 플랫폼: 숫자 자판에 닫기 키가 없어 iOS 는 자판 위 '완료' 막대를 둔다. 안드로이드 숫자 자판은 완료 키가 있어 그 키로 닫는다 (InputField onSubmit → clearFocus)
+Views/HoldingsView.swift:817 플랫폼: 자판 위 '완료' 막대 (428 과 같음)
+Views/HoldingsView.swift:851 플랫폼: 자판 위 '완료' 막대 (428 과 같음)
 # G1 단계 (분석 목록·전망): Views/AnalysisView·ForecastParts·AnalysisDetail@1-196 → ui/analysis
 Views/AnalysisView.swift:155 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, AnalysisView.kt Summary 결론 글)
 Views/AnalysisView.swift:221 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, AnalysisView.kt lines 전망 줄)
@@ -97,26 +98,11 @@ Views/AnalysisView.swift:405-407 검사기 한계: 보간 속 따옴표 String(l
 Views/AnalysisView.swift:512 검사기 한계: 보간 속 따옴표 String(format: "%d.%02d") (옮김, AnalysisView.kt ForecastView.ym)
 Views/AnalysisView.swift:524 플랫폼: 알약 줄 ZStack 크기(84) 맞춤. 안드로이드 AmtRow 는 부모 BoxWithConstraints(84.dp) 안에 바로 그린다
 Views/ForecastParts.swift:27 검사기 한계: 보간 속 따옴표 String(format: "%.1f억") (옮김, ForecastParts.kt ScenarioChart.axis)
-Views/AnalysisDetail.swift:97 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, AnalysisCommon.kt wonRead)
 # G2 평행 세계·투자 갈래·분석 상세
+Views/AnalysisDetail.swift:357 Compose: Column 은 기본 사이가 0 이라 spacing 을 안 씀 (MyPathViews.kt MyPathCompareView 바깥 Column)
+Views/AnalysisDetail.swift:451 검사기 한계: 보간 속 따옴표 (옮김, MyPathViews.kt row 분류·변화 dTxt)
+Views/AnalysisDetail.swift:454 Compose: 이름 칸 Row 에 weight(1f) 를 줘서 Spacer 없이 버튼을 오른쪽으로 민다 (MyPathViews.kt row)
 Views/ParallelView.swift:143 검사기 한계: 보간 속 따옴표 String(format: "%.1f%%p") (옮김, ParallelViews.kt Chart 최대 차이)
-Views/AnalysisDetail.swift:654 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, MyPathViews.kt 비중 줄 그대로/+%p)
-Views/AnalysisDetail.swift:1784 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, DividendViews.kt 기간 머리)
-Views/AnalysisDetail.swift:1800-1801 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, DividendViews.kt 무배당·자료 없음 줄)
-Views/AnalysisDetail.swift:1856 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, DividendViews.kt 겹침 메모)
-Views/AnalysisDetail.swift:1924-1925 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, DividendViews.kt 종목 줄)
-Views/AnalysisDetail.swift:2255 검사기 한계: 보간 속 따옴표 String(format:) (옮김, FxGlanceViews.kt 출렁임 Kpi)
-Views/AnalysisDetail.swift:750 검사기 한계: 보간 속 따옴표 (옮김, ExternalViews.kt ExternalView.desc)
-Views/AnalysisDetail.swift:768 검사기 한계: 보간 속 따옴표 (옮김, ExternalViews.kt ExternalView.summary)
-Views/AnalysisDetail.swift:785 검사기 한계: 보간 속 따옴표 (옮김, ExternalViews.kt ReplayCard chips)
-Views/AnalysisDetail.swift:831 검사기 한계: 보간 속 따옴표 (옮김, ExternalViews.kt TodayCard)
-Views/AnalysisDetail.swift:944 검사기 한계: 보간 속 따옴표 (옮김, ExternalViews.kt 요인 줄 읽어 주기)
-Views/AnalysisDetail.swift:962 검사기 한계: 보간 속 따옴표 (옮김, ExternalViews.kt 다가오는 일)
-Views/AnalysisDetail.swift:1077 검사기 한계: 보간 속 따옴표 (옮김, ExternalViews.kt FactorDetailView 제목)
-Views/AnalysisDetail.swift:1409 검사기 한계: 보간 속 따옴표 (옮김, RateViews.kt RateMain whenS)
-Views/AnalysisDetail.swift:1452-1453 검사기 한계: 보간 속 따옴표 (옮김, RateViews.kt Step 2·3)
-Views/AnalysisDetail.swift:1470 검사기 한계: 보간 속 따옴표 (옮김, RateViews.kt 작년 변화)
-Views/AnalysisDetail.swift:1635 검사기 한계: 보간 속 따옴표 (옮김, RateViews.kt RateWhyView 각주)
 # G2 뒤 성능: 경로를 묶음으로 나눠 돈다 (MonteCarlo.kt runPaths). 0..<P 의 0 은 부르는 곳 runPaths(0, P) 에 있다
 Data/MonteCarlo.swift:447 검사기 한계: 경로 범위 시작(0)이 묶음 함수 인자로 옮겨 감 (옮김, MonteCarlo.kt simulate runPaths)
 # H 미션·목표: Data/Remind.swift (data/Remind.kt). 모두 옮겼고 Kotlin 주석에 줄 번호를 남겼다
@@ -170,8 +156,8 @@ Views/ShelterView.swift:243 검사기 한계: 보간 속 따옴표 (옮김, ui/s
 Views/ShelterView.swift:286 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt Gate)
 Views/ShelterView.swift:379 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt FoldRow)
 Views/ShelterView.swift:783 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt ReaderNext)
-Views/HoldingsView.swift:1408 검사기 한계: .animation(nil) 은 애니메이션 끄기라 Compose 에선 할 일 없음 (옮김, ui/town/TownViews.kt TownView 주민 그리기)
-Views/HoldingsView.swift:1622 검사기 한계: Long 범위를 넘는 16진 리터럴은 Kotlin 에서 uL 접미사 (옮김, ui/town/TownViews.kt TownLook.seed)
+Views/HoldingsView.swift:1409 검사기 한계: .animation(nil) 은 애니메이션 끄기라 Compose 에선 할 일 없음 (옮김, ui/town/TownViews.kt TownView 주민 그리기)
+Views/HoldingsView.swift:1623 검사기 한계: Long 범위를 넘는 16진 리터럴은 Kotlin 에서 uL 접미사 (옮김, ui/town/TownViews.kt TownLook.seed)
 Views/CharMotion.swift:162 플랫폼: CGContext 비트 수·한 줄 바이트 = ARGB_8888 에 정해짐 (옮김, ui/CharMotion.kt PixBuf.read)
 Views/CharMotion.swift:172 플랫폼: CGContext 비트 수·한 줄 바이트 = ARGB_8888 에 정해짐 (옮김, ui/CharMotion.kt PixBuf.image)
 Views/CharMotion.swift:195 플랫폼: CGContext 비트 수·한 줄 바이트 = ARGB_8888 에 정해짐 (옮김, ui/CharMotion.kt MeMotion.image)
@@ -180,9 +166,6 @@ Views/CalmView.swift:96 검사기 한계: 보간 속 따옴표 Calm.kind("ir") (
 Views/GoalViews.swift:82 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalCellsCard 머리 목표/본전까지 100칸)
 Views/GoalViews.swift:94 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalCellsCard 읽어 주기 글)
 # 아이폰 ac191bad 따라잡기 (내 길: 회복 루트도 같은 화면)
-Views/AnalysisDetail.swift:294 검사기 한계: 보간 속 따옴표 (옮김, MyPathViews.kt probLine)
-Views/AnalysisDetail.swift:318-321 검사기 한계: 보간 속 따옴표 (옮김, MyPathViews.kt 판정 카드 첫 줄·가능성)
-Views/AnalysisDetail.swift:442 검사기 한계: 보간 속 따옴표 (옮김, MyPathViews.kt 회복 KPI 본전 확률)
 # J 단계 (미니 게임: 벽돌깨기·파도)
 Data/BrickGame.swift:231 검사기 한계: 보간 속 따옴표 who == "me" ? "seri" : who (옮김, BrickGame.kt 아이템 대사 Lines.pick)
 Data/BrickGame.swift:260 플랫폼: 키체인 한 벌(앱 지워도 남김). 안드로이드는 allowBackup 자동 백업이 prefs 를 되살린다
@@ -227,7 +210,10 @@ Widgets/Views/Theme.swift:145 잠금화면 위젯 금액 가리기(privacySensit
 Widgets/Views/Theme.swift:146 #if WIDGET_EXT 전처리 (107 과 같음)
 Widgets/Views/Theme.swift:148 #else 전처리 (107 과 같음)
 Widgets/Views/Theme.swift:150 #endif 전처리 (107 과 같음)
-Data/WidgetBridge.swift:125 검사기 한계: 보간 속 따옴표 ("up" : "down") 를 문구 조각으로 읽음 (옮김, WidgetBridge.kt widgetLines key)
+Data/WidgetBridge.swift:152 검사기 한계: 보간 속 따옴표 ("up" : "down") 를 문구 조각으로 읽음 (옮김, WidgetBridge.kt widgetLines key)
+Data/WidgetBridge.swift:15 플랫폼: @MainActor 는 Kotlin에 없음 (write 는 메인에서 부르고 파일 쓰기만 io.launch)
+Data/WidgetBridge.swift:98-101 플랫폼: 애플 워치로 보내기. 안드로이드는 워치 앱이 없음 (ios-app/Watch 만 있음)
+Data/WidgetBridge.swift:129-141 플랫폼: 워치 한마디·워치 그림(upLine·meWatchArt). 워치에만 쓰여 안드로이드엔 없음
 # 흐름 탭 (FlowData·FlowView, 2026-10-21)
 Data/FlowData.swift:260 검사기 한계: 부호 없는 64비트 상수 uL (옮김, FlowData.kt DrnkSample.RNG)
 Data/FlowData.swift:262 검사기 한계: 부호 없는 64비트 상수 uL (옮김, FlowData.kt DrnkSample.RNG)
@@ -255,8 +241,8 @@ Views/SettingsDetail.swift:383 플랫폼: 안드로이드 런처는 길게 누�
 Views/SettingsDetail.swift:385-386 플랫폼: 안드로이드는 '추가'로 넣고 위젯 길게 눌러 '설정'(reconfigurable)으로 인물을 바꾼다 (AddStep 4·5)
 Data/Services.swift:88 플랫폼: LocalDate.now() 는 연·월·일이 늘 있어 ?? 1970·1·1 기본값이 없다 (Services.kt series from)
 Views/MissionViews.swift:105 플랫폼: 안드로이드 숫자 자판에는 완료(Done) 키가 있어 자판 위 '완료' 막대(doneKey)가 필요 없다
-Views/HoldingsView.swift:1073 플랫폼: MissionViews.swift:105 와 같음 (안드로이드 숫자 자판 완료 키, doneKey 막대 없음)
-Views/HoldingsView.swift:1104-1107 플랫폼: doneKey(자판 위 '완료' 막대) 정의. 안드로이드 숫자 자판은 완료 키가 있어 없다
+Views/HoldingsView.swift:1074 플랫폼: MissionViews.swift:105 와 같음 (안드로이드 숫자 자판 완료 키, doneKey 막대 없음)
+Views/HoldingsView.swift:1105-1108 플랫폼: doneKey(자판 위 '완료' 막대) 정의. 안드로이드 숫자 자판은 완료 키가 있어 없다
 Views/HoldingsView.swift:612 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt 세부 $|원 HoldSeg label)
 Views/HoldingsView.swift:652 플랫폼: MissionViews.swift:105 와 같음 (안드로이드 숫자 자판 완료 키, doneKey 막대 없음)
 Views/HoldingsView.swift:69 플랫폼: 종목 목록에는 글 칸이 없어 스크롤로 자판 내리기가 할 일 없음 (추가는 팝업 Sheet)
@@ -349,3 +335,6 @@ Mock/MockOrderViews.swift:972 플랫폼: 취소 단추는 ConfirmSheet 가 cance
 Widgets/CharWidgets.swift:270 안드로이드는 readPixels로 ARGB IntArray를 바로 읽어 바이트 버퍼·CGContext가 없다
 Widgets/CharWidgets.swift:272 같은 이유 (CGContext 인자)
 Widgets/CharWidgets.swift:279-280 같은 이유 (바이트 칸 계산, 역순 범위 표기)
+# 종목 매매 기록 Views/TradeLogView.swift → ui/hold/TradeLogView.kt (2026-11-13)
+Views/TradeLogView.swift:23 보간 안 삼항의 String(localized:) 따옴표가 겹쳐 검사기가 조각을 문구로 읽음. TradeLogView.kt 줄 글에 같은 문구로 옮김
+Views/TradeLogView.swift:84 Spacer(minLength: 0): 안드로이드 Column은 아래를 채우지 않아 필요 없음

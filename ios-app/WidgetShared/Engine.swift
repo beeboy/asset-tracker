@@ -157,7 +157,7 @@ enum Engine {
             let tp = tq.flatMap { TossDaily.prev(hist, at: $0.at, kr: ccy == "KRW") }
             let pc = tp ?? sq?.prev ?? ((q?.count ?? 0) > 1 ? q![1] : nil) ?? aq.flatMap { $0.prev > 0 ? $0.prev : nil }
             guard let p = last else { continue }
-            let v = h.sh * p * fx(ccy), pv = h.sh * (pc ?? p) * fx(ccy)
+            let net = 1 - (s?.hold.first(where: { $0.t == h.t })?.cut ?? 0), v = h.sh * p * fx(ccy) * net, pv = h.sh * (pc ?? p) * fx(ccy) * net   // net: 팔 때 드는 돈 뺀 몫 (앱이 요약에 적음, SellCost)
             tot += v; prev += pv
             // 이 종목 값이 어디서 왔는지 (위의 last 와 같은 순서)
             var tag = "앱", at: Double? = nil
@@ -231,5 +231,19 @@ extension Snapshot {
                         moves: [.init(t: "TSLA", pct: -0.007, krw: 3.48e8, w: 0.66), .init(t: "NVDA", pct: -0.006, krw: 0.95e8, w: 0.18),
                                 .init(t: "SPCX", pct: -0.02, krw: 0.71e8, w: 0.14), .init(t: "SGOV", pct: 0, krw: 0.12e8, w: 0.02)],
                         events: [.init(d: Day.today, t: "TSLA", k: "실적", dday: 13)], updated: Date(), source: nil, placeholder: true)
+    }
+}
+
+/// 팔 때 드는 돈: 평가액(평가금)은 지금 다 팔면 손에 남는 돈으로 보인다 (토스증권 '평가금'과 같은 기준, 2026-11-12)
+/// 세율·수수료는 여기 한 곳에만 둔다. 앱 홈·종목·위젯·모의투자 기본값이 같이 쓴다
+enum SellCost {
+    static let krFee = 0.00015   // 토스증권 국내 매도 수수료 0.015%
+    static let krTax = 0.0020    // 증권거래세 매도 0.20% (코스피 거래세 0.05%+농특세 0.15%, 코스닥 0.20%). 국내 ETF는 없다
+    static let usFee = 0.001     // 토스증권 해외 매도 수수료 0.1%. 토스 평가금은 해외 수수료를 빼지 않아 평가액에 안 쓴다 (2026-11-13 토스 화면 대조)
+    /// 매도 금액 대비 빠지는 몫
+    static func rate(usd: Bool, etf: Bool) -> Double { usd ? 0 : krFee + (etf ? 0 : krTax) }
+    /// 국내 ETF: 시장 이름에 ETF가 있거나 운용사 이름으로 시작 (거래세가 없다)
+    static func isEtf(market: String, name: String) -> Bool {
+        market.contains("ETF") || ["KODEX", "TIGER", "ACE ", "RISE ", "SOL ", "KBSTAR", "HANARO", "PLUS ", "ARIRANG", "KOSEF", "TIMEFOLIO", "KIWOOM "].contains { name.hasPrefix($0) }
     }
 }

@@ -15,7 +15,8 @@ struct CalmEvent: Codable, Equatable {
     var pts: Int
     var isTrade: Bool { act != .wait }
 
-    var label: String {
+    var label: String { Self.label(act) }
+    static func label(_ act: Act) -> String {
         switch act {
         case .rule: String(localized: "규칙대로")
         case .chase: String(localized: "수익 뒤 추가 매수")
@@ -50,6 +51,7 @@ struct Calm: Codable, Equatable {
     var together: [String] = []    // 지금 인물과 함께한 날 (앱을 연 날)
     var ladder: Ladder? = nil      // 습관 사다리: 지금 유형의 걸음 (예전 저장값엔 없어서 옵셔널)
     var notes: [CalmNote]? = nil   // 홈 리마인드가 가져갈 사다리 소식 (takeNotes)
+    var fixed: [String: Double]? = nil   // 손으로 고치거나 지운 자리(slot) → 고친 때(ms). 합칠 때 이 자리는 더 늦게 고친 쪽을 따른다 (지운 기록이 다른 기기에서 되살아나지 않게)
 
     static let weekCap = 5         // 한 주에 쌓을 수 있는 플러스 점수
     static let minEvents = 10      // 이보다 적으면 매칭하지 않는다
@@ -91,6 +93,37 @@ struct Calm: Codable, Equatable {
         if events.count > Self.keep { events.removeFirst(events.count - Self.keep) }
         refreshType()
         climb()
+    }
+
+    /// 매매 기록 하나 고치기 (종목 상세 매매 기록): 날짜·산/팜·분류. 점수는 분류로 다시 매긴다 (주당 상한은 이 기록을 뺀 나머지로)
+    mutating func edit(_ old: CalmEvent, day: String, buy: Bool, act: CalmEvent.Act) {
+        guard let i = events.firstIndex(of: old) else { return }
+        events.remove(at: i)
+        var e = old
+        e.day = day; e.buy = buy; e.act = act
+        if act == .chase || act == .trim { e.win = true } else if act == .avgDown || act == .switchOut { e.win = false }
+        e.pts = Self.points(act)
+        if e.pts > 0 {
+            let w = Self.week(day)
+            let got = events.filter { Self.week($0.day) == w && $0.pts > 0 }.reduce(0) { $0 + $1.pts }
+            e.pts = max(0, min(e.pts, Self.weekCap - got))
+        }
+        events.insert(e, at: events.firstIndex { $0.day > day } ?? events.count)
+        mark([old, e])
+        refreshType()
+    }
+    /// 매매 기록 하나 지우기
+    mutating func remove(_ old: CalmEvent) {
+        guard let i = events.firstIndex(of: old) else { return }
+        events.remove(at: i)
+        mark([old])
+        refreshType()
+    }
+    private mutating func mark(_ es: [CalmEvent]) {
+        var f = fixed ?? [:]
+        let now = Date().timeIntervalSince1970 * 1000
+        for e in es { f[Self.slot(e)] = now }
+        fixed = f
     }
 
     /// 앱을 연 날: 지금 인물과 함께한 날을 하나 센다
@@ -520,9 +553,14 @@ extension Calm {
     private static func sig(_ v: [CalmEvent]) -> String { v.map { "\($0.act.rawValue)\($0.win)\($0.big)\($0.pts)" }.joined(separator: ",") }
 
     static func merge(_ a: Calm, _ b: Calm) -> Calm {
-        var by = Dictionary(grouping: a.events, by: slot)
-        for (k, v) in Dictionary(grouping: b.events, by: slot) {
-            let m = by[k] ?? []
+        let ga = Dictionary(grouping: a.events, by: slot), gb = Dictionary(grouping: b.events, by: slot)
+        let fa = a.fixed ?? [:], fb = b.fixed ?? [:]
+        var by = ga
+        for k in Set(gb.keys).union(fa.keys).union(fb.keys) {
+            let m = ga[k] ?? [], v = gb[k] ?? []
+            // 손으로 고친·지운 자리는 더 늦게 고친 쪽 그대로 (기록 수로 고르면 지운 기록이 되살아난다)
+            let ta = fa[k] ?? 0, tb = fb[k] ?? 0
+            if ta != tb { by[k] = tb > ta ? v : m; continue }
             // 같은 자리는 더 많이 적힌 쪽, 같으면 내용으로 정한다 (양쪽이 처음 채운 기록이 겹쳐도 두 번 세지 않게)
             if v.count > m.count || (v.count == m.count && sig(v) > sig(m)) { by[k] = v }
         }
@@ -534,6 +572,8 @@ extension Calm {
         let other = lead == a ? b : a
         var c = lead
         c.events = Array(ev.suffix(keep))
+        let f = fa.merging(fb, uniquingKeysWith: max)
+        c.fixed = f.isEmpty ? nil : f
         c.notes = a.notes
         if lead.type == other.type {
             c.together = Array(Set(lead.together + other.together)).sorted()

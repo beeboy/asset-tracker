@@ -39,7 +39,7 @@ data class WSummary(   // ios: WidgetShared/Models.swift:6
     var events: List<Event>,   // ios: WidgetShared/Models.swift:33
 ) {
     @Serializable data class Goal(var amount: Double, var date: String, var start: String, var v0: Double, var m: Double? = null)   // m = 매달 넣는 돈 (원, 앱 내 길 필요 경로)   // ios: WidgetShared/Models.swift:7
-    @Serializable data class Hold(var t: String, var sh: Double, var ccy: String, var manual: Double? = null)   // ios: WidgetShared/Models.swift:8
+    @Serializable data class Hold(var t: String, var sh: Double, var ccy: String, var manual: Double? = null, var cut: Double? = null)   // ios: WidgetShared/Models.swift:8
     @Serializable data class Term(var p5: Double? = null, var p50: Double? = null, var p95: Double? = null)   // ios: WidgetShared/Models.swift:9
     @Serializable data class Forecast(   // ios: WidgetShared/Models.swift:10
         var scen: String,   // ios: WidgetShared/Models.swift:11
@@ -107,7 +107,7 @@ object Relay {   // ios: WidgetShared/Models.swift:72
         return get(url, timeout, ua = "naeilo-ios/0.1")   // ios: WidgetShared/Models.swift:81
     }
 
-    private suspend fun get(url: String, timeout: Double, ua: String): Map<String, Any?> {   // ios: WidgetShared/Models.swift:84
+    private suspend fun get(url: String, timeout: Double, ua: String): Map<String, Any?> {   // ios: WidgetShared/Models.swift:85
         val req = FeedReq(url, timeout)   // ios: WidgetShared/Models.swift:85
         req.setValue(ua, "User-Agent")   // ios: WidgetShared/Models.swift:86
         val (code, data) = req.send()   // ios: WidgetShared/Models.swift:87
@@ -117,7 +117,7 @@ object Relay {   // ios: WidgetShared/Models.swift:72
     }
 
     /** 지금 가격 하나 (사이트 quotes.json 과 같은 식: 오늘 5분봉에서 정규장·프리·애프터 중 마지막 값, 전일 종가) */
-    suspend fun quote(sym: String): QuoteFeed.Q? {   // ios: WidgetShared/Models.swift:94
+    suspend fun quote(sym: String): QuoteFeed.Q? {   // ios: WidgetShared/Models.swift:95
         val enc = pctEncode(sym)   // ios: WidgetShared/Models.swift:95
         val o = runCatching { yahoo("/v8/finance/chart/$enc?range=1d&interval=5m&includePrePost=true", timeout = 8.0) }.getOrNull() ?: return null   // ios: WidgetShared/Models.swift:96
         val r = jObjs(jObj(o["chart"])?.get("result"))?.firstOrNull() ?: return null   // ios: WidgetShared/Models.swift:97
@@ -131,21 +131,21 @@ object Relay {   // ios: WidgetShared/Models.swift:72
             val p = jObj(per[k]) ?: return false; val a = num(p["start"]) ?: return false; val b = num(p["end"]) ?: return false   // ios: WidgetShared/Models.swift:105
             return a <= t && t < b   // ios: WidgetShared/Models.swift:106
         }
-        for ((t, c) in ts.zip(cl)) {   // ios: WidgetShared/Models.swift:108
+        for ((t, c) in ts.zip(cl)) {   // ios: WidgetShared/Models.swift:109
             val v = num(c)?.takeIf { it > 0 } ?: continue; if (!(inside("pre", t) || inside("post", t) || inside("regular", t))) continue   // ios: WidgetShared/Models.swift:109
             last = v; at = t   // ios: WidgetShared/Models.swift:110
         }
-        return QuoteFeed.Q(last = last, prev = prev, at = at, reg = reg)   // ios: WidgetShared/Models.swift:112
+        return QuoteFeed.Q(last = last, prev = prev, at = at, reg = reg)   // ios: WidgetShared/Models.swift:113
     }
 }
 
 // 국내 개별 종목 시세 (KoreaEstimate.popular). 사이트 quotes.json 에 없어서 위젯도 앱처럼 Yahoo 중계로 직접 받는다
-object KrQuoteFeed {   // ios: WidgetShared/Models.swift:117
+object KrQuoteFeed {   // ios: WidgetShared/Models.swift:118
     const val name = "kr_quotes.json"   // ios: WidgetShared/Models.swift:118
     fun cached(): QuoteFeed.File? = if (Config.usesCollectedData) Store.read(QuoteFeed.File.serializer(), name) else null   // ios: WidgetShared/Models.swift:120
 
     /** syms: 종목 → Yahoo 기호. 받은 지 minAge 초가 안 됐거나 받을 종목이 같으면 저장해 둔 값 */
-    suspend fun fetch(syms: Map<String, String>, minAge: Double = 0.0): QuoteFeed.File? = withContext(Dispatchers.IO) { fetchIO(syms, minAge) }   // ios: WidgetShared/Models.swift:122,123
+    suspend fun fetch(syms: Map<String, String>, minAge: Double = 0.0): QuoteFeed.File? = withContext(Dispatchers.IO) { fetchIO(syms, minAge) }   // ios: WidgetShared/Models.swift:123,124
     private suspend fun fetchIO(syms: Map<String, String>, minAge: Double): QuoteFeed.File? {
         val old = cached()   // ios: WidgetShared/Models.swift:124
         if (syms.isEmpty()) return old   // ios: WidgetShared/Models.swift:125
@@ -161,10 +161,10 @@ object KrQuoteFeed {   // ios: WidgetShared/Models.swift:117
             val cl = raw.mapNotNull { (it as? Double)?.takeIf { v -> v > 0 } }   // ios: WidgetShared/Models.swift:135
             val lc = cl.lastOrNull() ?: continue   // ios: WidgetShared/Models.swift:136
             // 앱(CustomSymbols.refresh)과 같게: 지금 가격 = 오늘 장중 값, 전일 = 그 전 거래일 종가
-            val last = meta["regularMarketPrice"] as? Double ?: lc   // ios: WidgetShared/Models.swift:138
+            val last = meta["regularMarketPrice"] as? Double ?: lc   // ios: WidgetShared/Models.swift:139
             q[id] = QuoteFeed.Q(last = last, prev = if (cl.size > 1) cl[cl.size - 2] else last, at = meta["regularMarketTime"] as? Double ?: nowSec())   // ios: WidgetShared/Models.swift:139
         }
-        if (q.isEmpty()) return old   // ios: WidgetShared/Models.swift:141
+        if (q.isEmpty()) return old   // ios: WidgetShared/Models.swift:142
         val f = QuoteFeed.File(got = nowSec(), q = q)   // ios: WidgetShared/Models.swift:142
         Store.write(QuoteFeed.File.serializer(), f, name)   // ios: WidgetShared/Models.swift:143
         return f   // ios: WidgetShared/Models.swift:144
@@ -172,10 +172,10 @@ object KrQuoteFeed {   // ios: WidgetShared/Models.swift:117
 }
 
 /// 내 토스 키로 받아 둔 일봉 (앱 TossHistory 가 쓰는 toss_history.json, 키 = Yahoo 기호). 토스 값의 전일 종가·정규장 종가를 여기서 센다
-object TossDaily {   // ios: WidgetShared/Models.swift:563
-    @Serializable data class Hist(val dates: List<String>, val closes: List<Double>)   // ios: WidgetShared/Models.swift:564
-    @Serializable data class File(var h: Map<String, Hist>)   // ios: WidgetShared/Models.swift:565
-    fun cached(): File? = if (TossKeys.on) Store.read(File.serializer(), "toss_history.json") else null   // ios: WidgetShared/Models.swift:566
+object TossDaily {   // ios: WidgetShared/Models.swift:567
+    @Serializable data class Hist(val dates: List<String>, val closes: List<Double>)   // ios: WidgetShared/Models.swift:568
+    @Serializable data class File(var h: Map<String, Hist>)   // ios: WidgetShared/Models.swift:569
+    fun cached(): File? = if (TossKeys.on) Store.read(File.serializer(), "toss_history.json") else null   // ios: WidgetShared/Models.swift:570
 
     private fun day(t: Double, kr: Boolean): Pair<String, Int> {   // ios: WidgetShared/Models.swift:572
         val z = Instant.ofEpochMilli((t * 1000).toLong())   // ios: WidgetShared/Models.swift:573,574,575
@@ -207,14 +207,14 @@ object TossDaily {   // ios: WidgetShared/Models.swift:563
  *  이때는 애프터마켓 가격 대신 정규장 종가로 센다. 토스 총자산·오늘 손익이 이렇게 센다 (2026-10-17 토스 화면과 맞춰 봄) */
 object USSession {   // ios: WidgetShared/Models.swift:594
     fun closed(d: Instant = Instant.now()): Boolean {   // ios: WidgetShared/Models.swift:595
-        val c = d.atZone(ZoneId.of("America/New_York")); val weekday = c.dayOfWeek.value % 7 + 1   // 1 일요일 … 7 토요일 (Calendar.weekday 와 같게)   // ios: WidgetShared/Models.swift:596,597,598
+        val c = d.atZone(ZoneId.of("America/New_York")); val weekday = c.dayOfWeek.value % 7 + 1   // 1 일요일 … 7 토요일 (Calendar.weekday 와 같게)   // ios: WidgetShared/Models.swift:602
         return weekday == 7 || weekday == 1 || c.hour >= 20 || c.hour < 4   // 7 토요일, 1 일요일   // ios: WidgetShared/Models.swift:599
     }
 }
 
 /** 종목마다 마지막으로 받은 0보다 큰 시세 (앱·위젯 공용). 종목 id → [지금 가격, 전일 종가, 실시간 1/0, 받은 시각(초)].
  *  어느 시세에서 왔든 같은 규칙: 한 번이라도 받은 종목은 받기 실패·0·앱 재시작에도 이 값 밑으로 (0원으로) 내려가지 않는다 */
-object GoodQuotes {   // ios: WidgetShared/Models.swift:778
+object GoodQuotes {   // ios: WidgetShared/Models.swift:779
     const val name = "good_quotes.json"   // ios: WidgetShared/Models.swift:779
     fun read(): Map<String, List<Double>> = (Store.read<Map<String, List<Double>>>(name) ?: emptyMap()).filter { it.value.size == 4 && it.value[0] > 0 }   // ios: WidgetShared/Models.swift:780
     fun write(d: Map<String, List<Double>>) = Store.write(d, name)   // ios: WidgetShared/Models.swift:781
@@ -222,31 +222,31 @@ object GoodQuotes {   // ios: WidgetShared/Models.swift:778
 
 // 지금 가격·원/달러 백업: 토스가 못 받는 내 종목(Store.quoteSyms)을 Yahoo 에서 직접 받는다. 그것도 못 받은 종목만 사이트(naeilo.com/data/quotes.json, 평일 30분마다 모음)로 채운다.
 object QuoteFeed {   // ios: WidgetShared/Models.swift:772
-    @Serializable data class Q(   // ios: WidgetShared/Models.swift:773
-        var last: Double, var prev: Double, var at: Double,   // 지금 가격, 전일 종가, 가격 시각(초)   // ios: WidgetShared/Models.swift:774
-        var reg: Double? = null,                              // 정규장 가격 (사이트 시세만. 미국 장이 다 끝나면 이 값으로 센다)   // ios: WidgetShared/Models.swift:775
+    @Serializable data class Q(
+        var last: Double, var prev: Double, var at: Double,   // 지금 가격, 전일 종가, 가격 시각(초)   // ios: WidgetShared/Models.swift:787
+        var reg: Double? = null,                              // 정규장 가격 (사이트 시세만. 미국 장이 다 끝나면 이 값으로 센다)   // ios: WidgetShared/Models.swift:788
     )
-    @Serializable data class File(var got: Double, var q: Map<String, Q>)               // got = 받은 시각(초)   // ios: WidgetShared/Models.swift:777
+    @Serializable data class File(var got: Double, var q: Map<String, Q>)               // got = 받은 시각(초)   // ios: WidgetShared/Models.swift:790
 
     const val name = "site_quotes.json"   // ios: WidgetShared/Models.swift:779
     /** 공개 베타·출시는 사이트·Yahoo 시세를 쓰지 않는다 (내부 베타 때 받아 둔 파일이 남아 있어도 읽지 않는다) */
-    fun cached(): File? = if (Config.usesCollectedData) Store.read(File.serializer(), name) else null   // ios: WidgetShared/Models.swift:783
+    fun cached(): File? = if (Config.usesCollectedData) Store.read(File.serializer(), name) else null   // ios: WidgetShared/Models.swift:794
 
     /** 받은 지 minAge 초가 안 됐으면 저장해 둔 값을 그대로 쓴다. 실패하면 저장해 둔 값 */
-    suspend fun fetch(minAge: Double = 0.0): File? = withContext(Dispatchers.IO) { fetchIO(minAge) }   // ios: WidgetShared/Models.swift:783,784
+    suspend fun fetch(minAge: Double = 0.0): File? = withContext(Dispatchers.IO) { fetchIO(minAge) }   // ios: WidgetShared/Models.swift:798
     private suspend fun fetchIO(minAge: Double): File? {
         if (!Config.usesCollectedData) return null   // ios: WidgetShared/Models.swift:788
-        val old = cached()   // ios: WidgetShared/Models.swift:789
+        val old = cached()   // ios: WidgetShared/Models.swift:800
         val list = Store.quoteSyms   // ios: WidgetShared/Models.swift:786
         if (list?.isEmpty() == true) return old   // 토스가 다 받는다   // ios: WidgetShared/Models.swift:787
         val want = (list ?: emptyList()).toSet()   // ios: WidgetShared/Models.swift:788
-        if (old != null && nowSec() - old.got < minAge && old.q.keys.containsAll(want)) return old   // ios: WidgetShared/Models.swift:789
+        if (old != null && nowSec() - old.got < minAge && old.q.keys.containsAll(want)) return old   // ios: WidgetShared/Models.swift:804
         val q = mutableMapOf<String, Q>()   // ios: WidgetShared/Models.swift:790
-        coroutineScope {   // ios: WidgetShared/Models.swift:791
+        coroutineScope {
             val g = want.map { k -> async { k to Relay.quote(k) } }   // ios: WidgetShared/Models.swift:792
-            for ((k, v) in g.awaitAll()) { if (v != null) q[k] = v }   // ios: WidgetShared/Models.swift:793
+            for ((k, v) in g.awaitAll()) { if (v != null) q[k] = v }
         }
-        if (want.isNotEmpty() && q.keys.containsAll(want)) return save(q)   // ios: WidgetShared/Models.swift:795
+        if (want.isNotEmpty() && q.keys.containsAll(want)) return save(q)   // ios: WidgetShared/Models.swift:810
         // 못 받은 종목은 사이트 값 (사이트도 안 되면 받아 둔 값)
         siteFetch()?.let { site -> for ((k, v) in site) if (q[k] == null) q[k] = v }   // ios: WidgetShared/Models.swift:797
         for ((k, v) in old?.q ?: emptyMap()) if (q[k] == null && (want.contains(k) || want.isEmpty())) q[k] = v   // ios: WidgetShared/Models.swift:798
@@ -260,20 +260,20 @@ object QuoteFeed {   // ios: WidgetShared/Models.swift:772
         return f   // ios: WidgetShared/Models.swift:806
     }
 
-    private suspend fun siteFetch(): Map<String, Q>? {   // ios: WidgetShared/Models.swift:809
+    private suspend fun siteFetch(): Map<String, Q>? {   // ios: WidgetShared/Models.swift:824
         val c = URL(Config.data, "quotes.json").toString()   // ios: WidgetShared/Models.swift:810
-        val queryItems = listOf("t" to (nowSec() / 60).toLong().toString()); val url = c + "?" + queryItems.joinToString("&") { "${it.first}=${it.second}" }   // 사이트 캐시를 피한다 (1분 단위)   // ios: WidgetShared/Models.swift:811
+        val queryItems = listOf("t" to (nowSec() / 60).toLong().toString()); val url = c + "?" + queryItems.joinToString("&") { "${it.first}=${it.second}" }   // 사이트 캐시를 피한다 (1분 단위)
         val req = FeedReq(url, timeout = 10.0)   // ios: WidgetShared/Models.swift:812
         req.setValue("naeilo-ios/0.1", "User-Agent")   // ios: WidgetShared/Models.swift:813
         val (code, data) = runCatching { req.send() }.getOrNull() ?: return null   // ios: WidgetShared/Models.swift:814
         if (code != 200) return null   // ios: WidgetShared/Models.swift:815
-        val o = jObj(feedJson(data)) ?: return null   // ios: WidgetShared/Models.swift:816
-        val q = mutableMapOf<String, Q>()   // ios: WidgetShared/Models.swift:817
+        val o = jObj(feedJson(data)) ?: return null
+        val q = mutableMapOf<String, Q>()
         for ((k, any) in o) {   // 종목이 아닌 칸(예: 갱신 시각)이 생겨도 나머지는 읽는다   // ios: WidgetShared/Models.swift:818
             val v = jObj(any) ?: continue; val prev = num(v["prev_close"]) ?: continue; val last = num(v["last"]) ?: num(v["regular"]) ?: continue   // ios: WidgetShared/Models.swift:819
             q[k] = Q(last = last, prev = prev, at = num(v["last_time"]) ?: num(v["regular_time"]) ?: 0.0, reg = num(v["regular"]))   // ios: WidgetShared/Models.swift:820
         }
-        return if (q.isEmpty()) null else q   // ios: WidgetShared/Models.swift:822
+        return if (q.isEmpty()) null else q   // ios: WidgetShared/Models.swift:837
     }
 }
 

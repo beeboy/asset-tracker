@@ -64,7 +64,7 @@ enum WidgetBridge {
         let hits = m.pastWeeks.enumerated().map { WSummary.Hit(f: Day.str(now.addingTimeInterval(-Double(8 - $0) * 7 * 86400)), h: $1, r: nil) }
         let summary = WSummary(v: 2, at: now.timeIntervalSince1970 * 1000, asof: Day.today, today: Day.today, cash: cash,
                                goal: .init(amount: goal, date: Day.str(end), start: Day.str(start), v0: path.pts.first?.1 ?? m.trackValue, m: path.monthly),
-                               hold: rows.map { .init(t: $0.id, sh: $0.h.qty, ccy: ccy[$0.id] ?? "USD", manual: $0.sym.last) },
+                               hold: rows.map { .init(t: $0.id, sh: $0.h.qty, ccy: ccy[$0.id] ?? "USD", manual: $0.sym.last, cut: m.sellRate($0.sym)) },
                                spark: spark, fc: fc, hits: hits, week: week,
                                prev: m.total / (1 + m.todayMove) + cash, events: [])
 
@@ -75,11 +75,16 @@ enum WidgetBridge {
         let tiles = rows.sorted { $0.value > $1.value }.prefix(30).map { r in
             WReward.Tile(t: r.sym.currency == .usd ? r.id : r.sym.name, w: m.total > 0 ? r.value / m.total : 0, c: r.sym.quote.change)
         }
+        // 자산 언덕 10일: 지금 수량 × 그날 종가 (오늘 등락과 같은 기준). 수량 기록을 쓰면 종목을 지우거나 수량을 고친 날 오늘 기둥만 치솟았다
+        let hillPast = hist.isEmpty ? [] : m.pathSeries(from: Day.str(Calendar.current.date(byAdding: .day, value: -20, to: now)!), nowQty: true).map(\.v)
+        let hill: [Double] = hillPast.isEmpty
+            ? spark.suffix(10).compactMap { $0.map { $0 - cash / 1e4 } }
+            : (hillPast.suffix(9) + [m.total + cash]).map { ($0 - cash) / 1e4 }
         var reward = WReward(keyName: m.keyName, pct: frac(track), pctYesterday: frac(yTrack), remain: max(0, key - track),
                              cells: Int(frac(track) * 1000), cellsYesterday: Int(frac(yTrack) * 1000),
                              total: m.total, dayChg: m.todayMove, tiles: Array(tiles), next: MarketEvents.widgetNext(held: rows.map(\.id)),
                              friendsOn: Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map(\.element.id) + (m.meUnlocked ? ["me"] : []),
-                             homeFriend: m.homeFriendShown, spark: spark.suffix(10).compactMap { $0.map { $0 - cash / 1e4 } },   // 인물 위젯 총액(m.total)처럼 현금은 뺀다
+                             homeFriend: m.homeFriendShown, spark: hill,   // 인물 위젯 총액(m.total)처럼 현금은 뺀다
                              items: Shelter.items.prefix(m.itemsOn).map(\.id))
         var sy = says(reward)
         // 내 캐릭터는 투자 유형 인물의 대사를 같이 쓴다
@@ -104,9 +109,6 @@ enum WidgetBridge {
         Store.summarySource = "app"
         Store.widgetStep = m.playOn ? 3 : max(1, m.nxStep)   // 위젯은 미션 4에서 실제로 한 단계에 맞춰 하나씩 열린다 (개발자 계정도 같게)
         WidgetCenter.shared.reloadAllTimelines()
-        #if GYEOL
-        GyeolFeed.push()   // 결 섬 말풍선도 같은 숫자로 (Gyeol/README.md)
-        #endif
     }
 
     /// 작은 위젯 값: 내 길(실제는 40점 안쪽으로 줄인다, 계획선 41점, 앞섬)과 평행 세계 나·모의 바구니 수익률

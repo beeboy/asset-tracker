@@ -76,13 +76,13 @@ abstract class FaceWidget(val kind: String) : GlanceAppWidget() {
         val size = LocalSize.current
         // 상태가 바뀌면(다시 그리기) IO 에서 새로 만들고, 그동안은 앞 장을 그린다
         val f by produceState(f0, state) { if (state != st0) value = withContext(Dispatchers.IO) { face(ctx, state) } }
-        // 결 위젯처럼: 정사각 그림 판 비율 그대로 칸에 꽉 맞춘 카드 한 장을 칸 가운데에 둔다.
+        // 정사각 그림 판 비율 그대로 칸에 꽉 맞춘 카드 한 장을 칸 가운데에 둔다.
         // 칸 크기를 런처가 다르게 알려 줘도 늘어나지 않게 Fit, 카드 밖은 비워 둔다 (바탕을 칸 끝까지 늘이지 않는다)
-        // 칸 크기는 결 위젯처럼 위젯 옵션에서 다시 읽고 Glance 값과 작은 쪽을 쓴다 (런처가 Glance 에 칸보다 큰 크기를 줘서 양옆이 잘렸다, 11-05 Y700)
+        // 칸 크기는 위젯 옵션에서 다시 읽고 Glance 값과 작은 쪽을 쓴다 (런처가 Glance 에 칸보다 큰 크기를 줘서 양옆이 잘렸다, 11-05 Y700)
         val (ow, oh) = optionSize(ctx, LocalGlanceId.current)
         val sw = if (ow > 0f) min(size.width.value, ow) else size.width.value
         val sh = if (oh > 0f) min(size.height.value, oh) else size.height.value
-        // 판은 정사각 (아이폰 작은 위젯 158 × 158, 결 위젯도 정사각). guideW 는 설정 안내 그림 폭이라 태블릿에서 넓어진다
+        // 판은 정사각 (아이폰 작은 위젯 158 × 158). guideW 는 설정 안내 그림 폭이라 태블릿에서 넓어진다
         val gw = designH
         val k = min(sw / gw, sh / designH)
         val cw = gw * k; val ch = designH * k

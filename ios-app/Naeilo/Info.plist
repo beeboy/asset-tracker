@@ -53,14 +53,8 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>동네 날씨를 내 지역 날씨로 보여 주려고 대략적인 위치를 써요.</string>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
 	<key>NaeiloChannel</key>
 	<string>$(NAEILO_CHANNEL)</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
-	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIRequiresFullScreen</key>

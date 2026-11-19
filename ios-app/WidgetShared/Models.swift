@@ -5,7 +5,7 @@ import CryptoKit
 // 사이트(web/widget-core.js)가 만드는 위젯 요약. 금액 배열은 만원 단위 정수, 나머지 금액은 원
 struct WSummary: Codable {
     struct Goal: Codable { var amount: Double; var date: String; var start: String; var v0: Double; var m: Double? = nil }   // m = 매달 넣는 돈 (원, 앱 내 길 필요 경로)
-    struct Hold: Codable { var t: String; var sh: Double; var ccy: String; var manual: Double? }
+    struct Hold: Codable { var t: String; var sh: Double; var ccy: String; var manual: Double?; var cut: Double? = nil }   // cut: 팔 때 빠지는 몫 (SellCost)
     struct Term: Codable { var p5: Double?; var p50: Double?; var p95: Double? }
     struct Forecast: Codable {
         var scen: String

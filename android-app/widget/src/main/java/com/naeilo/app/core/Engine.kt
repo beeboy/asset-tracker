@@ -221,15 +221,14 @@ object Engine {
         var moves: MutableList<Snapshot.Move> = mutableListOf()
         var tot = 0.0; var prev = 0.0
         val feedVal = mutableMapOf<String, Double>(); val feedAt = mutableMapOf<String, Double>()
-        // ios: WidgetShared/Engine.swift:139,140,141,142
         val good = GoodQuotes.read()   // 한 번 받은 종목은 0원으로 세지 않는다 (앱 Market.quote 와 같은 규칙)   // ios: WidgetShared/Engine.swift:139
-        for (h in hold) {
+        for (h in hold) {   // ios: WidgetShared/Engine.swift:140,141,142,143
             val ccy = f?.ccy?.get(h.t) ?: s?.hold?.firstOrNull { it.t == h.t }?.ccy ?: "USD"
             val q = f?.q?.get(h.t); val sq = site?.q?.get(h.t) ?: kr?.q?.get(h.t)
             val aq = alpaca?.q?.get(h.t) ?: lb?.q?.get(h.t)   // Alpaca 가 없으면 Longbridge (둘 다 미국 종목 지금 가격)
             // 미국 장이 다 끝났으면 애프터마켓 가격 대신 정규장 종가 (앱 Market.regClose 와 같다)
             // 토스 값이면 전일·정규장 종가도 토스 일봉에서 (앱 Market.tossPrev·regClose 와 같다)
-            // ios: WidgetShared/Engine.swift:145,146,147,148,149,151
+            // ios: WidgetShared/Engine.swift:146,147,148,149,150,152
             val tq = toss?.q?.get(h.t); val hist = th?.h?.get(f?.ty?.get(h.t) ?: h.t)
             var reg: Double? = null
             if (ccy == "USD" && USSession.closed()) {
@@ -238,18 +237,18 @@ object Engine {
                 // 토스 주간거래 값(애프터마켓 뒤에 체결)이면 정규장 종가 대신 그 값 (앱 Market.tossLast 와 같다)
                 if (reg != null && tq != null && TossDaily.daytime(tq.at)) reg = null
             }
-            // ios: WidgetShared/Engine.swift:153,154,155,156,157
+            // ios: WidgetShared/Engine.swift:154
             val quoted: Double? = reg ?: tq?.last ?: aq?.last
             val got = quoted ?: sq?.last ?: h.manual ?: q?.firstOrNull() ?: f?.c?.get(h.t)?.c?.filterNotNull()?.lastOrNull()   // ios: WidgetShared/Engine.swift:155
             val last = if ((got ?: 0.0) > 0) got else good[h.t]?.get(0) ?: got   // ios: WidgetShared/Engine.swift:156
-            val tp = tq?.let { TossDaily.prev(hist, at = it.at, kr = ccy == "KRW") }
-            val pc = tp ?: sq?.prev ?: (if ((q?.size ?: 0) > 1) q!![1] else null) ?: aq?.let { if (it.prev > 0) it.prev else null }
-            val p = last ?: continue
-            // ios: WidgetShared/Engine.swift:158,159
-            val v = h.sh * p * fx(ccy); val pv = h.sh * (pc ?: p) * fx(ccy)
+            val tp = tq?.let { TossDaily.prev(hist, at = it.at, kr = ccy == "KRW") }   // ios: WidgetShared/Engine.swift:157
+            val pc = tp ?: sq?.prev ?: (if ((q?.size ?: 0) > 1) q!![1] else null) ?: aq?.let { if (it.prev > 0) it.prev else null }   // ios: WidgetShared/Engine.swift:158
+            val p = last ?: continue   // ios: WidgetShared/Engine.swift:159
+            // ios: WidgetShared/Engine.swift:160,161
+            val net = 1 - (s?.hold?.firstOrNull { it.t == h.t }?.cut ?: 0.0); val v = h.sh * p * fx(ccy) * net; val pv = h.sh * (pc ?: p) * fx(ccy) * net   // net: 팔 때 드는 돈 뺀 몫 (앱이 요약에 적음, SellCost)
             tot += v; prev += pv
             // 이 종목 값이 어디서 왔는지 (위의 last 와 같은 순서)
-            // ios: WidgetShared/Engine.swift:161,162,163,164,165,166,167,168,169
+            // ios: WidgetShared/Engine.swift:163,164,165,166,167,168,169,170,171
             var tag = "앱"; var at: Double? = null
             if (toss?.q?.get(h.t) != null) { tag = "토스"; at = toss?.got }
             else if (aq != null) { tag = "Alpaca"; at = alpaca?.got }
@@ -260,40 +259,40 @@ object Engine {
             if (at != null) feedAt[tag] = max(feedAt[tag] ?: 0.0, at)
             moves.add(Snapshot.Move(t = h.t, pct = pc?.let { p / it - 1 } ?: 0.0, krw = v, w = 0.0))
         }
-        // ios: WidgetShared/Engine.swift:171
+        // ios: WidgetShared/Engine.swift:173
         if (tot <= 0 && s != null) { tot = (s.spark.filterNotNull().lastOrNull() ?: 0.0) * 1e4 - cash; prev = s.prev - cash } // 시세 파일이 없으면 요약 값
-        // ios: WidgetShared/Engine.swift:172,173
+        // ios: WidgetShared/Engine.swift:174,175
         val total = tot + cash; val prevTotal = prev + cash
         moves = moves.map { it.copy(w = if (tot > 0) it.krw / tot else 0.0) }.sortedByDescending { it.krw }.toMutableList()
 
-        // ios: WidgetShared/Engine.swift:175,176,177
+        // ios: WidgetShared/Engine.swift:177,178,179
         val goal = live?.goalAmount ?: s?.goal?.amount ?: 1e9
         val goalDate = (if (live?.goalDate?.isEmpty() == false) live?.goalDate else null) ?: s?.goal?.date ?: ""
         val spark = (s?.spark?.filterNotNull()?.map { it * 1e4 })?.toMutableList() ?: mutableListOf()
         // 요약의 마지막 점은 마지막 종가. 오늘 값은 지금 값으로 붙인다
-        // ios: WidgetShared/Engine.swift:179,180
+        // ios: WidgetShared/Engine.swift:181,182
         if (spark.isEmpty() || (s?.asof ?: "") < Day.today) spark.add(total) else spark[spark.size - 1] = total
         if (spark.size > 64) spark.subList(0, spark.size - 64).clear()
 
-        // ios: WidgetShared/Engine.swift:182,183,184,185
+        // ios: WidgetShared/Engine.swift:184,185,186,187
         var fan: Snapshot.Fan? = null
         val fc = s?.fc
         if (fc != null) {
             val w = { a: List<Double?> -> a.map { (it ?: 0.0) * 1e4 } }
             fan = Snapshot.Fan(md = fc.md.mapNotNull { Day.date(it) }, p5 = w(fc.p5), p25 = w(fc.p25), p50 = w(fc.p50), p75 = w(fc.p75), p95 = w(fc.p95))
         }
-        // ios: WidgetShared/Engine.swift:187,188,189,190
+        // ios: WidgetShared/Engine.swift:189,190,191,192
         var week: Snapshot.Week? = null
         val wk = s?.week
         if (wk != null && Day.dday(wk.f) >= 0) {
             val hNow = tot; val act = if (wk.t0 > 0) wk.base * (hNow / wk.t0) + wk.cash else total
             week = Snapshot.Week(f = wk.f, p50 = wk.p50, lo = wk.lo, hi = wk.hi, act = act, dday = Day.dday(wk.f))
         }
-        // ios: WidgetShared/Engine.swift:192,193,194
+        // ios: WidgetShared/Engine.swift:194,195,196
         val evs = (s?.events ?: emptyList()).filter { Day.dday(it.d) >= 0 }.take(4).map { Snapshot.Ev(d = it.d, t = it.t, k = it.k, dday = Day.dday(it.d)) }
         val t = s?.fc?.t
         val feed = feedVal.maxByOrNull { it.value }?.key
-        // ios: WidgetShared/Engine.swift:195,196,197,198,199,200
+        // ios: WidgetShared/Engine.swift:197,198,199,200,201,202
         return Snapshot(total = total, prevTotal = prevTotal, goal = goal, goalDate = goalDate, dday = Day.dday(goalDate),
             v0 = s?.goal?.v0, start = live?.goalStart ?: s?.goal?.start, spark = spark, fan = fan, pGoal = s?.fc?.pg,
             monthly = s?.goal?.m ?: 0.0, term = termOf(t),
@@ -303,7 +302,7 @@ object Engine {
     }
 }
 
-// ios: WidgetShared/Engine.swift:204,205,206
+// ios: WidgetShared/Engine.swift:206,207,208
 private fun termOf(t: WSummary.Term?): Snapshot.Term? {
     if (t == null) return null
     val m = t.p50 ?: return null
@@ -311,24 +310,24 @@ private fun termOf(t: WSummary.Term?): Snapshot.Term? {
 }
 
 /** 로그인 전·위젯 갤러리 미리보기용 */
-// ios: WidgetShared/Engine.swift:209,211,212,213,214,215
+// ios: WidgetShared/Engine.swift:211,213,214,215,216,217
 val Snapshot.Companion.sample: Snapshot get() {
     val spark: List<Double> = (0 until 63).map { i ->
         val x = i.toDouble()
         val wave: Double = sin(x / 6) * 1.5e7
         5.3e8 + wave - x * 1e5
     }
-    // ios: WidgetShared/Engine.swift:217,218
+    // ios: WidgetShared/Engine.swift:219,220
     val md: List<Instant> = (0..36).map { ZonedDateTime.now().plusMonths(it.toLong()).toInstant() }
     val p50: List<Double> = md.indices.map { i -> 5.27e8 * 1.12.pow(i.toDouble() / 12) }
-    // ios: WidgetShared/Engine.swift:219,220,221,222
+    // ios: WidgetShared/Engine.swift:221,222,223,224
     val sp = { z: Double ->
         md.indices.map { i ->
             val spread: Double = z * 0.45 * sqrt(i.toDouble() / 12)
             p50[i] * exp(spread)
         }
     }
-    // ios: WidgetShared/Engine.swift:225,226,227,228,229,230,231
+    // ios: WidgetShared/Engine.swift:227,228,229,230,231,232,233
     return Snapshot(total = 5.27e8, prevTotal = 5.32e8, goal = 1e9, goalDate = Day.str(md.last()), dday = 1092, v0 = 5.30e8, start = Day.today,
         spark = spark, fan = Snapshot.Fan(md = md, p5 = sp(-1.645), p25 = sp(-0.674), p50 = p50, p75 = sp(0.674), p95 = sp(1.645)),
         pGoal = 0.38, term = Snapshot.Term(1.7e8, 7.7e8, 2.2e9), fcAsOf = Day.today, hits = listOf(true, false, true, true, false, true, true, true).mapIndexed { i, h -> Snapshot.Hit(hit = h, retro = i < 6) },
@@ -336,4 +335,16 @@ val Snapshot.Companion.sample: Snapshot get() {
         moves = listOf(Snapshot.Move(t = "TSLA", pct = -0.007, krw = 3.48e8, w = 0.66), Snapshot.Move(t = "NVDA", pct = -0.006, krw = 0.95e8, w = 0.18),
             Snapshot.Move(t = "SPCX", pct = -0.02, krw = 0.71e8, w = 0.14), Snapshot.Move(t = "SGOV", pct = 0.0, krw = 0.12e8, w = 0.02)),
         events = listOf(Snapshot.Ev(d = Day.today, t = "TSLA", k = "실적", dday = 13)), updated = Instant.now(), source = null, placeholder = true)
+}
+
+/** 팔 때 드는 돈: 평가액(평가금)은 지금 다 팔면 손에 남는 돈 (토스증권 '평가금'과 같은 기준, 2026-11-12). 세율·수수료는 여기 한 곳에만 */
+object SellCost {   // ios: WidgetShared/Engine.swift:239
+    const val krFee = 0.00015   // ios: WidgetShared/Engine.swift:240 토스증권 국내 매도 수수료 0.015%
+    const val krTax = 0.0020   // ios: WidgetShared/Engine.swift:241 증권거래세 매도 0.20%. 국내 ETF는 없다
+    const val usFee = 0.001   // ios: WidgetShared/Engine.swift:242 토스증권 해외 매도 수수료 0.1%. 토스 평가금은 해외 수수료를 빼지 않아 평가액에 안 쓴다 (2026-11-13 토스 화면 대조)
+    /** 매도 금액 대비 빠지는 몫 */
+    fun rate(usd: Boolean, etf: Boolean): Double = if (usd) 0.0 else krFee + (if (etf) 0.0 else krTax)   // ios: WidgetShared/Engine.swift:244
+    /** 국내 ETF: 시장 이름에 ETF가 있거나 운용사 이름으로 시작 (거래세가 없다) */
+    fun isEtf(market: String, name: String): Boolean =   // ios: WidgetShared/Engine.swift:246,247
+        market.contains("ETF") || listOf("KODEX", "TIGER", "ACE ", "RISE ", "SOL ", "KBSTAR", "HANARO", "PLUS ", "ARIRANG", "KOSEF", "TIMEFOLIO", "KIWOOM ").any { name.startsWith(it) }
 }
