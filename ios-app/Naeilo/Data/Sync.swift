@@ -248,10 +248,10 @@ final class Sync {
         state = .working
         do {
             let r = try await call()
-            // 받기가 안 되던 동안 고친 값: 서버 값보다 늦게 고쳤으면 이 기기가 더 새것 (덮지 않고 올린다)
+            // 받기가 안 되던 동안 고친 값: 서버가 지난 맞춤 뒤로 그대로일 때만 이 기기가 이긴다 (서버가 더 새면 받는다. 켜자마자 새 날 줄만 생겨도 다른 기기 값을 덮었다, 11-13)
             var pendingWins = false
             if pendingAt > 0 {
-                if localAt > 0, pendingAt > r.at { localAt = pendingAt; pendingWins = true }
+                if localAt > 0, r.at <= localAt, pendingAt > r.at { localAt = pendingAt; pendingWins = true }
                 pendingAt = 0
             }
             // 지난 날 수량 기록은 언제나 사이트 값으로 (이 기기 값이 더 새로워 받지 않을 때도: 앱에만 남은 예전 줄이 내 길 시작값을 웹과 다르게 만든다)
@@ -600,7 +600,7 @@ final class Sync {
         var p = m.progress; p.lastOpen = ""
         let a = (try? JSONEncoder().encode(p)) ?? Data(), b = (try? JSONEncoder().encode(m.holdings)) ?? Data()
         let pw = m.pworld.map { "\($0.days.count)|\($0.segs.count)|\($0.segs.last?.from ?? "")|\($0.who)|\($0.opened)" } ?? "-"
-        let cm = "\(m.calm.events.count)|\(m.calm.events.last?.day ?? "")|\(m.calm.type ?? "")|\(m.calm.together.count)"
+        let cm = "\(m.calm.events.count)|\(m.calm.events.last?.day ?? "")|\(m.calm.type ?? "")|\(m.calm.together.count)|\(m.calm.fixed?.count ?? 0)|\(m.calm.fixed?.values.max() ?? 0)"
         let c = Data("\(m.myRecord.count)|\(m.myRecord.last?.d ?? "")|\(CustomSymbols.shared.krStamp)|\(pw)|\(cm)".utf8) + Self.townStamp()   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)
         return SHA256.hash(data: a + b + c).map { String(format: "%02x", $0) }.joined()
     }

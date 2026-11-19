@@ -248,7 +248,7 @@ final class AppModel {
     func dayWon(_ r: Row) -> Double {
         let q = r.sym.quote
         guard r.id != KoreaEstimate.sumId, q.prevClose > 0 else { return 0 }
-        return r.value - krw(r.sym, r.h.qty * q.prevClose)
+        return r.value - krw(r.sym, r.h.qty * q.prevClose) * (1 - sellRate(r.sym))
     }
     var todayWon: Double { rows.reduce(0) { $0 + dayWon($1) } }
     /// 들어간 돈(원금) = 매수 단가 × 수량 × 지금 환율 (웹 본전 카드와 같다. 매수 때 환율은 모른다)
@@ -262,8 +262,8 @@ final class AppModel {
             // 공개 베타·출시에서 내 키 시세가 없는 실제 종목은 평가액·들어간 돈 모두에서 뺀다 (Market.needsKey)
             if Market.shared.needsKey(p.0) { return Row(id: p.0.id, sym: p.0, h: p.1, value: 0, cost: 0, color: Theme.holdColors[i % Theme.holdColors.count]) }
             // 국내 주식 합계는 현금처럼: 들어간 돈 = 지금 금액 (본전·수익률을 움직이지 않는다)
-            return Row(id: p.0.id, sym: p.0, h: p.1, value: krw(p.0, p.1.qty * p.0.last), cost: p.0.id == KoreaEstimate.sumId ? krw(p.0, p.1.qty * p.0.last) : costKrw(p.0, p.1.qty * p.1.avg),
-                color: Theme.holdColors[i % Theme.holdColors.count])
+            return Row(id: p.0.id, sym: p.0, h: p.1, value: krw(p.0, p.1.qty * p.0.last) * (1 - sellRate(p.0)), cost: p.0.id == KoreaEstimate.sumId ? krw(p.0, p.1.qty * p.0.last) : costKrw(p.0, p.1.qty * p.1.avg),
+                color: Theme.holdColors[i % Theme.holdColors.count])   // value: 다 팔면 손에 남는 돈 (매도 세금·수수료 뺌, 토스 '평가금'과 같다). 들어간 돈은 그대로
         }
     }
     /// 종목 하나의 숫자 (종목 상세·종목 한눈에가 같이 쓴다)
@@ -880,5 +880,12 @@ extension Double {
     /// 계산 끝에 0.7999… 처럼 남는 값이 한 푼 내려가지 않게 아주 작은 여유를 둔다
     func usdText(_ f: ClosedRange<Int> = 2...2) -> String {
         (self + (self < 0 ? -1e-9 : 1e-9)).formatted(.number.precision(.fractionLength(f)).rounded(rule: .towardZero))
+    }
+}
+
+extension AppModel {
+    /// 팔 때 빠지는 몫 (세금·수수료, SellCost). 국내 주식 합계는 이미 손에 남는 금액이라 0
+    func sellRate(_ s: Symbol) -> Double {
+        s.id == KoreaEstimate.sumId ? 0 : SellCost.rate(usd: s.currency == .usd, etf: SellCost.isEtf(market: s.market, name: s.name))
     }
 }

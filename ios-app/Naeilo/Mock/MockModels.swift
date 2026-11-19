@@ -345,8 +345,8 @@ struct MockGuards: Codable, Equatable {
 
 /// 수수료·세금 (설정값). 2026-10 확인: 토스증권 국내 0.015%, 증권거래세 매도 0.20%(코스피 거래세 0.05%+농특세 0.15%, 코스닥 0.20%)
 struct MockFees: Codable, Equatable {
-    var commission: Double = 0.00015
-    var sellTax: Double = 0.0020
+    var commission: Double = SellCost.krFee
+    var sellTax: Double = SellCost.krTax
     /// 한 번 체결의 수수료 (원 아래 버림)
     func fee(_ amount: Double) -> Double { (amount * commission).rounded(.down) }
     func tax(_ amount: Double) -> Double { (amount * sellTax).rounded(.down) }

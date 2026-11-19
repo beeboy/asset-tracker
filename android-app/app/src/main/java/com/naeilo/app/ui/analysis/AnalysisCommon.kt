@@ -62,7 +62,7 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import kotlin.math.floor
 import kotlin.math.max
-import kotlin.math.min
+import kotlin.math.min   // ios: Views/AnalysisDetail.swift:16
 import kotlin.math.pow
 
 // 분석 탭 상세 화면 공통 (Views/AnalysisDetail.swift 1-196). 숫자는 모두 계산값이고 사거나 팔라는 문구는 넣지 않는다.
@@ -88,91 +88,92 @@ fun yrs(a: String, b: String): Double {
 /** 내 길 실제 평가액 (웹 목표 진행 actualSeries 와 같은 식): 시작일 무렵부터 거래일마다
  *  그날 수량(수량 기록, 없으면 지금 수량) × 그날 종가 × 그날 원/달러 종가. 과거 시세가 없는 종목은 지금 평가액 그대로
  *  현금은 그대로 있다고 보고 날마다 더한다 (웹 goalPath 와 같다) */
-// ios: Views/AnalysisDetail.swift:33
-fun AppModel.pathSeries(start: String): List<Pair<String, Double>> {
-    val rs = rows; val today = Day.today; val fxH = PriceHistory.of("FX"); val cash = cashKrw   // ios: Views/AnalysisDetail.swift:34
-    val hs = rs.map { Triple(it, PriceHistory.of(it.id), Sync.siteTicker(it.id)) }   // ios: Views/AnalysisDetail.swift:35
-    val from = Day.str((Day.date(start) ?: Instant.now()).minus(10, ChronoUnit.DAYS))   // ios: Views/AnalysisDetail.swift:36
-    val ds = HashSet<String>()   // ios: Views/AnalysisDetail.swift:37
-    for (x in hs) { val h = x.second ?: continue; for (d in h.dates.asReversed()) { if (d < from) break; if (d < today) ds.add(d) } }   // ios: Views/AnalysisDetail.swift:38
-    // ios: Views/AnalysisDetail.swift:39
+/** nowQty: 수량 기록 대신 지금 수량으로 (위젯 자산 언덕: 오늘 등락과 같은 기준이라 수량을 고친 날 기둥이 튀지 않게) */
+// ios: Views/AnalysisDetail.swift:34
+fun AppModel.pathSeries(start: String, nowQty: Boolean = false): List<Pair<String, Double>> {
+    val rs = rows; val today = Day.today; val fxH = PriceHistory.of("FX"); val cash = cashKrw   // ios: Views/AnalysisDetail.swift:35
+    val hs = rs.map { Triple(it, PriceHistory.of(it.id), Sync.siteTicker(it.id)) }   // ios: Views/AnalysisDetail.swift:36
+    val from = Day.str((Day.date(start) ?: Instant.now()).minus(10, ChronoUnit.DAYS))   // ios: Views/AnalysisDetail.swift:37
+    val ds = HashSet<String>()   // ios: Views/AnalysisDetail.swift:38
+    for (x in hs) { val h = x.second ?: continue; for (d in h.dates.asReversed()) { if (d < from) break; if (d < today) ds.add(d) } }   // ios: Views/AnalysisDetail.swift:39
+    // ios: Views/AnalysisDetail.swift:40
     return ds.sorted().map { d ->
-        val q = Lots.on(lots, d)   // ios: Views/AnalysisDetail.swift:40
-        // ios: Views/AnalysisDetail.swift:41
+        val q = if (nowQty) null else Lots.on(lots, d)   // ios: Views/AnalysisDetail.swift:41
+        // ios: Views/AnalysisDetail.swift:42
         val v = hs.fold(0.0) { a, x ->
-            val h = x.second ?: return@fold a + x.first.value   // ios: Views/AnalysisDetail.swift:42
-            val px = h.on(d) ?: return@fold a   // ios: Views/AnalysisDetail.swift:43
-            val n = q?.let { it[x.third] ?: 0.0 } ?: x.first.h.qty   // ios: Views/AnalysisDetail.swift:44
-            a + px * n * (if (x.first.sym.currency == Currency.usd) (fxH?.on(d) ?: Market.shared.valFx) else 1.0)   // ios: Views/AnalysisDetail.swift:45
+            val h = x.second ?: return@fold a + x.first.value   // ios: Views/AnalysisDetail.swift:43
+            val px = h.on(d) ?: return@fold a   // ios: Views/AnalysisDetail.swift:44
+            val n = q?.let { it[x.third] ?: 0.0 } ?: x.first.h.qty   // ios: Views/AnalysisDetail.swift:45
+            a + px * n * (if (x.first.sym.currency == Currency.usd) (fxH?.on(d) ?: Market.shared.valFx) else 1.0)   // ios: Views/AnalysisDetail.swift:46
         }
-        Pair(d, v + cash)   // ios: Views/AnalysisDetail.swift:47
+        Pair(d, v + cash)   // ios: Views/AnalysisDetail.swift:48
     }
 }
-// ios: Views/AnalysisDetail.swift:50
+// ios: Views/AnalysisDetail.swift:51
 val AppModel.myPath: MyPath get() = myPathOf(
     isGoal = isGoal, goalSpan = goalSpan, pathStartDate = pathStartDate, today = Day.today, gM = gM, keyValue = keyValue, trackValue = trackValue,
     bare = bare, isSample = isSample, krSum = krSum,
-    KL = CustomSymbols.shared.krLog,   // ios: Views/AnalysisDetail.swift:80
+    KL = CustomSymbols.shared.krLog,   // ios: Views/AnalysisDetail.swift:81
     pathSeries = { pathSeries(start = it) }, totalAt = { totalAt(it) })
 
 /** 내 길 몸통: AppModel 값만 받아 셈한다 (같은 입력 숫자 맞추기 tools/num_parity g 가 직접 부른다) */
 fun myPathOf(isGoal: Boolean, goalSpan: Double, pathStartDate: Instant, today: String, gM: Double, keyValue: Double, trackValue: Double,
              bare: Boolean, isSample: Boolean, krSum: Double, KL: List<MC.KrDay>, pathSeries: (String) -> List<Pair<String, Double>>, totalAt: (Double) -> Double): MyPath {
-    val mEnd = if (isGoal) goalSpan else 1.0     // ios: Views/AnalysisDetail.swift:51 목표: 시작일부터 목표일까지 (사이트와 같은 날짜)
-    val sD = Day.str(pathStartDate)   // ios: Views/AnalysisDetail.swift:52 (today 는 받는다)
+    val mEnd = if (isGoal) goalSpan else 1.0     // ios: Views/AnalysisDetail.swift:52 목표: 시작일부터 목표일까지 (사이트와 같은 날짜)
+    val sD = Day.str(pathStartDate)   // ios: Views/AnalysisDetail.swift:53 (today 는 받는다)
     // 시작한 날부터 오늘까지 (년). 오늘 시작이면 하루로 둔다
-    val mS = min(mEnd * 0.95, max(1.0 / 365.25, yrs(sD, today))); val mM = if (isGoal) gM * 1e4 else 0.0; val K = keyValue   // ios: Views/AnalysisDetail.swift:54
-    val now = trackValue   // ios: Views/AnalysisDetail.swift:55
-    val pts: MutableList<Pair<Double, Double>>   // ios: Views/AnalysisDetail.swift:56
-    // ios: Views/AnalysisDetail.swift:57
+    val mS = min(mEnd * 0.95, max(1.0 / 365.25, yrs(sD, today))); val mM = if (isGoal) gM * 1e4 else 0.0; val K = keyValue   // ios: Views/AnalysisDetail.swift:55
+    val now = trackValue   // ios: Views/AnalysisDetail.swift:56
+    val pts: MutableList<Pair<Double, Double>>   // ios: Views/AnalysisDetail.swift:57
+    // ios: Views/AnalysisDetail.swift:58
     if (bare) {
-        pts = (0..30).map { i -> val t = mS * i.toDouble() / 30; Pair(t, max(0.0, now - mM * 12 * (mS - t))) }.toMutableList()   // ios: Views/AnalysisDetail.swift:58
-    } else if (isSample) {   // ios: Views/AnalysisDetail.swift:59
+        pts = (0..30).map { i -> val t = mS * i.toDouble() / 30; Pair(t, max(0.0, now - mM * 12 * (mS - t))) }.toMutableList()   // ios: Views/AnalysisDetail.swift:59
+    } else if (isSample) {   // ios: Views/AnalysisDetail.swift:60
         // 샘플(가상 종목 DRNK)은 날짜별 시세가 없어 지난 3년 흐름에서 어림한다
-        pts = (0..30).map { i -> val t = mS * i.toDouble() / 30; Pair(t, if (i == 30) now else totalAt(1 - (mS - t) / 3)) }.toMutableList()   // ios: Views/AnalysisDetail.swift:61
-    } else {   // ios: Views/AnalysisDetail.swift:62
+        pts = (0..30).map { i -> val t = mS * i.toDouble() / 30; Pair(t, if (i == 30) now else totalAt(1 - (mS - t) / 3)) }.toMutableList()   // ios: Views/AnalysisDetail.swift:62
+    } else {   // ios: Views/AnalysisDetail.swift:63
         // 웹처럼 시작일 또는 그 뒤 첫 거래일 값에서 출발 (시작일 뒤 거래일이 아직 없으면 그 전 마지막 거래일)
-        val S = pathSeries(sD)   // ios: Views/AnalysisDetail.swift:64
-        val i0 = S.indexOfFirst { it.first >= sD }.let { if (it < 0) max(0, S.size - 1) else it }   // ios: Views/AnalysisDetail.swift:65
-        pts = mutableListOf()   // ios: Views/AnalysisDetail.swift:66
-        // ios: Views/AnalysisDetail.swift:67
-        if (S.isNotEmpty()) {
-            pts.add(Pair(0.0, S[i0].second))   // ios: Views/AnalysisDetail.swift:68
-            for (x in S.drop(i0 + 1)) pts.add(Pair(yrs(sD, x.first), x.second))   // ios: Views/AnalysisDetail.swift:69
+        val S = pathSeries(sD)   // ios: Views/AnalysisDetail.swift:65
+        val i0 = S.indexOfFirst { it.first >= sD }.let { if (it < 0) max(0, S.size - 1) else it }   // ios: Views/AnalysisDetail.swift:66
+        pts = mutableListOf()   // ios: Views/AnalysisDetail.swift:67
+
+        if (S.isNotEmpty()) {   // ios: Views/AnalysisDetail.swift:68
+            pts.add(Pair(0.0, S[i0].second))   // ios: Views/AnalysisDetail.swift:69
+            for (x in S.drop(i0 + 1)) pts.add(Pair(yrs(sD, x.first), x.second))   // ios: Views/AnalysisDetail.swift:70
         }
-        pts.add(Pair(mS, now))   // ios: Views/AnalysisDetail.swift:71
+        pts.add(Pair(mS, now))   // ios: Views/AnalysisDetail.swift:72
     }
-    val P = pts.toList()   // ios: Views/AnalysisDetail.swift:73
-    // ios: Views/AnalysisDetail.swift:74
+    val P = pts.toList()   // ios: Views/AnalysisDetail.swift:74
+    // ios: Views/AnalysisDetail.swift:75
     val act: (Double) -> Double = { t ->
-        if (t >= mS) now   // ios: Views/AnalysisDetail.swift:75
-        else (P.lastOrNull { it.first <= t } ?: P.firstOrNull())?.second ?: now   // ios: Views/AnalysisDetail.swift:76
+        if (t >= mS) now   // ios: Views/AnalysisDetail.swift:76
+        else (P.lastOrNull { it.first <= t } ?: P.firstOrNull())?.second ?: now   // ios: Views/AnalysisDetail.swift:77
     }
-    val vS = P.firstOrNull()?.second ?: now; val kAdj = K - mM * 12 * mEnd   // ios: Views/AnalysisDetail.swift:78
+    val vS = P.firstOrNull()?.second ?: now; val kAdj = K - mM * 12 * mEnd   // ios: Views/AnalysisDetail.swift:79
     // 시작일 뒤에 처음 넣은 국내 주식 합계는 들어온 돈: 그날부터 길에도 그 금액을 더한다 (앞선 것으로 보이지 않게. 웹 goalPath 와 같다)
-    val kin = if (krSum > 0 && !bare && !isSample && MC.krAt(KL, sD) == 0.0) KL.firstOrNull { it.d > sD && it.v > 0 } else null   // ios: Views/AnalysisDetail.swift:81
-    val tIn = kin?.let { yrs(sD, it.d) } ?: Double.POSITIVE_INFINITY; val vIn = kin?.v ?: 0.0   // ios: Views/AnalysisDetail.swift:82
-    val need: (Double) -> Double = { t -> mM * 12 * t + (if (kAdj > 0 && vS > 0) vS * (kAdj / vS).pow(t / mEnd) else vS + (K - vS) * t / mEnd) + (if (t >= tIn) vIn else 0.0) }   // ios: Views/AnalysisDetail.swift:83
-    return MyPath(start = mS, end = mEnd, key = K, monthly = mM, pts = P, act = act, need = need, krIn = vIn)   // ios: Views/AnalysisDetail.swift:84
+    val kin = if (krSum > 0 && !bare && !isSample && MC.krAt(KL, sD) == 0.0) KL.firstOrNull { it.d > sD && it.v > 0 } else null   // ios: Views/AnalysisDetail.swift:82
+    val tIn = kin?.let { yrs(sD, it.d) } ?: Double.POSITIVE_INFINITY; val vIn = kin?.v ?: 0.0   // ios: Views/AnalysisDetail.swift:83
+    val need: (Double) -> Double = { t -> mM * 12 * t + (if (kAdj > 0 && vS > 0) vS * (kAdj / vS).pow(t / mEnd) else vS + (K - vS) * t / mEnd) + (if (t >= tIn) vIn else 0.0) }   // ios: Views/AnalysisDetail.swift:84
+    return MyPath(start = mS, end = mEnd, key = K, monthly = mM, pts = P, act = act, need = need, krIn = vIn)   // ios: Views/AnalysisDetail.swift:85
 }
-// ios: Views/AnalysisDetail.swift:86
+// ios: Views/AnalysisDetail.swift:87
 val AppModel.myPathGapToday: Double get() { val p = myPath; val n = p.need(p.start); return if (n > 0) p.act(p.start) / n - 1 else 0.0 }
 
-// ios: Views/AnalysisDetail.swift:88
-fun AppModel.Companion.manS(krw: Double): String = (if (krw >= 0) "+" else "−") + man(kotlin.math.abs(krw))
 // ios: Views/AnalysisDetail.swift:89
+fun AppModel.Companion.manS(krw: Double): String = (if (krw >= 0) "+" else "−") + man(kotlin.math.abs(krw))
+// ios: Views/AnalysisDetail.swift:90
 fun AppModel.Companion.won1(krw: Double): String = if (en) krwC(krw) else if (krw > 0 && krw < 1e4) "%,d".format(java.util.Locale.ROOT, krw.swRound().toLong()) + "원" else man(krw)
 /** 읽기 쉬운 금액: 4만 6천원 · 9천원 (천원 단위 반올림, 1천만원 넘으면 man) */
-// ios: Views/AnalysisDetail.swift:91
+// ios: Views/AnalysisDetail.swift:92
 fun AppModel.Companion.wonRead(krw: Double): String {
-    if (en) return krwC(krw)   // ios: Views/AnalysisDetail.swift:92
-    val k = (krw / 1e3).swRound().toInt()   // ios: Views/AnalysisDetail.swift:93
-    if (k <= 0) return won1(krw)   // ios: Views/AnalysisDetail.swift:94
-    if (k >= 10000) return man(krw)   // ios: Views/AnalysisDetail.swift:95
-    val w = k / 10; val c = k % 10   // ios: Views/AnalysisDetail.swift:96
-    return if (w == 0) "${c}천원" else if (c == 0) "${w}만원" else "${w}만 ${c}천원"   // Views/AnalysisDetail.swift:97 (검사 예외: 같은 글)
+    if (en) return krwC(krw)   // ios: Views/AnalysisDetail.swift:93
+    val k = (krw / 1e3).swRound().toInt()   // ios: Views/AnalysisDetail.swift:94
+    if (k <= 0) return won1(krw)   // ios: Views/AnalysisDetail.swift:95
+    if (k >= 10000) return man(krw)   // ios: Views/AnalysisDetail.swift:96
+    val w = k / 10; val c = k % 10   // ios: Views/AnalysisDetail.swift:97
+    return if (w == 0) "${c}천원" else if (c == 0) "${w}만원" else "${w}만 ${c}천원"   //  (검사 예외: 같은 글)   // ios: Views/AnalysisDetail.swift:98
 }
-// ios: Views/AnalysisDetail.swift:103
+// ios: Views/AnalysisDetail.swift:104
 fun AppModel.weight(id: String): Double = rows.firstOrNull { it.id == id }?.let { it.value / max(1.0, total) } ?: 0.0
 
 /** 분석 넘기기 화면 안인지 (넘기기 화면이 지금 쪽 제목을 단다) */
@@ -182,65 +183,63 @@ private object DetailInPagerKey { const val defaultValue = false }
 val LocalDetailInPager = compositionLocalOf { DetailInPagerKey.defaultValue }
 
 /** 상세 화면 머리: 제목은 위 막대 가운데(뒤로 가기 옆)에 두고, 여기에는 한 줄 설명만 */
-// ios: Views/AnalysisDetail.swift:107,108,109,110
+
 @Composable
-fun DetailHead(title: String, sub: String) {
+fun DetailHead(title: String, sub: String) {   // ios: Views/AnalysisDetail.swift:108,109,110,111
     // 설명이 없으면 높이 0 (막대에 제목이 붙도록 자리만 둔다)
-    // ios: Views/AnalysisDetail.swift:112,113,114,115
+    // ios: Views/AnalysisDetail.swift:114,115
     if (sub.isEmpty()) Box(Modifier.fillMaxWidth().height(0.dp).alpha(0f).detailTitle(title))
-    else T(sub, Modifier.fillMaxWidth().alpha(1f).detailTitle(title), style = appFont(14f), color = Theme.sub)
+    else T(sub, Modifier.fillMaxWidth().alpha(1f).detailTitle(title), style = appFont(14f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:113,115,116
 }
 
 // 가운데 0 을 기준으로 왼쪽(음수)·오른쪽(양수)으로 뻗는 막대
-// ios: Views/AnalysisDetail.swift:120,128
+
 @Composable
 internal fun SignedBar(
-    label: String,   // ios: Views/AnalysisDetail.swift:121
-    value: String,   // ios: Views/AnalysisDetail.swift:122
-    g: Double,   // ios: Views/AnalysisDetail.swift:123
-    scale: Double,   // ios: Views/AnalysisDetail.swift:124
-    pos: Color = Theme.up,   // ios: Views/AnalysisDetail.swift:125
-    neg: Color = Theme.down,   // ios: Views/AnalysisDetail.swift:126
-    valueColor: Color? = null,   // ios: Views/AnalysisDetail.swift:127
+    label: String,
+    value: String,
+    g: Double,
+    scale: Double,
+    pos: Color = Theme.up,
+    neg: Color = Theme.down,
+    valueColor: Color? = null,
 ) {
-    // ios: Views/AnalysisDetail.swift:129,144,145
+
     Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = tr("$label $value") }, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        T(label, Modifier.widthIn(min = 52.dp), style = appFont(13f, FontWeight.SemiBold), maxLines = 1)   // ios: Views/AnalysisDetail.swift:130
-        // ios: Views/AnalysisDetail.swift:131,132,133,138,140
+        T(label, Modifier.widthIn(min = 52.dp), style = appFont(13f, FontWeight.SemiBold), maxLines = 1)
         BoxWithConstraints(Modifier.weight(1f).height(16.dp)) {
             val half = maxWidth / 2; val w = half * min(1.0, kotlin.math.abs(g) / max(1e-9, scale)).toFloat()
             val line = Theme.line
-            Box(Modifier.width(1.dp).fillMaxHeight().offset(x = half).background(line))   // ios: Views/AnalysisDetail.swift:134
-            if (g < 0) Box(Modifier.align(Alignment.CenterStart).offset(x = half - w).size(w, 12.dp).background(neg, RoundedCornerShape(3.dp)))   // ios: Views/AnalysisDetail.swift:135
-            if (g > 0) Box(Modifier.align(Alignment.CenterStart).offset(x = half).size(w, 12.dp).background(pos, RoundedCornerShape(3.dp)))   // ios: Views/AnalysisDetail.swift:136
+            Box(Modifier.width(1.dp).fillMaxHeight().offset(x = half).background(line))
+            if (g < 0) Box(Modifier.align(Alignment.CenterStart).offset(x = half - w).size(w, 12.dp).background(neg, RoundedCornerShape(3.dp)))
+            if (g > 0) Box(Modifier.align(Alignment.CenterStart).offset(x = half).size(w, 12.dp).background(pos, RoundedCornerShape(3.dp)))
         }
-        // ios: Views/AnalysisDetail.swift:141,142
         T(value, Modifier.widthIn(min = 76.dp), style = appFont(13f, FontWeight.Bold).copy(fontFeatureSettings = "tnum", textAlign = androidx.compose.ui.text.style.TextAlign.End), color = valueColor ?: (if (g >= 0) pos else neg))
     }
 }
 
-// ios: Views/AnalysisDetail.swift:149,154
+// ios: Views/AnalysisDetail.swift:120
 internal class Kpi(
-    val k: String, val v: String, val sub: String,   // ios: Views/AnalysisDetail.swift:150
-    val color: Color? = null,   // ios: Views/AnalysisDetail.swift:151 (없으면 Theme.ink)
-    val dark: Boolean = false,   // ios: Views/AnalysisDetail.swift:152
+    val k: String, val v: String, val sub: String,   // ios: Views/AnalysisDetail.swift:121
+    val color: Color? = null,   // ios: Views/AnalysisDetail.swift:122 (없으면 Theme.ink)
+    val dark: Boolean = false,   // ios: Views/AnalysisDetail.swift:123
 ) {
-    fun darkened(on: Boolean): Kpi = Kpi(k, v, sub, color, on)   // ios: Views/AnalysisDetail.swift:153
+    fun darkened(on: Boolean): Kpi = Kpi(k, v, sub, color, on)   // ios: Views/AnalysisDetail.swift:124
 }
 @Composable
-internal fun KpiBox(x: Kpi, modifier: Modifier = Modifier) {
-    // ios: Views/AnalysisDetail.swift:155,160
+internal fun KpiBox(x: Kpi, modifier: Modifier = Modifier) {   // ios: Views/AnalysisDetail.swift:125
+    // ios: Views/AnalysisDetail.swift:126,131
     @Composable fun Box0(m0: Modifier) = Column(m0.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        T(x.k, style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:156
-        FitText(x.v, appFont(18f, FontWeight.Bold), 0.7f, maxLines = 1, color = x.color ?: Theme.ink, roll = x.v)   // ios: Views/AnalysisDetail.swift:157
-        T(x.sub, style = appFont(11f), color = Theme.muted)   // ios: Views/AnalysisDetail.swift:158
+        T(x.k, style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:127
+        FitText(x.v, appFont(18f, FontWeight.Bold), 0.7f, maxLines = 1, color = x.color ?: Theme.ink, roll = x.v)   // ios: Views/AnalysisDetail.swift:128
+        T(x.sub, style = appFont(11f), color = Theme.muted)   // ios: Views/AnalysisDetail.swift:129
     }
-    // ios: Views/AnalysisDetail.swift:161,162,163,164,165
-    if (x.dark) DarkBox(modifier.fillMaxWidth(), radius = 14.dp) { Box0(Modifier.fillMaxWidth()) }
-    else Box0(modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(14.dp)).border(1.dp, Theme.border, RoundedCornerShape(14.dp)))
+
+    if (x.dark) DarkBox(modifier.fillMaxWidth(), radius = 14.dp) { Box0(Modifier.fillMaxWidth()) }   // ios: Views/AnalysisDetail.swift:132,133
+    else Box0(modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(14.dp)).border(1.dp, Theme.border, RoundedCornerShape(14.dp)))   // ios: Views/AnalysisDetail.swift:134,135,136
 }
 
-// ios: Views/AnalysisDetail.swift:170,171,172 (두 칸: 칸마다 사이 8, 줄 사이 8)
+// ios: Views/AnalysisDetail.swift:141,142,143 (두 칸: 칸마다 사이 8, 줄 사이 8)
 @Composable
 internal fun KpiGrid(items: List<Kpi>, dark: Boolean = false) {
     val cols = listOf(8.dp, 8.dp)
@@ -249,11 +248,11 @@ internal fun KpiGrid(items: List<Kpi>, dark: Boolean = false) {
     }
 }
 
-// ios: Views/AnalysisDetail.swift:176,177
+// ios: Views/AnalysisDetail.swift:147,148
 @Composable
 internal fun Footnote(t: String) = T(t, Modifier.fillMaxWidth(), style = appFont(12f).ls(2f), color = Theme.muted)
 
-// ios: Views/AnalysisDetail.swift:180,181,182,183,184
+// ios: Views/AnalysisDetail.swift:151,152,153,154,155
 @Composable
 internal fun PinnedBox(c: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxWidth().background(Theme.card).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { c() }
@@ -261,9 +260,9 @@ internal fun PinnedBox(c: @Composable ColumnScope.() -> Unit) {
 }
 
 // 0~1 정규 좌표 선 그리기
-// ios: Views/AnalysisDetail.swift:188,189
-internal fun linePath(pts: List<Pair<Double, Double>>, size: Size): Path = Path().apply {
-    // ios: Views/AnalysisDetail.swift:190,191,192
+
+internal fun linePath(pts: List<Pair<Double, Double>>, size: Size): Path = Path().apply {   // ios: Views/AnalysisDetail.swift:159,160,161
+    // ios: Views/AnalysisDetail.swift:162,163
     pts.forEachIndexed { i, q -> val pt = Offset((q.first * size.width).toFloat(), (q.second * size.height).toFloat()); if (i == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y) }
 }
 

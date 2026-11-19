@@ -251,7 +251,7 @@ struct HoldingsView: View {
         // 실적이 있으면 금액 앞에 금색 점 (알약은 뺐다, 2026-10-29)
         let pill = HStack(spacing: 4) {
             if es != nil { Circle().fill(Self.gold).frame(width: 7, height: 7).accessibilityLabel("실적") }
-            Text(v ? amt(r, krw: r.value, native: r.h.qty * r.sym.last) : px(r, r.sym.last))
+            Text(v ? amt(r, krw: r.value, native: r.h.qty * r.sym.last * (1 - m.sellRate(r.sym))) : px(r, r.sym.last))
                 .appFont(small, .bold).monospacedDigit().lineLimit(1)
                 .foregroundStyle(Theme.ink)
         }
@@ -772,6 +772,7 @@ struct HoldingDetailView: View {
                     AvgCalc(sym: sym, qty: h.qty, avg: h.avg, du: du)
                 }
                 if sym.currency == .krw, let c = CustomSymbols.shared.saved(sym.id), !CustomSymbols.shared.isLive(sym.id) { KRPriceCard(saved: c) }
+                TradeLogCard(sym: sym)   // 이 종목 매매 기록: 보기·고치기·지우기 (2026-11-13)
             }
             .screen().padding(.top, 8)
         }

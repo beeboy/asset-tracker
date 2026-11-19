@@ -30,14 +30,15 @@ extension AppModel {
     /// 내 길 실제 평가액 (웹 목표 진행 actualSeries 와 같은 식): 시작일 무렵부터 거래일마다
     /// 그날 수량(수량 기록, 없으면 지금 수량) × 그날 종가 × 그날 원/달러 종가. 과거 시세가 없는 종목은 지금 평가액 그대로
     /// 현금은 그대로 있다고 보고 날마다 더한다 (웹 goalPath 와 같다)
-    func pathSeries(from start: String) -> [(d: String, v: Double)] {
+    /// nowQty: 수량 기록 대신 지금 수량으로 (위젯 자산 언덕: 오늘 등락과 같은 기준이라 수량을 고친 날 기둥이 튀지 않게)
+    func pathSeries(from start: String, nowQty: Bool = false) -> [(d: String, v: Double)] {
         let rs = rows, today = Day.today, fxH = PriceHistory.of("FX"), cash = cashKrw
         let hs = rs.map { (r: $0, h: PriceHistory.of($0.id), t: Sync.siteTicker($0.id)) }
         let from = Day.str(Calendar.current.date(byAdding: .day, value: -10, to: Day.date(start) ?? Date()) ?? Date())
         var ds = Set<String>()
         for x in hs { if let h = x.h { for d in h.dates.reversed() { if d < from { break }; if d < today { ds.insert(d) } } } }
         return ds.sorted().map { d in
-            let q = Lots.on(lots, d)
+            let q = nowQty ? nil : Lots.on(lots, d)
             let v = hs.reduce(0.0) { a, x in
                 guard let h = x.h else { return a + x.r.value }
                 guard let px = h.on(d) else { return a }

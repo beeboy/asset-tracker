@@ -1,5 +1,6 @@
 package com.naeilo.app.mock
 
+import com.naeilo.app.core.SellCost
 import com.naeilo.app.core.cformat
 import kotlinx.serialization.Serializable
 import java.time.Instant
@@ -365,8 +366,8 @@ data class MockGuards(   // ios: Mock/MockModels.swift:336
 /** 수수료·세금 (설정값). 2026-10 확인: 토스증권 국내 0.015%, 증권거래세 매도 0.20% */
 @Serializable
 data class MockFees(   // ios: Mock/MockModels.swift:347
-    var commission: Double = 0.00015,   // ios: Mock/MockModels.swift:348
-    var sellTax: Double = 0.0020,   // ios: Mock/MockModels.swift:349
+    var commission: Double = SellCost.krFee,   // ios: Mock/MockModels.swift:348
+    var sellTax: Double = SellCost.krTax,   // ios: Mock/MockModels.swift:349
 ) {
     /** 한 번 체결의 수수료 (원 아래 버림) */
     fun fee(amount: Double): Double = floor(amount * commission)   // ios: Mock/MockModels.swift:351

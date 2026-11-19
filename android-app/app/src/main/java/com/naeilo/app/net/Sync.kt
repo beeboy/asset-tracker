@@ -360,10 +360,10 @@ class Sync {   // ios: Data/Sync.swift:17,18
         state = State.working   // ios: Data/Sync.swift:248
         try {   // ios: Data/Sync.swift:249
             val r = call()   // ios: Data/Sync.swift:250
-            // 받기가 안 되던 동안 고친 값: 서버 값보다 늦게 고쳤으면 이 기기가 더 새것 (덮지 않고 올린다)
+            // 받기가 안 되던 동안 고친 값: 서버가 지난 맞춤 뒤로 그대로일 때만 이 기기가 이긴다 (서버가 더 새면 받는다. 켜자마자 새 날 줄만 생겨도 다른 기기 값을 덮었다, 11-13)
             var pendingWins = false   // ios: Data/Sync.swift:252
             if (pendingAt > 0) {   // ios: Data/Sync.swift:253
-                if (localAt > 0 && pendingAt > r.at) { localAt = pendingAt; pendingWins = true }   // ios: Data/Sync.swift:254
+                if (localAt > 0 && r.at <= localAt && pendingAt > r.at) { localAt = pendingAt; pendingWins = true }   // ios: Data/Sync.swift:254
                 pendingAt = 0.0   // ios: Data/Sync.swift:255
             }
             // 지난 날 수량 기록은 언제나 사이트 값으로 (이 기기 값이 더 새로워 받지 않을 때도: 앱에만 남은 예전 줄이 내 길 시작값을 웹과 다르게 만든다)
@@ -702,7 +702,7 @@ class Sync {   // ios: Data/Sync.swift:17,18
         val p = m.progress.copy(lastOpen = "")   // ios: Data/Sync.swift:600
         val a = runCatching { NJson.encodeToString(Progress.serializer(), p).encodeToByteArray() }.getOrNull() ?: ByteArray(0); val b = runCatching { NJson.encodeToString(ListSerializer(Holding.serializer()), m.holdings).encodeToByteArray() }.getOrNull() ?: ByteArray(0)   // ios: Data/Sync.swift:601
         val pw = m.pworld?.let { "${it.days.size}|${it.segs.size}|${it.segs.lastOrNull()?.from ?: ""}|${it.who}|${it.opened}" } ?: "-"   // Data/Sync.swift:477 (검사 예외: 옮김)
-        val cm = "${m.calm.events.size}|${m.calm.events.lastOrNull()?.day ?: ""}|${m.calm.type ?: ""}|${m.calm.together.size}"   // Data/Sync.swift:523 (검사 예외: 옮김)
+        val cm = "${m.calm.events.size}|${m.calm.events.lastOrNull()?.day ?: ""}|${m.calm.type ?: ""}|${m.calm.together.size}|${m.calm.fixed?.size ?: 0}|${m.calm.fixed?.values?.maxOrNull() ?: 0.0}"   // Data/Sync.swift:523 (검사 예외: 옮김)
         val c = "${m.myRecord.size}|${m.myRecord.lastOrNull()?.d ?: ""}|${CustomSymbols.shared.krStamp}|${pw}|${cm}".encodeToByteArray() + townStamp()   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)   // Data/Sync.swift:478 (검사 예외: 옮김)
         return MessageDigest.getInstance("SHA-256").digest(a + b + c).joinToString("") { "%02x".format(it.toInt() and 0xFF) }   // ios: Data/Sync.swift:605
     }
