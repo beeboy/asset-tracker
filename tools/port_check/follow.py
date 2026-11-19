@@ -38,7 +38,9 @@ def main():
                 if j2 > j1: ad.append((j1 + 1, j2))
         maps[rel], gone[rel], added[rel] = m, g, ad
     todo = []
-    for root, _, fs in os.walk(os.path.join(KT, "app", "src")):
+    # 앱과 위젯 모듈 둘 다 (위젯 이름표도 Swift 줄을 가리킨다)
+    walk = [w for mod in ("app", "widget") for w in os.walk(os.path.join(KT, mod, "src"))]
+    for root, _, fs in walk:
         for f in fs:
             if not f.endswith(".kt"): continue
             p = os.path.join(root, f); s = open(p).read(); out = []; ch = False
