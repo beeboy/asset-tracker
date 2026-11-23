@@ -14,7 +14,7 @@ p.on("response", (r) => { if (r.status() >= 400) console.error("[http]", r.statu
 p.on("requestfailed", (r) => console.error("[reqfail]", r.url().slice(0, 150), r.failure()?.errorText));
 p.on("pageerror", (e) => console.error("page error:", e.message));
 const ls = (k) => p.evaluate((k) => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }, k);
-const until = async (f, ms = 180000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await f()) return true; if ((Date.now() - t) % 30000 < 600) console.error("[wait]", Math.round((Date.now() - t) / 1000) + "s", JSON.stringify(await ls("naeilo-fcdash"))?.slice(0, 200), await p.evaluate(() => document.querySelector("#histBasis .on")?.textContent + "|" + document.querySelector("#sec-road")?.hidden)); await p.waitForTimeout(500); } throw new Error("시간 초과"); };
+const until = async (f, ms = 180000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await f()) return true; if ((Date.now() - t) % 30000 < 600) console.error("[wait]", Math.round((Date.now() - t) / 1000) + "s", JSON.stringify(await ls("naeilo-fcdash"))?.slice(0, 200), await p.evaluate(() => document.querySelector("#histBasis .on")?.textContent + "|" + document.querySelector("#sec-road")?.hidden) + " TXT:" + await p.evaluate(() => (document.querySelector("#sec-road")?.innerText || "").replace(/\s+/g, " ").slice(0, 600))); await p.waitForTimeout(500); } throw new Error("시간 초과"); };
 
 await p.goto(`${BASE}/web/index.html?fresh`);
 await p.waitForSelector("#tabs button[data-tab=dash]");
