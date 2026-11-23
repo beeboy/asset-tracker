@@ -10,10 +10,11 @@ const b = await chromium.launch(process.env.CHROMIUM ? { executablePath: process
 const ctx = await b.newContext({ timezoneId: "Asia/Seoul", viewport: { width: 1200, height: 1400 } });
 const p = await ctx.newPage();
 p.on("console", (m) => console.error("[console]", m.type(), m.text().slice(0, 300)));
+p.on("response", (r) => { if (r.status() >= 400) console.error("[http]", r.status(), r.url().slice(0, 150)); });
 p.on("requestfailed", (r) => console.error("[reqfail]", r.url().slice(0, 150), r.failure()?.errorText));
 p.on("pageerror", (e) => console.error("page error:", e.message));
 const ls = (k) => p.evaluate((k) => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }, k);
-const until = async (f, ms = 180000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await f()) return true; await p.waitForTimeout(500); } throw new Error("시간 초과"); };
+const until = async (f, ms = 180000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await f()) return true; if ((Date.now() - t) % 30000 < 600) console.error("[wait]", Math.round((Date.now() - t) / 1000) + "s", JSON.stringify(await ls("naeilo-fcdash"))?.slice(0, 200), await p.evaluate(() => document.querySelector("#histBasis .on")?.textContent + "|" + document.querySelector("#sec-road")?.hidden)); await p.waitForTimeout(500); } throw new Error("시간 초과"); };
 
 await p.goto(`${BASE}/web/index.html?fresh`);
 await p.waitForSelector("#tabs button[data-tab=dash]");
