@@ -22,7 +22,7 @@ const scen = { model: null, base: "base", smooth: "smooth" };
 for (const bs of ["model", "base", "smooth"]) {
   if (!(await p.$(`#histBasis button[data-b="${bs}"]`))) continue;
   await p.click(`#histBasis button[data-b="${bs}"]`);
-  await until(async () => { const c = await ls("naeilo-fcdash"); return c && Object.keys(c.r || {}).length >= (bs === "model" ? 1 : bs === "base" ? 2 : 3); });
+  await until(async () => { const c = await ls("naeilo-fcdash"); const k = Object.keys(c?.r || {}); return bs === "model" ? k.length >= 1 : k.includes(bs); }); // 내 관점의 기본 시나리오가 base 일 수 있어 개수 대신 이름으로 기다린다
 }
 await p.click("#tabs button[data-tab=forecast]");
 await until(async () => !!(await ls("naeilo-forecast"))?.withEv);
