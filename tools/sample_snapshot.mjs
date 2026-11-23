@@ -15,7 +15,8 @@ const until = async (f, ms = 180000) => { const t = Date.now(); while (Date.now(
 
 await p.goto(`${BASE}/web/index.html?fresh`);
 await p.waitForSelector("#tabs button[data-tab=dash]");
-await p.click("#tabs button[data-tab=dash]");
+await p.click("#tabs button[data-tab=analysis]");
+await p.click('#anaHub [data-ana=road]'); // 분석 탭 안의 "내 길" 쪽지
 await p.click('#histRange button[data-r="future"]');
 if (await p.$('#histFc button[data-f="on"]')) await p.click('#histFc button[data-f="on"]'); // 미래 기준 버튼은 예보 겹치기에서만 보인다
 const scen = { model: null, base: "base", smooth: "smooth" };
@@ -24,12 +25,11 @@ for (const bs of ["model", "base", "smooth"]) {
   await p.click(`#histBasis button[data-b="${bs}"]`);
   await until(async () => { const c = await ls("naeilo-fcdash"); return c && Object.keys(c.r || {}).length >= (bs === "model" ? 1 : bs === "base" ? 2 : 3); });
 }
-await p.click("#tabs button[data-tab=forecast]");
-await until(async () => !!(await ls("naeilo-forecast"))?.withEv);
-await p.click("#tabs button[data-tab=stocks]");
-await p.waitForTimeout(1000);
-if (!(await ls("naeilo-alloc2"))?.out) await p.click("#btnAlloc");
+if (!(await ls("naeilo-alloc2"))?.out) await p.click("#btnAlloc"); // 비중 조정안은 내 길 쪽지에 있다
 await until(async () => !!(await ls("naeilo-alloc2"))?.out);
+await p.click("#sec-road [data-ana-back]");
+await p.click('#anaHub [data-ana=forecast]');
+await until(async () => !!(await ls("naeilo-forecast"))?.withEv);
 const strip = (o) => { if (!o) return o; const { sig, ...r } = o; return r; };
 const kst = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const out = { date: kst, at: new Date().toISOString(), forecast: strip(await ls("naeilo-forecast")), fcdash: strip(await ls("naeilo-fcdash")), alloc: strip(await ls("naeilo-alloc2")) };
