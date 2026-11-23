@@ -25,8 +25,13 @@ for (const bs of ["model", "base", "smooth"]) {
   await p.click(`#histBasis button[data-b="${bs}"]`);
   await until(async () => { const c = await ls("naeilo-fcdash"); const k = Object.keys(c?.r || {}); return bs === "model" ? k.length >= 1 : k.includes(bs); }); // 내 관점의 기본 시나리오가 base 일 수 있어 개수 대신 이름으로 기다린다
 }
-if (!(await ls("naeilo-alloc2"))?.out) await p.click("#btnAlloc"); // 비중 조정안은 내 길 쪽지에 있다
-await until(async () => !!(await ls("naeilo-alloc2"))?.out);
+// 비중 조정안은 내 길 쪽지에 있다. 화면이 알아서 계산을 시작해 버튼이 잠겨 있을 수 있으니, 계산이 안 돌 때만 한 번 누른다.
+let allocClicked = false;
+await until(async () => {
+  if ((await ls("naeilo-alloc2"))?.out) return true;
+  if (!allocClicked && (await p.$("#btnAlloc:not([disabled])"))) { allocClicked = true; await p.click("#btnAlloc"); }
+  return false;
+});
 await p.click("#sec-road [data-ana-back]");
 await p.click('#anaHub [data-ana=forecast]');
 await until(async () => !!(await ls("naeilo-forecast"))?.withEv);
