@@ -9,6 +9,8 @@ const BASE = process.env.BASE || "http://localhost:8123";
 const b = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
 const ctx = await b.newContext({ timezoneId: "Asia/Seoul", viewport: { width: 1200, height: 1400 } });
 const p = await ctx.newPage();
+p.on("console", (m) => console.error("[console]", m.type(), m.text().slice(0, 300)));
+p.on("requestfailed", (r) => console.error("[reqfail]", r.url().slice(0, 150), r.failure()?.errorText));
 p.on("pageerror", (e) => console.error("page error:", e.message));
 const ls = (k) => p.evaluate((k) => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }, k);
 const until = async (f, ms = 180000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await f()) return true; await p.waitForTimeout(500); } throw new Error("시간 초과"); };
